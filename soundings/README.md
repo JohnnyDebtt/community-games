@@ -125,7 +125,11 @@ and membership, not investments.
 The seekers are drawn from the collection's own layers, pixel for pixel: all 15,554
 pictures (2,222 activated stills, 13,332 uncharged) rebuilt from the game's atlas match
 the collection's checksums. In 3D they are rebuilt as boxes from the art's oblique
-projection (lid on top, bevel on the side, add-ons where they belong in depth).
+projection (lid on top, bevel on the side, add-ons where they belong in depth). The
+floating objects are drawn in that same oblique view, so instead they are modeled from
+scratch as voxels in their layer colors (`src/actors/objects.js`): keyboards with rows
+of keys, a mouse, a trackball, a joystick, a gamepad, fader and dial decks, a tape
+deck, a floppy drive and a slate, each floating just under its seeker's screen.
 
 ## Files
 
@@ -135,7 +139,7 @@ projection (lid on top, bevel on the side, add-ons where they belong in depth).
 | `src/main.js` | start-up |
 | `src/game/` | game state, fishing, Overdrive, SEEKER NET events on the sea, field requests, ecology, species, devices, research, holes, saving |
 | `src/world/` | the sea, ice, sky, terrain, the capsule, props, weather, sparks, the life under the ice |
-| `src/actors/` | the Seeker and its backpacks, the camera, SEEKER NET seekers, fish models, the Vagrant and the yak (`travelers.js`) |
+| `src/actors/` | the Seeker and its backpacks, the camera, SEEKER NET seekers and their floating objects (`objects.js`), fish models, the Vagrant and the yak (`travelers.js`) |
 | `src/seekernet/` | chain reads, network model, the seekers' art, traits as device effects |
 | `src/render/` | the pixel renderer, the shared shader, outlines, geometry and voxel builders |
 | `src/ui/` | HUD, catch bar, windows, screen layout, the interface's pixel art, touch controls, fish portraits |

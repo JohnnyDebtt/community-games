@@ -6,6 +6,7 @@ import { addOutline } from '../render/outline.js';
 import * as Art from '../seekernet/art.js';
 import { nearest } from '../core/palette.js';
 import { groundHeight } from '../world/layout.js';
+import { floatingObject } from './objects.js';
 
 // A SEEKER NET seeker as a little voxel robot: its exact collection art, each part
 // extruded to its own depth (the floating object in front, the back add-on behind the
@@ -14,15 +15,16 @@ import { groundHeight } from '../world/layout.js';
 
 const VOX = 0.02;              // meters per art pixel: a seeker stands about 0.8 m, half the Seeker's height
 const Z0 = 34;                 // voxel z of the monitor's front face
-const NZ = 46;
+const NZ = 56;                 // room in front of the monitor for its floating object
 const PAD_Y = 8;               // room below the art for add-ons that move down
 
 // The art is an oblique view: the lid (top face) recedes up and to the left, the bevel
 // (left face) recedes to the left. Undo that projection: the front face becomes the
 // front of a solid box, and the lid and bevel art are wrapped onto its top and left.
 // Add-ons are placed where they belong in depth: the hat on top of the box, the back
-// add-on behind it, the flank pieces at its sides, the floating object as a tilted tray
-// in front. Classified masks per base come from tools/bake_seekers.py.
+// add-on behind it, the flank pieces at its sides. The floating object is modeled from
+// scratch (objects.js) and floats in front, below the screen, where the art has it.
+// Classified masks per base come from tools/bake_seekers.py.
 function buildGrid(token, px) {
   const meta = Art.metaData();
   const row = meta.tokens[token - 1];
@@ -181,15 +183,27 @@ function buildGrid(token, px) {
   for (const [x, y, q] of groups[1]) {
     for (let k = Dv + Math.round(Dn * 0.6); k < Dv + Math.round(Dn * 0.6) + 3; k++) set(x + Wb, y + Hl, k, hexOf(q), 0, 1);
   }
-  // the floating object: a tilted tray in front of and below the monitor
+  // the floating object, in front of and below the monitor: centred under the art's front
+  // edge (its bottom rows), floating a little in front of the screen, its body (the slab,
+  // not a joystick's stick or a trackball's ball) a little below the monitor's feet
   if (groups[0].length) {
     const b = bbox(groups[0]);
-    for (const [x, y, q] of groups[0]) {
-      const r = b.y1 - y;
-      const yy = b.y1 - Math.round(r * 0.6);
-      const k = -4 + Math.round(r * 0.85);
-      set(x, yy, k, hexOf(q), 0, 0);
-      set(x, yy + 1, k, darken(hexOf(q), 0.7), 0, 0);
+    const model = floatingObject(Art.info(token).traits['Floating Object']);
+    if (model) {
+      const front = groups[0].filter(([, y]) => y >= b.y1 - 1).map(([x]) => x);
+      const cx = (Math.min(...front) + Math.max(...front)) / 2;
+      const u0 = Math.round(cx - (model.W - 1) / 2);
+      const level = new Map();
+      for (const [, v] of model.voxels) if (v >= 0) level.set(v, (level.get(v) || 0) + 1);
+      let body = 0;
+      for (const [v, n] of level) if (n >= (level.get(0) || 1) * 0.3) body = Math.max(body, v);
+      const under = fy1 >= fy0 ? fy1 + 3 : b.y1 - 4;     // art row just below the feet
+      const yBase = Math.min(under + body, b.y1 + 1);    // its underside; never lower than the art had it
+      const pal = (hex) => { const [r, gg, bb] = nearest([(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]); return (r << 16) | (gg << 8) | bb; };
+      for (const [u, v, w, hex, e] of model.voxels) set(u0 + u, yBase - v, -3 - w, pal(hex), e, 0);
+    } else {
+      // an object this file does not know yet: its art, flat, as a plate in front
+      for (const [x, y, q] of groups[0]) set(x, y, -3, hexOf(q), 0, 0);
     }
   }
   // everything hovers a little above the snow: the floating object floats
