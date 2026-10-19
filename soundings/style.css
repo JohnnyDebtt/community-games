@@ -311,6 +311,11 @@ input[type=range] { accent-color: #abe3d9; padding: 0; border: 0; }
 .listen { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); letter-spacing: calc(var(--u) * 2); color: var(--muted); text-transform: uppercase; }
 
 /* floating numbers: data flying to the counter, "perfect!" and the like */
+/* someone's words, above their head out on the ice */
+.bubble { position: fixed; left: 0; top: 0; max-width: calc(var(--u) * 132); pointer-events: none; color: var(--text); white-space: normal; animation: bubbleIn 0.3s steps(3) both; will-change: transform; padding: calc(var(--u) * 2) calc(var(--u) * 4); }
+.bubble .tail { position: absolute; left: calc(50% - var(--u) * 3); bottom: calc(var(--u) * -6); }
+@keyframes bubbleIn { from { opacity: 0; } to { opacity: 1; } }
+.req .hint { grid-column: 2 / 4; color: var(--glow); white-space: normal; }
 .floater { position: fixed; left: 0; top: 0; white-space: nowrap; pointer-events: none; text-shadow: var(--u) var(--u) 0 #05070b; will-change: transform; display: flex; align-items: center; gap: var(--u); }
 
 /* ------------------------------------------------------------------ fishing, beside the Seeker */

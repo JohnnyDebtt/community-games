@@ -329,6 +329,7 @@ export class HUD {
     // a window open: the HUD steps back instead of peeking around it
     const windowed = g.panels.open;
     if (this._t.windowed !== windowed) { this._t.windowed = windowed; this.root.classList.toggle('windowed', windowed); }
+    this._sayUpdate(dt);
     this._layoutTop();
     this._set(this.clock, 'clock', g.day.clock());
     const phase = g.day.phase();
@@ -467,9 +468,10 @@ export class HUD {
       const cls = 'req' + (r.done ? ' done' : '') + (r.fresh ? ' new' : '');
       r.fresh = false;
       this.reqList.append(h('div', { class: cls },
-        h('span', { class: 'box ' + (r.done ? 'wf-hi' : 'wf') }, r.done ? iconEl('check') : iconEl('book', '#b9a87b')),
+        h('span', { class: 'box ' + (r.done ? 'wf-hi' : 'wf') }, r.done ? iconEl('check') : r.song ? iconEl('note', '#d6edf5') : iconEl('book', '#b9a87b')),
         h('span', { class: 'sh' }, r.text),
-        h('span', { class: 'n' }, r.goal > 1 ? `${Math.min(r.n, r.goal)}/${r.goal}` : '')));
+        h('span', { class: 'n' }, r.goal > 1 ? `${Math.min(r.n, r.goal)}/${r.goal}` : ''),
+        r.hint && !r.done ? h('span', { class: 'hint' }, r.hint) : null));
     }
   }
 
@@ -497,11 +499,32 @@ export class HUD {
       if (Math.abs(a) > fov / 2) continue;
       this.compass.append(h('i', { class: 'tick', style: { left: `${Math.round(W / 2 + (a / (fov / 2)) * (W / 2))}px` } }));
     }
+    // every mark's icon first, the most important first; then the labels, where there is
+    // room for them, so nothing on the compass ever lies on top of anything else
+    const rank = { alert: 0, spark: 1, gold: 2, mark: 3, card: 5 };
+    const u = this.u;
+    const span = (el, x) => { const w = el.offsetWidth; return [x - w / 2, x + w / 2]; };
+    const hits = (iv, list, self) => list.some((o) => o !== self && iv[0] - u * 2 < o.iv[1] && iv[1] + u * 2 > o.iv[0]);
+    const shown = [];
+    items.sort((p, q) => (rank[p.cls] ?? 4) - (rank[q.cls] ?? 4));
     for (const it of items) {
       if (Math.abs(it.a) > fov / 2) continue;
       const x = W / 2 + (it.a / (fov / 2)) * (W / 2);
-      this.compass.append(h('span', { class: `${it.cls} sh-k`, style: { left: `${Math.round(x)}px` } },
-        it.icon ? iconEl(it.icon, it.cls === 'spark' ? '#d6edf5' : it.cls === 'gold' ? '#e3cf8e' : null) : null, it.text, it.d !== null && it.d !== undefined ? h('span', { class: 'muted' }, `${it.d}m`) : null));
+      const el = h('span', { class: `${it.cls} sh-k`, style: { left: `${Math.round(x)}px` } },
+        it.icon ? iconEl(it.icon, it.cls === 'spark' ? '#d6edf5' : it.cls === 'gold' ? '#e3cf8e' : null) : it.text);
+      this.compass.append(el);
+      const o = { it, el, x, iv: span(el, x) };
+      if (hits(o.iv, shown, o)) { el.remove(); continue; }
+      shown.push(o);
+    }
+    for (const o of shown) {
+      const it = o.it;
+      if (!it.icon || (!it.text && (it.d === null || it.d === undefined))) continue;
+      const extra = [it.text ? document.createTextNode(it.text) : null, it.d !== null && it.d !== undefined ? h('span', { class: 'muted' }, `${it.d}m`) : null].filter(Boolean);
+      o.el.append(...extra);
+      const iv = span(o.el, o.x);
+      if (hits(iv, shown, o)) for (const n of extra) n.remove();
+      else o.iv = iv;
     }
   }
 
@@ -621,6 +644,39 @@ export class HUD {
     const r = this.od.getBoundingClientRect();
     if (!r.width) return;
     this.floatText(text, r.left + r.width * 0.6, r.bottom, { color: 'var(--glow)', icon: 'bolt', tint: '#91cbde', rise: 12, ms: 1000 });
+  }
+
+  // A few words from someone out on the ice, above their head, until they are said.
+  say(text, anchor, ms = 4000) {
+    if (!this.bubble) {
+      this.bubbleText = h('span');
+      this.bubble = h('div', { class: 'bubble pf hidden' }, this.bubbleText, iconEl('btail', null, 1, 'tail'));
+      document.body.append(this.bubble);
+    }
+    clear(this.bubbleText);
+    rich(text, this.bubbleText);
+    this.bubble.classList.remove('hidden');
+    this.bubble.style.animation = 'none';
+    void this.bubble.offsetWidth;
+    this.bubble.style.animation = '';
+    this._bubble = { anchor, left: ms / 1000 };
+  }
+
+  _sayUpdate(dt) {
+    const b = this._bubble;
+    if (!b) return;
+    b.left -= dt;
+    const p = b.left > 0 && !this.g.panels.open && this.g.mode !== 'title' ? this.layout.point(b.anchor()) : null;
+    if (!p || p.behind) {
+      this.bubble.classList.add('hidden');
+      if (b.left <= 0) this._bubble = null;
+      return;
+    }
+    this.bubble.classList.remove('hidden');
+    const w = this.bubble.offsetWidth, hh = this.bubble.offsetHeight;
+    const q = snapToGrid(clamp(p.x - w / 2, 8, innerWidth - w - 8), Math.max(8, p.y - hh - 4 * this.u));
+    const t = `translate(${q.x}px, ${q.y}px)`;
+    if (this.bubble._t !== t) { this.bubble._t = t; this.bubble.style.transform = t; }
   }
 
   floatAtWorld(p, text, opts) {

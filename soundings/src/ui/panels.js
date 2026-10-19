@@ -4,6 +4,7 @@ import { rich } from './hud.js';
 import { SPECIES, SPECIES_BY_ID, RARITY, formatWeight, weightKg, preferredStyle } from '../game/species.js';
 import { RESEARCH_BY_ID, PACK_CAPACITY, available } from '../game/research.js';
 import { Terminal } from './terminal.js';
+import { songOf, SONG_PRICE, fishPrice } from '../game/camp.js';
 import { ZONE } from '../world/layout.js';
 import * as Art from '../seekernet/art.js';
 import { deviceProfile, LEVELS } from '../seekernet/traits.js';
@@ -344,6 +345,61 @@ export class Panels {
         { icon: iconEl('disk'), state: 'ready', title: 'Save', lines: ['The game saves itself as you play.'], act: { label: 'save now', ready: true, run: () => { g.save(true); return 'saved'; } } },
       ],
     }];
+  }
+
+  // ------------------------------------------------------------------ the Vagrant
+  // Their songs (a creature you have not recorded: where it lives, when, how deep, on
+  // what lure) and a trade for the fish in your pack.
+  showVagrant() {
+    const w = this._termWindow({ kind: 'vagrant', title: 'The Vagrant', side: true, accent: 'glow' });
+    w.term = new Terminal(this, w, {
+      kind: 'vagrant', accent: 'glow', closeText: 'goodbye',
+      tabs: [
+        { name: 'Songs', detail: 64, sections: () => this._songWells(), empty: 'No songs today that your line can reach. Go deeper, then come back.' },
+        { name: 'Trade', sections: () => this._tradeWells(), empty: 'Your pack is empty. Bring me something, Seeker.' },
+      ],
+    });
+  }
+
+  _songWells() {
+    const g = this.g, camp = g.camp;
+    const entries = camp.songs().map((sp) => {
+      const heard = camp.st.heard.includes(sp.id);
+      const known = !!g.state.codex[sp.id];
+      const song = songOf(sp);
+      const price = SONG_PRICE[sp.rarity];
+      return {
+        icon: h('img', { class: 'pixel', src: g.icons.fish(sp, known ? false : [0xc4, 0xce, 0xd4], 0.375), alt: '', style: { width: 'calc(var(--u) * 36)', height: 'calc(var(--u) * 18)' } }),
+        state: known ? 'owned' : heard ? 'away' : g.state.data >= price ? 'ready' : 'poor',
+        title: song.title,
+        lines: heard || known ? [song.verse] : ['"I know where this one sings. A little data, and it\'s yours."'],
+        cost: known ? h('span', { class: 'teal' }, 'recorded') : heard ? h('span', { class: 'glow' }, song.hint)
+          : h('span', { class: 'cost ' + (g.state.data >= price ? '' : 'red') }, iconEl('data'), String(price)),
+        act: heard || known ? null : {
+          label: 'hear it', ready: g.state.data >= price, why: `${price - g.state.data} more data`,
+          run: () => (camp.hear(sp) ? 'Go on. It will be where the song says.' : false),
+        },
+      };
+    });
+    return [{ label: 'today\'s songs', cols: 5, cell: [36, 20], size: 3, entries }];
+  }
+
+  _tradeWells() {
+    const g = this.g, camp = g.camp;
+    const cap = g.packCapacity();
+    const entries = g.state.creel.map((f, i) => {
+      const sp = SPECIES_BY_ID[f.sp];
+      const price = fishPrice(f);
+      return {
+        icon: h('img', { class: 'pixel', src: g.icons.fish(sp, false, 0.375), alt: '', style: { width: 'calc(var(--u) * 36)', height: 'calc(var(--u) * 18)' } }),
+        big: h('img', { class: 'pixel', src: g.icons.fish(sp, false, true), alt: '', style: { width: 'calc(var(--u) * 48)', height: 'calc(var(--u) * 24)' } }),
+        state: 'ready', title: sp.name,
+        lines: [`${f.cm.toFixed(1)} cm · ${formatWeight(f.kg)}`, '"That one will keep us warm tonight."'],
+        cost: h('span', { class: 'cost' }, iconEl('data'), String(price)),
+        act: { label: 'trade', ready: true, run: () => `For the road: +${camp.sell(i)} data` },
+      };
+    });
+    return [{ label: 'your pack', right: `${g.state.creel.length} / ${cap}`, cols: 5, cell: [36, 20], size: cap, entries }];
   }
 
   // ------------------------------------------------------------------ SEEKER NET relay

@@ -564,6 +564,111 @@ export class Audio {
       const n = [16, 18, 20, 21, 24, 28][Math.floor(Math.random() * 6)];
       this.voice(harmonic(n, 1), { when, attack: 0.3, decay: 2.5, gain: 0.012 * m.aurora, bus: 'music', verb: 0.9 });
     }
+    // the Vagrant's lute, somewhere out on the ice, in the same key and on the same grid
+    if (this.vagrant && this.vagrant.level > 0.005) this._luteStep(s, when);
     void bar;
   }
+
+  // ---------------------------------------------------------------- the Vagrant
+  // A plucked string: bright at the pluck, mellowing as it rings, placed left or right.
+  lute(freq, when, gain, pan = 0, ring = 1.2) {
+    if (!this.ready) return;
+    const ctx = this.ctx;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, when);
+    out.gain.linearRampToValueAtTime(gain, when + 0.004);
+    out.gain.exponentialRampToValueAtTime(0.0001, when + ring);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(Math.min(9000, freq * 7), when);
+    f.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 1.6), when + ring * 0.6);
+    f.Q.value = 0.7;
+    out.connect(f);
+    let node = f;
+    if (ctx.createStereoPanner) {
+      const pn = ctx.createStereoPanner();
+      pn.pan.value = pan;
+      f.connect(pn);
+      node = pn;
+    }
+    node.connect(this.music);
+    const s = ctx.createGain();
+    s.gain.value = 0.35;
+    node.connect(s);
+    s.connect(this.verbIn);
+    [1, 0.55, 0.32, 0.2, 0.12].forEach((amp, k) => {
+      const osc = ctx.createOscillator();
+      osc.type = k ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq * (k + 1), when);
+      const g = ctx.createGain();
+      g.gain.value = amp;
+      osc.connect(g);
+      g.connect(out);
+      osc.start(when);
+      osc.stop(when + ring + 0.05);
+    });
+  }
+
+  // Their tune: two bars of eighths over the score's chord, a bass string on each bar.
+  _luteStep(s, when) {
+    const v = this.vagrant;
+    const root = LUTE_CHORDS[this._chord][0];
+    const phrase = Math.floor(s / 16) % 2 ? LUTE_B : LUTE_A;
+    const n = phrase[s % 16];
+    const g = 0.085 * v.level;
+    if (n !== null) this.lute(pitch(root + n, 3), when + (s % 2 ? 0.02 : 0), g * (s % 4 === 0 ? 1 : 0.75), v.pan);
+    if (s % 8 === 0) this.lute(pitch(root, 2), when, g * 0.7, v.pan, 1.8);
+  }
+
+  // A song bought: the creature's own note, then a phrase that climbs to it.
+  vagrantSong(freq) {
+    if (!this.ready) return;
+    let f = freq;
+    while (f > 700) f /= 2;
+    while (f < 300) f *= 2;
+    const t = this.ctx.currentTime + 0.05;
+    const steps = [0.75, 0.84375, 1, 1.125, 1, 0.84375, 1, 1.5];
+    steps.forEach((r, i) => this.lute(f * r, t + i * BEAT * 0.5, i === 7 ? 0.11 : 0.08, 0, i === 7 ? 2.4 : 1.1));
+  }
+
+  // The yak: The Seeker's own moos, loaded the first time it is near.
+  loadMoos() {
+    if (!this.ready || this._moos) return;
+    this._moos = [];
+    for (const n of [1, 2, 3]) {
+      fetch(new URL(`../../assets/audio/yak/Mooo${n}.flac`, import.meta.url))
+        .then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b)).then((buf) => this._moos.push(buf)).catch(() => {});
+    }
+  }
+
+  moo(gain = 1, pan = 0) {
+    if (!this.ready || gain < 0.02) return;
+    const ctx = this.ctx;
+    this.loadMoos();
+    if (!this._moos.length) return;
+    const src = ctx.createBufferSource();
+    src.buffer = this._moos[Math.floor(Math.random() * this._moos.length)];
+    src.playbackRate.value = 0.94 + Math.random() * 0.1;
+    const g = ctx.createGain();
+    g.gain.value = 0.5 * gain;
+    src.connect(g);
+    let node = g;
+    if (ctx.createStereoPanner) {
+      const pn = ctx.createStereoPanner();
+      pn.pan.value = pan;
+      g.connect(pn);
+      node = pn;
+    }
+    node.connect(this.sfx);
+    const s = ctx.createGain();
+    s.gain.value = 0.25;
+    node.connect(s);
+    s.connect(this.verbIn);
+    src.start();
+  }
 }
+
+const LUTE_CHORDS = [[0, 4], [1, 5], [3, 6], [2, 4]];
+// scale steps above the chord's root; null rests
+const LUTE_A = [0, null, 2, null, 4, 2, null, 5, 4, null, 2, null, 1, null, 0, null];
+const LUTE_B = [0, null, 2, null, 4, 5, null, 7, 6, null, 4, null, 2, 4, 2, null];

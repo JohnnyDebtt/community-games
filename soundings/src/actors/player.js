@@ -31,7 +31,7 @@ const VOID = P.deepest;
 // ------------------------------------------------------------------ the parts
 // A surface of revolution from a profile (bottom to top), with optional vertical folds
 // and a deformation; cloth is shaded soft, so it reads as heavy fabric.
-function revolve(b, prof, seg, o = {}) {
+export function revolve(b, prof, seg, o = {}) {
   const phi0 = o.phi0 ?? 0, phi1 = o.phi1 ?? TAU;
   const g = new THREE.BufferGeometry();
   const pos = [], crease = [];
@@ -65,7 +65,7 @@ function revolve(b, prof, seg, o = {}) {
 }
 
 // Cloth colors: creases darker in the fold valleys, the hem worn.
-function clothColor(base, fold, deep) {
+export function clothColor(base, fold, deep) {
   return (x, y, z, c, t) => (t < 0.06 ? deep : c < -0.5 ? fold : c > 0.62 ? mixHex(base, 0xd6c79a, 0.18) : base);
 }
 

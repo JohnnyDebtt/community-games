@@ -63,6 +63,15 @@ modules from `file://`.
    Its terminal is The Seeker's own: a grid of wells, one per thing, each research a
    track of numbers (48, 72, 96, 144 m), and only the selected one's words below.
 
+**The Vagrant and their yak**, travelers from The Seeker's caves, camp somewhere on the
+ice, a different place each day: follow the lute (a note on the compass while you can
+hear it). The Vagrant records nothing and remembers every creature as a song. For a
+little data they sing you one about a creature you have not recorded (where, when, how
+deep, what lure), and it becomes a request with those directions. They take fish off
+your hands for the road, and say a word or two when you come by. The yak's warmth thins
+the ice it lies on: a hole beside it bites twice as fast. Pet it, and once a day
+something falls out of its fur.
+
 Three **field requests** at a time (one shown) always point at a next thing to try, and
 pay data. Every catch also charges your seeker's **Overdrive**.
 
@@ -126,7 +135,7 @@ projection (lid on top, bevel on the side, add-ons where they belong in depth).
 | `src/main.js` | start-up |
 | `src/game/` | game state, fishing, Overdrive, SEEKER NET events on the sea, field requests, ecology, species, devices, research, holes, saving |
 | `src/world/` | the sea, ice, sky, terrain, the capsule, props, weather, sparks, the life under the ice |
-| `src/actors/` | the Seeker and its backpacks, the camera, SEEKER NET seekers, fish models |
+| `src/actors/` | the Seeker and its backpacks, the camera, SEEKER NET seekers, fish models, the Vagrant and the yak (`travelers.js`) |
 | `src/seekernet/` | chain reads, network model, the seekers' art, traits as device effects |
 | `src/render/` | the pixel renderer, the shared shader, outlines, geometry and voxel builders |
 | `src/ui/` | HUD, catch bar, windows, screen layout, the interface's pixel art, touch controls, fish portraits |
@@ -167,7 +176,9 @@ an open-source sci-fi brand. It is not an official release of The Seeker.
 > 4.0: https://creativecommons.org/licenses/by/4.0/ . Original project:
 > https://github.com/TheSeekerGame/the-seeker . Changes were made where applicable.
 
-Used from The Seeker: the backpack sprites (`assets/items/`, modeled in 3D in the game),
+Used from The Seeker: the backpack sprites (`assets/items/`, modeled in 3D in the game), the
+Vagrant and the yak (modeled in 3D after their sprites, `animations/vagrant` and
+`animations/yak`), the yak's three moos (`assets/audio/yak/`, as recorded for the game),
 its pixel font `PixelFont2.png` (as `assets/fonts/SeekerPixel.woff2`), the capsule and its
 lift (modeled after its sprites), the Tektur typeface (SIL Open Font License 1.1, also
 rasterized as `TekturPixel30.woff2` for the title, so it shares the world's pixel grid), the
@@ -182,4 +193,5 @@ Soundings itself is licensed as the rest of
 Apache-2.0 at your option, project-owned assets CC BY 4.0, fonts SIL Open Font License
 1.1. See `../LICENSE.md`.
 
-Everything else, the sea, its creatures, the sound and the music, is made in code here.
+Everything else, the sea, its creatures, the sound and the music (the Vagrant's lute among
+it), is made in code here.

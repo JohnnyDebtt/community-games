@@ -103,6 +103,27 @@ export class Requests {
     s.requests.push({ id: s.reqSeq++, n: 0, ...r, fresh: true });
   }
 
+  // A song from the Vagrant: a request to record that creature, with the song's
+  // directions, shown first. One already asking for it just gains the directions.
+  addSong(sp, song) {
+    const s = this.st;
+    const had = s.requests.find((r) => !r.done && r.kind === 'record' && r.sp === sp.id);
+    if (had) {
+      had.hint = song.hint;
+      had.zone = song.zone;
+      had.song = true;
+      s.requests = [had, ...s.requests.filter((r) => r !== had)];
+      return;
+    }
+    s.requests.unshift({ id: s.reqSeq++, n: 0, kind: 'record', sp: sp.id, goal: 1, reward: RARITY[sp.rarity].data + 4, text: `Record a ${sp.name}`, hint: song.hint, zone: song.zone, song: true, fresh: true });
+    // three at most: an ordinary request makes way
+    while (s.requests.length > 3) {
+      const i = s.requests.map((r) => !r.song && !r.done).lastIndexOf(true);
+      if (i < 0) break;
+      s.requests.splice(i, 1);
+    }
+  }
+
   // Something happened; move the requests along.
   event(kind, p = {}) {
     const s = this.st;

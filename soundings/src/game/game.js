@@ -14,7 +14,7 @@ import { Weather } from '../world/weather.js';
 import { UnderIce } from '../world/underice.js';
 import { Particles, Footprints, FishingLine, BlobShadows } from '../world/fx.js';
 import { applyLighting, makeLight } from '../world/lighting.js';
-import { CAPSULE, TANK, START, depthAt, groundHeight, dominantZone, zoneWeights, shoreAt } from '../world/layout.js';
+import { CAPSULE, TANK, START, ZONE, depthAt, groundHeight, dominantZone, zoneWeights, shoreAt } from '../world/layout.js';
 import { Player } from '../actors/player.js';
 import { FollowCamera } from '../actors/camera.js';
 import { SeekerBot } from '../actors/seekerbot.js';
@@ -38,6 +38,7 @@ import { Icons } from '../ui/icons.js';
 import { TouchControls } from '../ui/touch.js';
 import { installFrames } from '../ui/pixelart.js';
 import { KeyNav } from '../ui/keynav.js';
+import { Camp } from './camp.js';
 
 const REST_AT = { dawn: 0.215, day: 0.45, dusk: 0.735, night: 0.885 };
 const R = rng((Date.now() >>> 7) ^ 0xf15);
@@ -104,6 +105,8 @@ export class Game {
       t.lightObj = makeLight(t.light, 0xd6edf5, 5, 0.5);
       this.lights.push(t.lightObj);
     }
+    // the Vagrant and their yak, camped somewhere on the ice
+    this.camp = new Camp(this);
     this.companion = null;        // SeekerBot
     this.companionProfile = null;
     this.bait = false;
@@ -303,6 +306,7 @@ export class Game {
     this.ice.setHoles(this.holes.uniforms(this.player.pos.x, this.player.pos.z));
     this.player.animate(this.frame, dt, this.time);
     if (this.companion) this.updateCompanion(dt);
+    if (this.state) this.camp.update(dt);
     for (const s of this.devices.slots) if (s.bot) {
       s.bot.lookAt = null;
       if (s.arrive > 0) {
@@ -414,6 +418,13 @@ export class Game {
     }
     const beacon = this.events.beaconNear(p.x, p.z);
     if (beacon) return { prompt: `[E] Meet SEEKER NET #${beacon.token}`, run: () => this.panels.showWoken(beacon) };
+    const camp = this.camp;
+    if (camp.spot >= 0) {
+      const v = camp.vagrant.root.position;
+      const dv = Math.hypot(fx - v.x, fz - v.z), dy = camp.yak.distanceTo(fx, fz);
+      if (dv < 1.6 && dv <= dy) return { prompt: '[E] Talk to the Vagrant', run: () => this.panels.showVagrant() };
+      if (dy < 1.7) return { prompt: '[E] Pet the yak', run: () => camp.pet() };
+    }
     // holes: the one in front of you first
     const hole = this.holes.nearest(fx, fz, 0.9) || this.holes.nearest(p.x, p.z, 1.15);
     if (hole) {
@@ -534,7 +545,8 @@ export class Game {
   fishFx(hole) {
     const c = this.companionProfile;
     const od = this.overdrive.active ? this.overdrive.active.id : null;
-    if (!c && !od && !(hole && hole.charged)) {
+    const warm = !!hole && this.camp.warm(hole.x, hole.z);
+    if (!c && !od && !(hole && hole.charged) && !warm) {
       NO_FX.bite = this.approachBoost();
       return NO_FX;
     }
@@ -543,12 +555,14 @@ export class Game {
     const night = this.day.night, dayK = 1 - night;
     let bite = this.approachBoost() * (1 + (m.bite || 0) + (m.nightBite || 0) * night + (m.dayBite || 0) * dayK);
     if (teeming) bite *= 3;
+    // the thin ice the yak lies by
+    if (warm) bite *= 2;
     if (od === 'deepscan') bite *= 2;
     return {
       bite, band: m.band || 0, drain: m.drain || 0, fishSpeed: m.fishSpeed || 0, reel: m.reel || 0, window: m.window || 0,
       warn: !!m.warn, id: !!m.id || od === 'deepscan', second: m.second || 0, grace: m.grace || 0, size: m.size || 0,
       auto: od === 'autoreel', lock: od === 'lockon', frenzy: od === 'frenzy', point: od === 'point', crescendo: od === 'crescendo',
-      deep: od === 'deepscan', teeming,
+      deep: od === 'deepscan', teeming, warm,
     };
   }
 
@@ -1762,7 +1776,10 @@ export class Game {
     const out = [{ text: 'capsule', x: CAPSULE.x, z: CAPSULE.z, cls: 'gold', icon: 'capsule' }];
     for (const t of this.props.tethers) if (this.state.tethers[t.id] && t.id !== 'home') out.push({ text: '◇', x: t.x, z: t.z, cls: '' });
     for (const s of this.devices.slots) out.push({ text: `#${s.token}`, x: s.hole.x, z: s.hole.z, cls: s.state === 'hooked' ? 'alert' : 'mark', icon: s.state === 'hooked' ? 'hook' : null, dist: s.state === 'hooked' });
-    return out.concat(this.events.marks());
+    for (const r of this.requests.list) {
+      if (r.song && !r.done && r.zone && ZONE[r.zone]) out.push({ text: r.zone, x: ZONE[r.zone].x, z: ZONE[r.zone].z, cls: 'mark', icon: 'note' });
+    }
+    return out.concat(this.events.marks(), this.camp.marks());
   }
 
   blocked(x, z) {
@@ -1771,6 +1788,7 @@ export class Game {
     if (Math.hypot(x - TANK.x, z - TANK.z) < 1.05) return true;
     for (const h of this.state.holes) if (Math.hypot(x - h.x, z - h.z) < 0.24) return true;
     for (const s of this.devices.slots) if (s.bx !== undefined && Math.hypot(x - s.bx, z - s.bz) < 0.42) return true;
+    if (this.camp && this.camp.blocked(x, z)) return true;
     return false;
   }
 

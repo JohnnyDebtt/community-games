@@ -146,6 +146,9 @@ const ICONS = {
   disk: ['mmmmmmmm.', 'mmiiiimmm', 'mmiikimmm', 'mmiiiimmm', 'mmmmmmmmm', 'mwwwwwwwm', 'mwDDDDDwm', 'mwwwwwwwm', 'mmmmmmmmm'],
   tune: ['.c.......c.', 'c..c...c..c', 'c.c.....c.c', 'c.c..t..c.c', 'c.c.....c.c', 'c..c...c..c', '.c.......c.'],
 
+  note: ['...ii.', '...iii', '...i.i', '...i..', '...i..', '.iii..', 'iiii..', '.ii...'],
+  btail: ['kkkkkkk', 'dkkkkkd', '.dkkkd.', '..dkd..', '...d...'],
+
   // what each Overdrive does, as a picture
   od_autoreel: ['..cccc.c.', '.c....cc.', 'c....ccc.', 'c........', 'c.......c', 'c.......c', '.c.....c.', '..ccccc..'],
   od_prime: ['c...c.ccc.', '.c.c.....c', '..c....cc.', '.c.c.....c', 'c...c.ccc.'],

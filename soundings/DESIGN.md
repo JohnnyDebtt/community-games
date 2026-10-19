@@ -87,6 +87,27 @@ game's, all on one pixel grid with the world. Things that float beside the Seeke
 a place that covers neither the Seeker, its seeker, the hole nor the HUD. While a catch
 is shown, notices wait.
 
+## The Vagrant and the yak
+
+Two travelers from The Seeker's caves, given a life on the ice. They answer two of its
+open questions without saying so: *can a Seeker stop seeking?* (the Vagrant had a visor
+once) and *what do the planet's inhabitants know that Theorem doesn't?* (where every
+creature sings, without a single record).
+
+- **Found by ear.** They camp in a different zone each day, and the lute (in the 48 Hz
+  tuning, on the score's grid and in its chord) carries 70 m, louder as you near. As in
+  The Seeker, the Vagrant puts it away and turns to you when you come close.
+- **Songs are directions.** A song costs a little data and names an unrecorded creature
+  you can reach: its water, its hour, its depth, its lure. It becomes the request shown
+  first, with a note on the compass toward its water. Knowledge from experience rather
+  than from the Codex, which is the point of the Vagrant.
+- **Every catch is worth something.** The Vagrant takes fish from the pack for data, so a
+  full pack is never a dead end.
+- **The yak is a place.** Its warmth thins the ice: a hole beside it bites twice as fast.
+  Nothing says so but a line of the Vagrant's and the steam around it; you find out by
+  fishing there. Petting it gets a moo (The Seeker's own) and, once a day, a small gift.
+- **Few words.** They speak in single lines, above their heads, one at a time.
+
 ## The capsule
 
 As in The Seeker: you leap up into the lift under the pod, it carries you up the stilt,
