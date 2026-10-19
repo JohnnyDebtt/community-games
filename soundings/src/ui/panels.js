@@ -627,7 +627,7 @@ export class Panels {
       h('p', { class: 'note' }, 'Includes or adapts assets from The Seeker by The Seeker contributors, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/): the Seeker\'s backpacks, its pixel font (as a web font) and the Tektur typeface (SIL OFL 1.1). Original project: https://github.com/TheSeekerGame/the-seeker . Changes were made.'),
       h('p', { class: 'note' }, 'SEEKER NET art and data from TheSeekerGame/collections (MIT OR Apache-2.0), drawn pixel for pixel from the collection\'s own layers. Live state and moves are read from SEEKER NET on Robinhood Chain through public RPCs; reading only, never writing. The collectibles are art and membership, not investments.'),
       h('p', { class: 'note' }, 'Built with three.js (MIT). Everything else, the sea, its creatures, the sound, is procedural.'),
-      h('p', { class: 'note' }, rich('Controls: [W][A][S][D] walk, [Shift] run, drag to look, wheel to zoom. [E] interact (hold to drill). Fishing: hold [Space] to cast, tap to jig, [Space] on the "!" to hook, hold [Space] to reel. [Q] Overdrive. [Tab] Codex, [N] SEEKER NET relay, [V] attuned sense, [L] lantern, [B] live bait.')));
+      h('p', { class: 'note' }, rich('Controls: [W][A][S][D] run, [Shift] walk, drag to look, wheel to zoom. [E] interact (hold to drill). Fishing: hold [Space] to cast, tap to jig, [Space] on the "!" to hook, hold [Space] to reel. [Q] Overdrive. [Tab] Codex, [N] SEEKER NET relay, [V] attuned sense, [L] lantern, [B] live bait.')));
   }
 }
 

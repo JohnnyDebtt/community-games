@@ -66,15 +66,17 @@ export class TouchControls {
     this.depth.classList.add('hidden');            // casting sets the depth now
     this.interact.classList.toggle('hidden', fishing);
     const f = this.g.fishing;
-    const label = !fishing ? 'run' : f.state === 'bite' ? 'hook!' : f.state === 'reel' ? 'reel' : f.state === 'ready' || f.state === 'cast' ? 'cast' : 'jig';
+    const label = !fishing ? '' : f.state === 'bite' ? 'hook!' : f.state === 'reel' ? 'reel' : f.state === 'ready' || f.state === 'cast' ? 'cast' : 'jig';
     if (this._label !== label) {
       this._label = label;
       this.action.textContent = label;
     }
-    const action = fishing ? 'action' : 'run';
+    // on foot the pad alone sets the pace (a light push walks), so the big button only
+    // shows at a hole, where it casts, jigs, strikes and reels
+    this.action.classList.toggle('hidden', !fishing);
+    const action = 'action';
     if (this._act !== action) {
       this._act = action;
-      // walking: the big button runs; fishing: it jigs, strikes and reels
       const b = this.action;
       const nb = b.cloneNode(true);
       b.replaceWith(nb);

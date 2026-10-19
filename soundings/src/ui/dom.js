@@ -35,7 +35,7 @@ export function keyName(action, device) {
     sense: pad ? 'R3' : 'V',
     lantern: 'L',
     bait: 'B',
-    run: pad ? 'L3' : 'Shift',
+    walk: pad ? 'L3' : 'Shift',
   };
   return map[action] || action;
 }

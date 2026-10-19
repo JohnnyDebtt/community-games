@@ -12,14 +12,14 @@ const KEYMAP = {
   Escape: 'back', Backspace: 'back',
   Tab: 'codex', KeyJ: 'codex', KeyC: 'codex',
   KeyN: 'net', KeyR: 'release',
-  ShiftLeft: 'run', ShiftRight: 'run',
+  ShiftLeft: 'walk', ShiftRight: 'walk',
   KeyV: 'sense', KeyB: 'bait', KeyL: 'lantern',
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
   KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
   KeyQ: 'overdrive', KeyZ: 'turnL', KeyX: 'turnR',
 };
 
-const NAMES = ['action', 'interact', 'device', 'back', 'codex', 'net', 'release', 'run', 'sense', 'bait', 'lantern',
+const NAMES = ['action', 'interact', 'device', 'back', 'codex', 'net', 'release', 'walk', 'sense', 'bait', 'lantern',
   'up', 'down', 'left', 'right', 'turnL', 'turnR', 'mouse', 'mouse2', 'overdrive'];
 
 export class Input {
@@ -171,7 +171,7 @@ export class Input {
     if (!gp) return null;
     const dz = (v) => (Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82);
     const map = { 0: 'action', 1: 'back', 2: 'interact', 3: 'device', 8: 'codex', 9: 'net', 4: 'turnL', 5: 'overdrive',
-      6: 'down', 7: 'up', 12: 'up', 13: 'down', 10: 'run', 11: 'sense' };
+      6: 'down', 7: 'up', 12: 'up', 13: 'down', 10: 'walk', 11: 'sense' };
     for (const [i, name] of Object.entries(map)) {
       const pressed = !!(gp.buttons[i] && gp.buttons[i].pressed);
       if (pressed !== !!this._gpPrev[i]) {

@@ -27,7 +27,7 @@ modules from `file://`.
 
 | | Keyboard and mouse | Gamepad | Touch |
 | --- | --- | --- | --- |
-| Walk / run | WASD or arrows / Shift | left stick | left half of the screen |
+| Run (hold to walk) | WASD or arrows (Shift) | left stick, pushed lightly to walk (L3) | left half of the screen, pushed lightly to walk |
 | Look, zoom | drag, wheel (Z / X turn) | right stick | drag the right half |
 | Interact (sit, enter, travel, take a line) | E | X | use |
 | Drill a hole | hold E on the ice | hold X | hold use |

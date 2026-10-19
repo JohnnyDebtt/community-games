@@ -362,7 +362,9 @@ export class Game {
     const input = this.input;
     const p = this.player;
     p.speedMul = 1 + (this.companionProfile ? this.companionProfile.mods.walk : 0);
-    if (!this.panels.open) p.move(dt, input.axis, this.cam.yaw, input.down('run') || input.b.run.down);
+    // the Seeker runs; holding the walk key (Shift, L3) slows it to a walk, and a light
+    // push of a stick or the touch pad walks too
+    if (!this.panels.open) p.move(dt, input.axis, this.cam.yaw, !(input.down('walk') || input.b.walk.down));
     else p.move(dt, { x: 0, y: 0 }, this.cam.yaw, false);
     if (!this.panels.open) this.cam.zoomBy(input.zoom);
     this.cam.mode = 'walk';
@@ -404,7 +406,7 @@ export class Game {
     if (this.input.lastDevice === 'touch') return 'left: walk · right: look · use: interact';
     if (this.input.lastDevice === 'gamepad') return 'stick: walk · [X] interact · [Y] device · [RB] overdrive';
     const od = this.overdrive.ready() || this.events.cells(this.state.companion) ? ' · [Q] overdrive' : '';
-    return `[W][A][S][D] walk · [Shift] run · [Tab] Codex · [N] SEEKER NET${od}`;
+    return `[W][A][S][D] run · [Shift] walk · [Tab] Codex · [N] SEEKER NET${od}`;
   }
 
   findContext() {
