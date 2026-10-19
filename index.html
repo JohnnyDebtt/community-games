@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Seeker: community games</title>
+  <meta name="description" content="Games made in the universe of The Seeker, playable in the browser.">
+  <meta name="theme-color" content="#0f0e16">
+  <link rel="icon" href="soundings/assets/icon.svg" type="image/svg+xml">
+  <style>
+    @font-face { font-family: 'Seeker Pixel'; src: url('soundings/assets/fonts/SeekerPixel.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Seeker Display'; src: url('soundings/assets/fonts/SeekerDisplay.woff2') format('woff2'); font-display: block; }
+    :root { --u: 3px; --text: #f0f2e8; --muted: #8a919e; --line: #29303e; --teal: #abe3d9; --gold: #e3cf8e; }
+    @media (max-width: 520px) { :root { --u: 2px; } }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #0f0e16; color: var(--text); }
+    body {
+      font-family: 'Seeker Pixel', ui-monospace, monospace; font-size: calc(var(--u) * 10); line-height: calc(var(--u) * 12);
+      -webkit-font-smoothing: none; display: grid; place-items: center; min-height: 100vh; padding: 16px;
+    }
+    main { width: min(calc(var(--u) * 220), 100%); }
+    h1 { font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); text-transform: uppercase; color: var(--gold); margin: 0 0 calc(var(--u) * 2); }
+    p { margin: 0 0 calc(var(--u) * 8); color: var(--muted); }
+    a.game { display: block; padding: calc(var(--u) * 5) calc(var(--u) * 6); border: var(--u) solid var(--line); background: #05070b; color: var(--text); text-decoration: none; }
+    a.game:hover, a.game:focus-visible { border-color: var(--teal); outline: none; }
+    a.game b { display: block; font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); text-transform: uppercase; color: var(--teal); margin-bottom: calc(var(--u) * 2); }
+    a.game span { color: var(--muted); }
+    footer { margin-top: calc(var(--u) * 8); color: var(--muted); }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Community games</h1>
+    <p>Made in the universe of <a href="https://github.com/TheSeekerGame/the-seeker" style="color: inherit">The Seeker</a>. They play in the browser.</p>
+    <a class="game" href="soundings/">
+      <b>Soundings</b>
+      <span>A quiet ice-fishing game on the frozen sea of The Seeker's planet, with SEEKER NET seekers at your side.</span>
+    </a>
+    <footer><a href="https://github.com/TheSeekerGame/community-games">Source on GitHub</a></footer>
+  </main>
+</body>
+</html>

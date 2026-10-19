@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEEKER NET snapshot</title>
+  <style>
+    body { margin: 0; padding: 24px; background: #0f0e16; color: #f0f2e8; font: 14px/1.6 ui-monospace, Menlo, monospace; }
+    button { font: inherit; color: #abe3d9; background: #12151d; border: 1px solid #abe3d9; padding: 8px 14px; cursor: pointer; }
+    pre { color: #8a919e; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1 style="font-size:16px;letter-spacing:.2em">SEEKER NET SNAPSHOT</h1>
+  <p>Development tool. Reads every seeker's charge and status from the public chain (read-only)
+     and saves it as <code>assets/seekernet/snapshot.json</code>, which the game uses when it is offline.
+     Needs the local server: <code>node tools/serve.mjs</code>.</p>
+  <button id="go">read the chain and save</button>
+  <pre id="log"></pre>
+  <script type="module">
+    import { Chain } from '../src/seekernet/chain.js';
+    const log = (t) => { document.getElementById('log').textContent += t + '\n'; };
+    document.getElementById('go').onclick = async () => {
+      try {
+        const c = new Chain();
+        log('reading totals...');
+        const t = await c.totals();
+        log(`activated: ${t.activated}`);
+        log('reading all charges...');
+        const all = await c.allCharges();
+        const snap = { at: Date.now(), activated: t.activated, accD: t.accD, accA: t.accA,
+          charges: Array.from(all.charges, (v) => Math.round(v * 10) / 10), status: Array.from(all.status) };
+        const r = await fetch('/__snapshot', { method: 'POST', body: JSON.stringify(snap) });
+        log(r.ok ? 'saved: ' + (await r.text()) : 'save failed: ' + (await r.text()));
+      } catch (e) { log('failed: ' + e); }
+    };
+  </script>
+</body>
+</html>

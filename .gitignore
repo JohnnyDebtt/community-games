@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+# development screenshots (tools/serve.mjs saves them here)
+.shots/
+# screen recordings and reference images kept beside a game while working on it
+*.mov
+*.mp4

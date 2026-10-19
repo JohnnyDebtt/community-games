@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Soundings</title>
+  <meta name="description" content="A quiet ice-fishing game on the frozen sea of The Seeker's planet, with SEEKER NET seekers as your fishing devices.">
+  <meta name="theme-color" content="#0f0e16">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/Tektur-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game" aria-label="Soundings game view"></canvas>
+  <div id="ui"></div>
+  <noscript><p class="noscript">Soundings needs JavaScript and WebGL 2.</p></noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
