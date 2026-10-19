@@ -22,6 +22,7 @@
     h1 { font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); text-transform: uppercase; color: var(--gold); margin: 0 0 calc(var(--u) * 2); }
     p { margin: 0 0 calc(var(--u) * 8); color: var(--muted); }
     a.game { display: block; padding: calc(var(--u) * 5) calc(var(--u) * 6); border: var(--u) solid var(--line); background: #05070b; color: var(--text); text-decoration: none; }
+    a.game + a.game { margin-top: calc(var(--u) * 4); }
     a.game:hover, a.game:focus-visible { border-color: var(--teal); outline: none; }
     a.game b { display: block; font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); text-transform: uppercase; color: var(--teal); margin-bottom: calc(var(--u) * 2); }
     a.game span { color: var(--muted); }
@@ -36,6 +37,10 @@
     <a class="game" href="soundings/">
       <b>Soundings</b>
       <span>A quiet ice-fishing game on the frozen sea of The Seeker's planet, with SEEKER NET seekers at your side.</span>
+    </a>
+    <a class="game" href="dweller/">
+      <b>Dweller</b>
+      <span>A dark side-scroller: stay in the shadow, avoid the light, and reach the rainbow crystal at the end of the descent.</span>
     </a>
     <footer><a href="https://github.com/TheSeekerGame/community-games">Source on GitHub</a></footer>
   </main>
