@@ -7,6 +7,7 @@ at <https://theseekergame.github.io/community-games/>.
 | Game | | Play |
 | --- | --- | --- |
 | [Soundings](soundings/) | A quiet ice-fishing game on the frozen sea of The Seeker's planet, with SEEKER NET seekers at your side. | [play](https://theseekergame.github.io/community-games/soundings/) |
+| [Dweller](dweller/) | A dark side-scroller: stay in the shadow, avoid the light, reach the rainbow crystal. | [play](https://theseekergame.github.io/community-games/dweller/) |
 
 ## Adding a game
 
