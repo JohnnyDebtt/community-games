@@ -4,45 +4,284 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The Seeker: community games</title>
-  <meta name="description" content="Games made in the universe of The Seeker, playable in the browser.">
+  <meta name="description" content="Games made in the universe of The Seeker, free to play in the browser.">
   <meta name="theme-color" content="#0f0e16">
-  <link rel="icon" href="soundings/assets/icon.svg" type="image/svg+xml">
+  <meta property="og:title" content="The Seeker: community games">
+  <meta property="og:description" content="Games made in the universe of The Seeker, free to play in the browser.">
+  <meta property="og:image" content="assets/covers/lowpass.png">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/SeekerPixel.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/SeekerDisplay.woff2" as="font" type="font/woff2" crossorigin>
   <style>
-    @font-face { font-family: 'Seeker Pixel'; src: url('soundings/assets/fonts/SeekerPixel.woff2') format('woff2'); font-display: block; }
-    @font-face { font-family: 'Seeker Display'; src: url('soundings/assets/fonts/SeekerDisplay.woff2') format('woff2'); font-display: block; }
-    :root { --u: 3px; --text: #f0f2e8; --muted: #8a919e; --line: #29303e; --teal: #abe3d9; --gold: #e3cf8e; }
-    @media (max-width: 520px) { :root { --u: 2px; } }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #0f0e16; color: var(--text); }
-    body {
-      font-family: 'Seeker Pixel', ui-monospace, monospace; font-size: calc(var(--u) * 10); line-height: calc(var(--u) * 12);
-      -webkit-font-smoothing: none; display: grid; place-items: center; min-height: 100vh; padding: 16px;
+    /* The launcher shares the games' look: one pixel size for every piece of the interface
+       (--u), The Seeker's palette, its pixel fonts, cut corners instead of rounded ones,
+       pale rims, a single warm accent. */
+    @font-face { font-family: 'Seeker Pixel'; src: url('assets/fonts/SeekerPixel.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Seeker Display'; src: url('assets/fonts/SeekerDisplay.woff2') format('woff2'); font-display: block; }
+    @font-face { font-family: 'Tektur Pixel 30'; src: url('assets/fonts/TekturPixel30.woff2') format('woff2'); font-display: block; }
+    :root {
+      --u: 3px;
+      --bg: #0f0e16; --panel: #0b0d13; --well: #12151d; --line: #29303e; --line2: #3a4356;
+      --text: #f0f2e8; --muted: #8a919e; --dim: #5b6270;
+      --pale: #d6edf5; --glow: #91cbde; --teal: #abe3d9; --gold: #e3cf8e;
+      --px: calc(var(--u) * 10);
+      --cut: polygon(calc(var(--u) * 2) 0, calc(100% - var(--u) * 2) 0, 100% calc(var(--u) * 2), 100% calc(100% - var(--u) * 2), calc(100% - var(--u) * 2) 100%, calc(var(--u) * 2) 100%, 0 calc(100% - var(--u) * 2), 0 calc(var(--u) * 2));
+      --cut1: polygon(var(--u) 0, calc(100% - var(--u)) 0, 100% var(--u), 100% calc(100% - var(--u)), calc(100% - var(--u)) 100%, var(--u) 100%, 0 calc(100% - var(--u)), 0 var(--u));
+      --dither: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' shape-rendering='crispEdges'%3E%3Crect width='1' height='1' fill='%23000'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23000'/%3E%3C/svg%3E");
     }
-    main { width: min(calc(var(--u) * 220), 100%); }
-    h1 { font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); text-transform: uppercase; color: var(--gold); margin: 0 0 calc(var(--u) * 2); }
-    p { margin: 0 0 calc(var(--u) * 8); color: var(--muted); }
-    a.game { display: block; padding: calc(var(--u) * 5) calc(var(--u) * 6); border: var(--u) solid var(--line); background: #05070b; color: var(--text); text-decoration: none; }
-    a.game + a.game { margin-top: calc(var(--u) * 4); }
-    a.game:hover, a.game:focus-visible { border-color: var(--teal); outline: none; }
-    a.game b { display: block; font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); text-transform: uppercase; color: var(--teal); margin-bottom: calc(var(--u) * 2); }
-    a.game span { color: var(--muted); }
-    footer { margin-top: calc(var(--u) * 8); color: var(--muted); }
-    footer a { color: var(--muted); }
+    @media (max-width: 720px) { :root { --u: 2px; } }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+      font-family: 'Seeker Pixel', ui-monospace, monospace; font-size: var(--px); line-height: calc(var(--u) * 12);
+      -webkit-font-smoothing: none; text-rendering: optimizeSpeed;
+    }
+    a { color: inherit; }
+    img.px { image-rendering: pixelated; }
+    .wrap { width: min(calc(var(--u) * 400), 100% - 32px); margin: 0 auto; }
+    .disp { font-family: 'Seeker Display', 'Seeker Pixel', sans-serif; font-weight: normal; text-transform: uppercase; letter-spacing: calc(var(--u) * 0.5); }
+
+    /* ------------------------------------------------------------ the bar */
+    header.top { position: absolute; z-index: 5; left: 0; right: 0; top: 0; }
+    header.top .wrap { display: flex; align-items: center; justify-content: space-between; padding: calc(var(--u) * 7) 0; }
+    .brand { display: flex; align-items: center; gap: calc(var(--u) * 4); text-decoration: none; }
+    .brand i { width: calc(var(--u) * 4); height: calc(var(--u) * 4); background: var(--pale); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 5) var(--glow); }
+    .brand b { font-weight: normal; letter-spacing: var(--u); white-space: nowrap; }
+    .brand span { color: var(--muted); letter-spacing: calc(var(--u) * 0.5); white-space: nowrap; }
+    nav.links { display: flex; gap: calc(var(--u) * 8); }
+    nav.links a { color: var(--muted); text-decoration: none; }
+    nav.links a:hover, nav.links a:focus-visible { color: var(--text); outline: none; }
+
+    /* ------------------------------------------------------------ the featured game */
+    .hero { position: relative; height: clamp(calc(var(--u) * 180), 74vh, calc(var(--u) * 300)); overflow: hidden; background: var(--panel); }
+    .hero .art { position: absolute; inset: 0; }
+    .hero .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; opacity: 0; transition: opacity 1s steps(8); }
+    .hero .art img.on { opacity: 1; }
+    .hero::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: linear-gradient(90deg, rgba(11, 13, 19, 0.94) 0%, rgba(11, 13, 19, 0.72) 30%, rgba(11, 13, 19, 0.1) 62%, rgba(11, 13, 19, 0) 100%),
+                  linear-gradient(0deg, var(--bg) 0%, rgba(15, 14, 22, 0) 34%),
+                  linear-gradient(180deg, rgba(11, 13, 19, 0.75) 0%, rgba(11, 13, 19, 0) 22%); }
+    .hero::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: var(--dither); background-size: calc(var(--u) * 4) calc(var(--u) * 4); image-rendering: pixelated; opacity: 0.07; }
+    .hero .info { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: calc(var(--u) * 30); }
+    .hero .kicker { display: flex; align-items: center; gap: calc(var(--u) * 3); color: var(--gold); letter-spacing: var(--u); margin-bottom: calc(var(--u) * 3); }
+    .hero .kicker i { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--gold); transform: rotate(45deg); }
+    .hero h1 { margin: 0 0 calc(var(--u) * 4); font-family: 'Tektur Pixel 30', 'Seeker Display', sans-serif; font-weight: normal; font-size: calc(var(--u) * 30); line-height: 1; letter-spacing: calc(var(--u) * 2); text-shadow: var(--u) var(--u) 0 #000; }
+    .hero .tagline { max-width: min(calc(var(--u) * 150), 100%); margin: 0 0 calc(var(--u) * 5); color: #c9cfd6; text-shadow: var(--u) var(--u) 0 #000; }
+    .chips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2); margin: 0; padding: 0; list-style: none; }
+    .chips li { padding: 0 calc(var(--u) * 3); border: var(--u) solid var(--line2); color: var(--muted); background: rgba(11, 13, 19, 0.6); clip-path: var(--cut1); }
+    .chips li.net { color: var(--teal); border-color: #2f4a4a; }
+    .actions { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 4); margin-top: calc(var(--u) * 7); }
+    .btn { display: inline-flex; align-items: center; gap: calc(var(--u) * 3); padding: calc(var(--u) * 3) calc(var(--u) * 8); text-decoration: none; letter-spacing: var(--u); clip-path: var(--cut); transition: background 0.15s, color 0.15s; }
+    .btn.play { background: var(--pale); color: #0b0d13; }
+    .btn.play::before { content: ''; width: 0; height: 0; border-left: calc(var(--u) * 4) solid currentColor; border-top: calc(var(--u) * 3) solid transparent; border-bottom: calc(var(--u) * 3) solid transparent; }
+    .btn.play:hover, .btn.play:focus-visible { background: #ffffff; outline: none; }
+    .btn.ghost { color: var(--text); background: rgba(11, 13, 19, 0.55); box-shadow: inset 0 0 0 var(--u) var(--line2); }
+    .btn.ghost:hover, .btn.ghost:focus-visible { box-shadow: inset 0 0 0 var(--u) var(--muted); outline: none; }
+    /* the selector: small covers, the current one filling a line until the next */
+    .picks { position: absolute; z-index: 3; right: 0; left: 0; bottom: calc(var(--u) * 8); }
+    .picks .wrap { display: flex; justify-content: flex-end; gap: calc(var(--u) * 3); }
+    .pick { position: relative; width: calc(var(--u) * 66); padding: 0; border: 0; background: var(--panel); color: var(--muted); font: inherit; text-align: left; cursor: pointer; clip-path: var(--cut1); opacity: 0.72; transition: opacity 0.2s; }
+    .pick img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+    .pick span { display: block; padding: var(--u) calc(var(--u) * 3) calc(var(--u) * 2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pick i { position: absolute; left: 0; bottom: 0; height: var(--u); width: 0; background: var(--pale); }
+    .pick.on { opacity: 1; color: var(--text); }
+    .pick:hover, .pick:focus-visible { opacity: 1; outline: none; }
+
+    /* ------------------------------------------------------------ the library */
+    section.lib { padding: calc(var(--u) * 14) 0 calc(var(--u) * 6); }
+    .head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--u) * 6); border-bottom: var(--u) solid var(--line); padding-bottom: calc(var(--u) * 3); margin-bottom: calc(var(--u) * 8); }
+    .head h2 { margin: 0; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); color: var(--gold); }
+    .head span { color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--u) * 8); }
+    @media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+    .card { display: flex; flex-direction: column; text-decoration: none; background: var(--panel); clip-path: var(--cut); transition: transform 0.2s steps(3), background 0.2s; }
+    .card .cover { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--well); }
+    .card .cover img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.001); transition: transform 0.5s steps(5), filter 0.3s; filter: brightness(0.9); }
+    .card .cover::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 var(--u) rgba(240, 242, 232, 0.08); transition: box-shadow 0.2s; }
+    .card .badge { position: absolute; left: calc(var(--u) * 4); top: calc(var(--u) * 4); padding: 0 calc(var(--u) * 3); background: var(--gold); color: #0b0d13; letter-spacing: var(--u); clip-path: var(--cut1); }
+    .card .go { position: absolute; left: calc(var(--u) * 4); bottom: calc(var(--u) * 4); display: inline-flex; align-items: center; gap: calc(var(--u) * 2); padding: var(--u) calc(var(--u) * 4); background: var(--pale); color: #0b0d13; letter-spacing: var(--u); clip-path: var(--cut1); opacity: 0; transform: translateY(calc(var(--u) * 2)); transition: opacity 0.2s, transform 0.2s steps(2); }
+    .card .go::before { content: ''; width: 0; height: 0; border-left: calc(var(--u) * 3) solid currentColor; border-top: calc(var(--u) * 2) solid transparent; border-bottom: calc(var(--u) * 2) solid transparent; }
+    .card .meta { padding: calc(var(--u) * 5) calc(var(--u) * 6) calc(var(--u) * 6); display: flex; flex-direction: column; gap: calc(var(--u) * 3); flex: 1; }
+    .card h3 { margin: 0; font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); color: var(--text); }
+    .card p { margin: 0; color: var(--muted); flex: 1; }
+    .card:hover, .card:focus-visible { transform: translateY(calc(var(--u) * -2)); background: #10131b; outline: none; }
+    .card:hover .cover img, .card:focus-visible .cover img { transform: scale(1.04); filter: brightness(1.05); }
+    .card:hover .cover::after, .card:focus-visible .cover::after { box-shadow: inset 0 0 0 var(--u) var(--glow); }
+    .card:hover .go, .card:focus-visible .go { opacity: 1; transform: none; }
+    .card:hover h3, .card:focus-visible h3 { color: var(--pale); }
+
+    /* ------------------------------------------------------------ make one */
+    .make { margin: calc(var(--u) * 10) 0 0; padding: calc(var(--u) * 8) calc(var(--u) * 10); background: var(--panel); clip-path: var(--cut); display: grid; grid-template-columns: 1fr auto; gap: calc(var(--u) * 6); align-items: center; position: relative; overflow: hidden; }
+    .make::before { content: ''; position: absolute; inset: 0; background: var(--dither); background-size: calc(var(--u) * 4) calc(var(--u) * 4); opacity: 0.15; pointer-events: none; }
+    .make h2 { margin: 0 0 calc(var(--u) * 2); font-size: calc(var(--u) * 11); line-height: calc(var(--u) * 12); color: var(--gold); }
+    .make p { margin: 0; color: var(--muted); max-width: calc(var(--u) * 230); }
+    .make .actions { margin: 0; position: relative; }
+    @media (max-width: 720px) { .make { grid-template-columns: 1fr; } }
+
+    footer { padding: calc(var(--u) * 12) 0 calc(var(--u) * 14); color: var(--dim); }
+    footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: calc(var(--u) * 4); }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* small screens: the featured game stacks, the selector hides (the library is below) */
+    @media (max-width: 720px) {
+      .hero { height: auto; min-height: 0; }
+      .hero .art { position: relative; aspect-ratio: 16 / 10; }
+      .hero::before { background: linear-gradient(0deg, var(--bg) 0%, rgba(15, 14, 22, 0) 45%), linear-gradient(180deg, rgba(11, 13, 19, 0.7) 0%, rgba(11, 13, 19, 0) 30%); }
+      .hero .info { height: auto; margin-top: calc(var(--u) * -28); padding-bottom: calc(var(--u) * 10); }
+      .hero h1 { font-size: calc(var(--u) * 22); }
+      .picks { display: none; }
+      nav.links .opt { display: none; }
+      .brand span { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="./"><i></i><b class="disp">The Seeker</b><span>COMMUNITY GAMES</span></a>
+      <nav class="links">
+        <a class="opt" href="https://github.com/TheSeekerGame/the-seeker">THE SEEKER</a>
+        <a href="https://github.com/TheSeekerGame/community-games">SOURCE</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="Featured game">
+    <div class="art" id="heroArt"></div>
+    <div class="wrap info">
+      <div class="kicker" id="heroKicker"><i></i><span>NEW · FREE IN THE BROWSER</span></div>
+      <h1 id="heroTitle">LOW PASS</h1>
+      <p class="tagline" id="heroTag">A slow survey flight over an endless fog forest on The Seeker's planet.</p>
+      <ul class="chips" id="heroChips"></ul>
+      <div class="actions">
+        <a class="btn play disp" id="heroPlay" href="lowpass/">PLAY</a>
+        <a class="btn ghost" id="heroSource" href="https://github.com/TheSeekerGame/community-games/tree/main/lowpass">SOURCE</a>
+      </div>
+    </div>
+    <div class="picks"><div class="wrap" id="picks"></div></div>
+  </section>
+
   <main>
-    <h1>Community games</h1>
-    <p>Made in the universe of <a href="https://github.com/TheSeekerGame/the-seeker" style="color: inherit">The Seeker</a>. They play in the browser.</p>
-    <a class="game" href="soundings/">
-      <b>Soundings</b>
-      <span>A quiet ice-fishing game on the frozen sea of The Seeker's planet, with SEEKER NET seekers at your side.</span>
-    </a>
-    <a class="game" href="dweller/">
-      <b>Dweller</b>
-      <span>A dark side-scroller: stay in the shadow, avoid the light, and reach the rainbow crystal at the end of the descent.</span>
-    </a>
-    <footer><a href="https://github.com/TheSeekerGame/community-games">Source on GitHub</a></footer>
+    <section class="lib wrap" aria-label="Library">
+      <div class="head"><h2 class="disp">Library</h2><span id="count">Free, in the browser, open source</span></div>
+      <div class="grid">
+        <!-- one card per game; the featured banner and its selector are made from these -->
+        <a class="card" href="lowpass/" data-id="lowpass" data-new="1"
+           data-tagline="A slow survey flight over an endless fog forest on The Seeker's planet. Scan the strange artifacts that rise out of the fog, make coffee to stay awake, and witness the moment a SEEKER NET seeker moves on chain."
+           data-tags="3D|Flight|Ambient|SEEKER NET" data-source="https://github.com/TheSeekerGame/community-games/tree/main/lowpass"
+           data-art="assets/covers/lowpass.png">
+          <div class="cover"><img class="px" src="assets/covers/lowpass.png" alt="Low Pass: the survey ship banks over a misty forest at sunrise, a column of light rising from an obelisk behind it" loading="lazy"><span class="badge disp">NEW</span><span class="go disp">PLAY</span></div>
+          <div class="meta"><h3 class="disp">Low Pass</h3><p>A slow survey flight over an endless fog forest. Scan artifacts, keep a Codex, and drink coffee to stay awake.</p><ul class="chips"><li>3D</li><li>Flight</li><li>Ambient</li><li class="net">SEEKER NET</li></ul></div>
+        </a>
+        <a class="card" href="soundings/" data-id="soundings"
+           data-tagline="A quiet ice-fishing game on the frozen sea of The Seeker's planet. Drill the ice, sound the depths and record what lives below, with a SEEKER NET seeker at your side."
+           data-tags="3D|Fishing|Exploration|SEEKER NET" data-source="https://github.com/TheSeekerGame/community-games/tree/main/soundings"
+           data-art="assets/covers/soundings.png">
+          <div class="cover"><img class="px" src="assets/covers/soundings.png" alt="Soundings: the hooded Seeker walks across pale sea ice toward a resting yak at dawn" loading="lazy"><span class="go disp">PLAY</span></div>
+          <div class="meta"><h3 class="disp">Soundings</h3><p>A quiet ice-fishing game on the frozen sea, with SEEKER NET seekers at your side.</p><ul class="chips"><li>3D</li><li>Fishing</li><li>Exploration</li><li class="net">SEEKER NET</li></ul></div>
+        </a>
+        <a class="card" href="dweller/" data-id="dweller"
+           data-tagline="A dark side-scroller: you are a small hooded figure hiding in shadow. Light burns, shadow heals. Reach the rainbow crystal at the end of the descent."
+           data-tags="2D|Platformer|Stealth" data-source="https://github.com/JohnnyDebtt/DWELLER"
+           data-art="assets/covers/dweller.png">
+          <div class="cover"><img class="px" src="assets/covers/dweller.png" alt="Dweller: a small hooded figure in a dark ice cave, the rainbow crystal glowing on an altar ahead" loading="lazy"><span class="go disp">PLAY</span></div>
+          <div class="meta"><h3 class="disp">Dweller</h3><p>A dark side-scroller: stay in the shadow, avoid the light, reach the rainbow crystal.</p><ul class="chips"><li>2D</li><li>Platformer</li><li>Stealth</li></ul></div>
+        </a>
+      </div>
+
+      <div class="make">
+        <div>
+          <h2 class="disp">Make one</h2>
+          <p>The Seeker is an open universe: its code, art, music and lore are free to use, and its collectibles can be read straight from the chain. Make a game in it, put it in its own folder here, and it joins the library.</p>
+        </div>
+        <div class="actions">
+          <a class="btn ghost" href="https://github.com/TheSeekerGame/community-games#adding-a-game">ADD A GAME</a>
+          <a class="btn ghost" href="https://github.com/TheSeekerGame/seeker-codex">THE CODEX</a>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Made in the universe of <a href="https://github.com/TheSeekerGame/the-seeker">The Seeker</a> by its community.</span>
+      <span>Code MIT or Apache-2.0 · assets CC BY 4.0 · fonts SIL OFL 1.1 · <a href="https://github.com/TheSeekerGame/community-games">source</a></span>
+    </div>
+  </footer>
+
+  <script>
+    // The featured banner: one game at a time from the library, turning every few seconds
+    // until someone chooses (or prefers less motion); its selector shows a line filling
+    // toward the next.
+    (() => {
+      const cards = [...document.querySelectorAll('.card')];
+      const games = cards.map((c) => ({
+        id: c.dataset.id, href: c.getAttribute('href'), title: c.querySelector('h3').textContent,
+        tagline: c.dataset.tagline, tags: c.dataset.tags.split('|'), source: c.dataset.source,
+        art: c.dataset.art, alt: c.querySelector('img').alt, isNew: !!c.dataset.new,
+      }));
+      const $ = (id) => document.getElementById(id);
+      const art = $('heroArt'), picks = $('picks');
+      const imgs = games.map((g, i) => {
+        const im = document.createElement('img');
+        im.className = 'px' + (i === 0 ? ' on' : '');
+        im.src = g.art; im.alt = g.alt; im.decoding = 'async';
+        art.append(im);
+        return im;
+      });
+      const pickEls = games.map((g, i) => {
+        const b = document.createElement('button');
+        b.className = 'pick' + (i === 0 ? ' on' : '');
+        b.type = 'button';
+        b.setAttribute('aria-label', 'Show ' + g.title);
+        const im = document.createElement('img'); im.className = 'px'; im.src = g.art; im.alt = '';
+        const s = document.createElement('span'); s.className = 'disp'; s.textContent = g.title;
+        const line = document.createElement('i');
+        b.append(im, s, line);
+        b.addEventListener('click', () => { show(i); hold = true; });
+        b.addEventListener('mouseenter', () => { show(i); hold = true; });
+        picks.append(b);
+        return b;
+      });
+      $('count').textContent = `${games.length} games · free, in the browser, open source`;
+      let cur = 0, hold = false, t0 = performance.now();
+      const PERIOD = 8000;
+      // no turning where there is no selector (small screens), or for those who prefer stillness
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || matchMedia('(max-width: 720px)').matches;
+      function show(i) {
+        cur = i; t0 = performance.now();
+        const g = games[i];
+        imgs.forEach((im, k) => im.classList.toggle('on', k === i));
+        pickEls.forEach((p, k) => { p.classList.toggle('on', k === i); p.querySelector('i').style.width = '0'; });
+        $('heroTitle').textContent = g.title.toUpperCase();
+        $('heroTag').textContent = g.tagline;
+        $('heroKicker').querySelector('span').textContent = (g.isNew ? 'NEW · ' : '') + 'FREE IN THE BROWSER';
+        const chips = $('heroChips'); chips.textContent = '';
+        for (const t of g.tags) { const li = document.createElement('li'); li.textContent = t; if (t === 'SEEKER NET') li.className = 'net'; chips.append(li); }
+        $('heroPlay').href = g.href;
+        $('heroPlay').setAttribute('aria-label', 'Play ' + g.title);
+        $('heroSource').href = g.source;
+      }
+      show(0);
+      // pause while the pointer is over the banner; move on when it leaves
+      const hero = document.querySelector('.hero');
+      hero.addEventListener('mouseenter', () => { hold = true; });
+      hero.addEventListener('mouseleave', () => { hold = false; t0 = performance.now(); });
+      if (!reduce && games.length > 1) {
+        const tick = (now) => {
+          const k = Math.min(1, (now - t0) / PERIOD);
+          if (!hold) pickEls[cur].querySelector('i').style.width = `${Math.floor(k * 12) / 12 * 100}%`;
+          if (!hold && k >= 1) show((cur + 1) % games.length);
+          if (hold) t0 = now - (pickEls[cur].querySelector('i').style.width ? parseFloat(pickEls[cur].querySelector('i').style.width) / 100 * PERIOD : 0);
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    })();
+  </script>
 </body>
 </html>
