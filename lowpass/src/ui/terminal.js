@@ -241,6 +241,18 @@ export class Terminal {
       x.onclick = () => { this.boardFilter = f; this.render(); };
     }
     this._boardList = el('div', 'posts', this.body);
+    // a conversation: oldest at the top, newest at the bottom, opened at the newest;
+    // it follows new posts while you are at the bottom, and stays put while you read up
+    this._boardPinned = true;
+    this._boardList.addEventListener('scroll', () => {
+      const l = this._boardList;
+      this._boardPinned = l.scrollTop + l.clientHeight >= l.scrollHeight - 24;
+    });
+    // the box changes size as the page around it settles: stay at the newest
+    if (window.ResizeObserver) {
+      const l = this._boardList;
+      new ResizeObserver(() => { if (this._boardPinned) l.scrollTop = l.scrollHeight; }).observe(l);
+    }
     const comp = el('div', 'compose', this.body);
     if (b.link) {
       // your name on the board: shown instead of your address, on every post, old and new
@@ -281,6 +293,7 @@ export class Terminal {
         msg.className = 'msg muted';
         try {
           const r = await b.send(input.value);
+          this._boardPinned = true;
           input.value = '';
           msg.textContent = `Sent to ${r.ok} of ${r.of} relays.`;
           msg.className = 'msg pos';
@@ -306,14 +319,16 @@ export class Terminal {
     const n = b.pool.connected();
     this._boardStatus.textContent = `${n} of ${b.pool.relays.length} relays · ${b.posts.length} post${b.posts.length === 1 ? '' : 's'} from holders${b.loaded ? '' : ' · reading…'}`;
     const list = this._boardList;
-    const keep = list.scrollTop;
+    const keep = list.scrollTop, pinned = this._boardPinned;
+    const toEnd = () => { if (this._boardPinned) list.scrollTop = list.scrollHeight; };
     clear(list);
     const posts = b.posts.filter((p) => this.boardFilter === 'all' || p.type === this.boardFilter);
     if (!posts.length) {
       el('div', 'muted empty', list, b.loaded ? 'Nothing here yet. The first scan shared will be the first thing here.' : 'Listening to the relays…');
       return;
     }
-    for (const p of posts.slice(0, 120)) {
+    // the newest 120, in the order they were written
+    for (const p of posts.slice(0, 120).reverse()) {
       const card = el('div', 'post' + (b.mine.has(p.id) ? ' mine' : ''), list);
       const h = el('div', 'phead', card);
       // who: their name (and a mark that tells same names apart), else a short address
@@ -333,7 +348,7 @@ export class Terminal {
       }
       if (p.type === 'scan' && p.scan) {
         const row = el('div', 'pscan', card);
-        if (p.photo) { const img = el('img', '', row); img.src = p.photo; img.alt = p.scan.name; }
+        if (p.photo) { const img = el('img', '', row); img.onload = toEnd; img.src = p.photo; img.alt = p.scan.name; }
         const t = el('div', 'ptext', row);
         el('div', 'name', t, p.scan.name || 'An artifact');
         el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? ' · WILD, FOUND BY ONE SHIP' : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
@@ -344,7 +359,8 @@ export class Terminal {
         el('div', 'ptext', card, p.text);
       }
     }
-    list.scrollTop = keep;
+    if (pinned) { list.scrollTop = list.scrollHeight; requestAnimationFrame(toEnd); }
+    else list.scrollTop = keep;
   }
 
   // ---------------------------------------------------------------- SEEKERS

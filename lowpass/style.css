@@ -188,6 +188,8 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .term .boardtop { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 4); padding-bottom: calc(var(--u) * 3); }
 .term .filters { display: flex; gap: calc(var(--u) * 3); }
 .term .posts { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 3); padding-right: calc(var(--u) * 2); }
+/* few posts sit at the bottom, against the box where new ones are written */
+.term .posts > :first-child { margin-top: auto; }
 .term .post { background: rgba(18, 21, 29, 0.7); border-left: var(--u) solid var(--line); padding: calc(var(--u) * 2) calc(var(--u) * 4); }
 .term .post.mine { border-left-color: var(--acc); }
 .term .post .who { color: var(--acc); }
