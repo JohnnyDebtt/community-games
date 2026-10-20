@@ -14,8 +14,9 @@ at your option.
 Project-owned game assets and creative game content are licensed under Creative
 Commons Attribution 4.0 International (CC BY 4.0), unless noted otherwise.
 
-Fonts in each game's `assets/fonts/` are licensed under the SIL Open Font License
-1.1, unless noted otherwise.
+Fonts in `assets/fonts/` and in each game's `assets/fonts/` are licensed under the
+SIL Open Font License 1.1, unless noted otherwise. The launcher's covers in
+`assets/covers/` are pictures of the games themselves, under CC BY 4.0.
 
 By contributing project-owned game assets to this repository, you agree that your
 contribution may be distributed under CC BY 4.0 and may also be relicensed by the
@@ -23,7 +24,7 @@ project maintainers under CC0-1.0.
 
 Third-party libraries, reference material, and vendored content remain under their
 own license terms when a separate license file or notice is included with that
-material (for example `soundings/licenses/`).
+material (for example `soundings/licenses/` and `lowpass/licenses/`).
 
 ## License Texts
 

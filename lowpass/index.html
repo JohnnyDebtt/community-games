@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Only the game's own files may run, and it may only talk to Robinhood Chain's RPCs
+       and the board's relays. The hash is the import map below: change one, change both. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-IMakL3k+yyH0KWQ4RUAc4AlYeCmgJV2nryHjf2/BaOg='; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' https://rpc.mainnet.chain.robinhood.com https://robinhood.drpc.org wss://relay.damus.io wss://nos.lol wss://relay.primal.net wss://offchain.pub wss://nostr.mom wss://relay.nostr.net ws://localhost:* ws://127.0.0.1:*; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Low Pass</title>
+  <meta name="description" content="A slow survey flight over an endless fog forest on The Seeker's planet. When a SEEKER NET seeker moves on chain, every ship flying sees the same light.">
+  <meta name="theme-color" content="#0f0e16">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game" aria-label="Low Pass game view"></canvas>
+  <div id="ui"></div>
+  <noscript><p class="noscript">Low Pass needs JavaScript and WebGL 2.</p></noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
