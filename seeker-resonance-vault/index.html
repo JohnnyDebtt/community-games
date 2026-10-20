@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Seeker: Resonance Vault</title>
+  <meta name="description" content="A quiet tactical match-three expedition beneath an icy planet. Six chambers, creature powers, and discoveries in The Seeker universe.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="vault-container">
+    <!-- Top Header HUD -->
+    <header id="hud">
+      <div class="hud-brand">
+        <span class="brand-sub">THEOREM // EXPEDITION 048</span>
+        <span id="hud-chamber-name" class="brand-title">Chamber 1 · Surface Fissure</span>
+      </div>
+      <div class="hud-stats">
+        <div class="hud-group">
+          <span class="hud-label">DEPTH</span>
+          <span id="hud-depth" class="hud-val cyan-val">0m / -150m</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">TURNS</span>
+          <span id="hud-turns" class="hud-val gold-val">18</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">WARMTH</span>
+          <span id="hud-warmth" class="hud-val ember-val">100% 🔥</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">CHARGE</span>
+          <span id="hud-charge" class="hud-val green-val">20%</span>
+        </div>
+        <div class="hud-group">
+          <span class="hud-label">RESONANCE</span>
+          <span id="hud-score" class="hud-val gold-val">0</span>
+        </div>
+      </div>
+      <div class="hud-actions">
+        <button id="btn-relics-hud" class="hud-btn" style="border-color: #DEB874; color: #FFF1CB;" title="Expedition Relic Loadout & Codex (Key: R)">RELICS [R]</button>
+        <button id="btn-howto" class="hud-btn howto-btn" title="How to Play & Survival Guide (Key: ?)">HOW TO PLAY [?]</button>
+        <button id="btn-chambers" class="hud-btn chamber-btn" title="Open Expedition Chamber Map (Key: C)">CHAMBERS [C]</button>
+        <button id="btn-hint" class="hud-btn" title="Highlight a valid swap (Key: H)">HINT [H]</button>
+        <button id="btn-motion" class="hud-btn" aria-pressed="false">MOTION: ON</button>
+        <button id="btn-mute" class="hud-btn" aria-label="Toggle Sound">MUTE [M]</button>
+      </div>
+    </header>
+
+    <!-- Main Two-Column Deck -->
+    <div id="main-deck">
+      <!-- Left Column: Live Mission Checklist + Action Banner + Crisp 2x Pixel Canvas -->
+      <div id="board-column">
+        <!-- Live Mission Checklist & Warmth Thermometer Bar -->
+        <div id="mission-bar">
+          <div class="mission-objectives" id="mission-checklist">
+            <!-- Populated dynamically by game.js -->
+          </div>
+          <div class="warmth-meter-wrap" title="Keep Warmth above 35% by matching Orange Ember (4 Pips) tiles!">
+            <div class="warmth-meter-top">
+              <span class="warmth-label">CAVERN WARMTH</span>
+              <span id="warmth-pct-label" class="warmth-pct">100%</span>
+            </div>
+            <div class="warmth-track">
+              <div id="warmth-fill" class="warmth-fill" style="width: 100%;"></div>
+              <div class="warmth-threshold" style="left: 35%;" title="35% Hypothermia Threshold"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Coach & Action Readout Banner -->
+        <div id="chain-banner">
+          <div class="banner-left">
+            <span id="biome-tag" class="biome-pill">THE GLACIAL SHELF</span>
+            <span id="freq-display" class="freq-text">Click or drag adjacent tiles to swap (3+ in a row/col)</span>
+          </div>
+          <div class="banner-right">
+            <span id="chain-preview-badge" class="preview-badge">SWAP 3+</span>
+          </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div id="canvas-wrap">
+          <canvas tabindex="0" aria-label="Match board. Arrow keys move the cursor. Enter selects a tile. Select an adjacent tile to swap. H shows a hint." id="game-canvas" width="480" height="560"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Column: Tactical Field Guide, Creature Forms & Legend -->
+      <aside id="guide-column">
+
+        <section class="field-note">
+          <span class="card-sub">THEOREM / FIELD RECORD</span>
+          <p id="field-note">Below the ice, something answers.</p>
+        </section>
+        <!-- Active Seeker Creature Forms -->
+        <section class="deck-card">
+          <div class="card-header">
+            <span class="card-title">BECOME / KEYS 1–4</span>
+            <span id="charge-pill" class="card-sub">20% CHARGE</span>
+          </div>
+          <div class="forms-grid">
+            <button id="form-bat" class="form-btn" data-cost="25">
+              <div class="form-top">
+                <span class="form-key">[1] BAT · SONAR</span>
+                <span class="form-cost">25%</span>
+              </div>
+              <div class="form-desc">Sense a route. Forge a cross core.</div>
+            </button>
+            <button id="form-spider" class="form-btn" data-cost="35">
+              <div class="form-top">
+                <span class="form-key">[2] EMBER · TORCH</span>
+                <span class="form-cost">35%</span>
+              </div>
+              <div class="form-desc">Thaw 3 locks. +25 warmth. Forge a blast core.</div>
+            </button>
+            <button id="form-squid" class="form-btn" data-cost="50">
+              <div class="form-top">
+                <span class="form-key">[3] SQUID · SIPHON</span>
+                <span class="form-cost">50%</span>
+              </div>
+              <div class="form-desc">Clear the most common tile. Costs 1 turn.</div>
+            </button>
+            <button id="form-buzzer" class="form-btn" data-cost="60">
+              <div class="form-top">
+                <span class="form-key">[4] BUZZER · VEINS</span>
+                <span class="form-cost">60%</span>
+              </div>
+              <div class="form-desc">Seed 4 gold tiles and double-depth veins.</div>
+            </button>
+          </div>
+          <p id="form-state" aria-live="polite">Match tablets to build charge.</p>
+        </section>
+
+        <!-- Specimen & Relic Loadout -->
+        <section class="deck-card">
+          <div class="card-header">
+            <div>
+              <span class="card-title">DISCOVERIES</span>
+              <span id="specimen-count" class="card-sub">0 / 6 DISCOVERED</span>
+            </div>
+            <button id="btn-open-relics" class="hud-btn" style="font-size: 9.5px; padding: 3px 8px; border-color: #DEB874; color: #FFF1CB;" title="Open Full Relic Loadout & Backpack Codex (Key: R)">CODEX [R]</button>
+          </div>
+          <div class="specimen-bar">
+            <div id="specimen-status" style="width: 100%;">Attune chambers to unlock passive survival relics.</div>
+          </div>
+        </section>
+
+        <details id="field-guide" class="deck-card">
+          <summary>FIELD GUIDE <span>Tiles, cores &amp; hazards</span></summary>
+                  <!-- Core Combos & Cavern Hazards Reference -->
+        <section class="deck-card">
+          <div class="card-header">
+            <span class="card-title">CORES & CAVERN HAZARDS</span>
+            <span class="card-sub">TAP OR SWAP</span>
+          </div>
+          <div class="core-list">
+            <div class="core-row"><span class="core-badge green-badge">MATCH 4 ➔ ✚</span> <span><strong>Bat Core:</strong> Blasts full Row + Column</span></div>
+            <div class="core-row"><span class="core-badge cyan-badge">L / T SHAPE ➔ ✕</span> <span><strong>Spider Core:</strong> 3×3 Shockwave Bomb</span></div>
+            <div class="core-row"><span class="core-badge gold-badge">MATCH 5 ➔ ❖</span> <span><strong>Guardian:</strong> Color Wipe + +20% Warmth</span></div>
+            <div class="core-row"><span class="core-badge ember-badge">4 PIPS · EMBER</span> <span><strong>63 Hz Crucible:</strong> Restores +12% Warmth</span></div>
+            <div class="core-row"><span class="core-badge frost-badge"> FROST /  WEB</span> <span>Locks tile · Match adjacent to thaw/cut</span></div>
+            <div class="core-row"><span class="core-badge rock-badge"> SPIDER /  ROCK</span> <span>Match adjacent or blast with Cores to clear</span></div>
+          </div>
+        </section>
+
+        <!-- Visual Tile & Harmonic Legend -->
+        <section class="deck-card">
+          <div class="card-header">
+            <span class="card-title">HARMONIC TABLETS (PIPS 1–6)</span>
+            <span class="card-sub">48 Hz TUNING</span>
+          </div>
+          <div class="legend-grid">
+            <div class="legend-item">
+              <span class="glyph-preview" style="--glyph:0" aria-hidden="true"></span>
+              <div class="legend-text"><strong>1 · Fossil Shell</strong><span>48 Hz · Root</span></div>
+            </div>
+            <div class="legend-item">
+              <span class="glyph-preview" style="--glyph:1" aria-hidden="true"></span>
+              <div class="legend-text"><strong>2 · Rime Crystal</strong><span>54 Hz · Rime</span></div>
+            </div>
+            <div class="legend-item">
+              <span class="glyph-preview" style="--glyph:2" aria-hidden="true"></span>
+              <div class="legend-text"><strong>3 · Spore Pod</strong><span>57 Hz · Spore</span></div>
+            </div>
+            <div class="legend-item">
+              <span class="glyph-preview" style="--glyph:3" aria-hidden="true"></span>
+              <div class="legend-text"><strong>4 · Ember Crucible</strong><span>63 Hz · +Warmth </span></div>
+            </div>
+            <div class="legend-item">
+              <span class="glyph-preview" style="--glyph:4" aria-hidden="true"></span>
+              <div class="legend-text"><strong>5 · Abyssal Eye</strong><span>72 Hz · Abyss</span></div>
+            </div>
+            <div class="legend-item">
+              <span class="glyph-preview" style="--glyph:5" aria-hidden="true"></span>
+              <div class="legend-text"><strong>6 · Gold Reliquary</strong><span>84 Hz · 2x Depth</span></div>
+            </div>
+          </div>
+        </section>
+
+
+        </details>
+      </aside>
+    </div>
+
+    <footer id="footer">
+      <span>THE SEEKER · RESONANCE VAULT</span>
+      <span>BACKPACK <strong id="hud-pack">Lv 1</strong></span>
+      <a href="CREDITS.md">Credits &amp; licenses</a>
+      <a href="https://x.com/QuillshiftGame" target="_blank" rel="noopener noreferrer">@QuillshiftGame</a>
+    </footer>
+
+    <!-- Game Opening Window: Beginning Cutscene & Enter Button -->
+    <div id="intro-overlay" class="overlay" style="display: flex; background: rgba(4, 6, 10, 0.98);">
+      <div class="modal-box wide-intro" style="max-width: 540px; padding: 20px 24px; text-align: center;">
+        <p class="modal-kicker" style="margin: 0 0 2px 0;">THEOREM / EXPEDITION 048</p>
+        <h1 style="font-size: 26px; letter-spacing: 4px; margin: 2px 0 12px; color: #FFF1CB;">RESONANCE VAULT</h1>
+
+        <!-- Centered Beginning Landing Cutscene Stage -->
+        <div style="display: flex; justify-content: center; margin-bottom: 14px;">
+          <canvas id="intro-cutscene-canvas" width="480" height="560" style="width: 100%; max-width: 420px; height: auto; aspect-ratio: 480 / 560; border: 1.5px solid #35455E; border-radius: 6px; image-rendering: pixelated; background: #04060A; box-shadow: 0 8px 32px rgba(0,0,0,0.75); display: block; margin: 0 auto; cursor: pointer;" title="Planetary Touchdown · Click Enter the Fissure to begin"></canvas>
+        </div>
+
+        <!-- Clean Action Controls -->
+        <div style="display: flex; gap: 14px; justify-content: center; align-items: center;">
+          <button id="btn-start" class="primary-btn" style="font-size: 13px; padding: 13px 36px; letter-spacing: 2px;">ENTER THE FISSURE</button>
+          <button id="btn-intro-howto" class="hud-btn" style="padding: 13px 20px;">HOW TO PLAY [?]</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comprehensive How To Play Modal -->
+    <div id="howto-modal" class="overlay" style="display: none;">
+      <div class="modal-box wide-modal">
+        <div class="modal-top-bar">
+          <div>
+            <p class="modal-kicker">FIELD MANUAL // TACTICAL SURVIVAL GUIDE</p>
+            <h1>HOW TO PLAY</h1>
+          </div>
+          <button id="btn-close-howto" class="hud-btn">RESUME GAME [ESC]</button>
+        </div>
+
+        <div class="howto-grid">
+          <div class="howto-card">
+            <div class="howto-step-badge">STEP 1 · MATCHING & SWAPPING</div>
+            <h3>Swap Adjacent Tablets (⇄)</h3>
+            <p>
+              Click or tap two neighboring tablets, or drag onto a neighbor. With the board focused, use Arrow keys and Enter or Space to select and swap.
+            </p>
+            <ul>
+              <li><strong>Smart Move Indicators (⇄):</strong> When you select a tile, any adjacent neighbor that forms a valid 3+ match will light up with a green swap arrow!</li>
+              <li><strong>Idle Move Coach:</strong> If you pause for 4.5 seconds, the Seeker's sonar gently highlights a valid swap pair on the board.</li>
+              <li><strong>Cascading Combos:</strong> Gravity drops new tablets from above. Chain cascades multiply your Depth and Score!</li>
+            </ul>
+          </div>
+
+          <div class="howto-card">
+            <div class="howto-step-badge">STEP 2 · SPECIAL CREATURE CORES</div>
+            <h3>Forge & Detonate Cores (✚ ✕ ◎ ❖)</h3>
+            <p>
+              Matching 4 or more tablets condenses their energy into a glowing <strong>Creature Core</strong> right where you swapped:
+            </p>
+            <ul>
+              <li><strong style="color:#A5C77F;">Bat Core (✚) [Match 4]:</strong> Fires a cross sonar beam that clears the entire Row & Column.</li>
+              <li><strong style="color:#91CBDE;">Spider Core (✕) [L or T Match]:</strong> Detonates a heavy 3×3 shockwave blast, shattering rocks and webs.</li>
+              <li><strong style="color:#E8CD86;">Guardian Core (❖) [Match 5]:</strong> Siphons every tablet of the target color on the board + restores +20% Warmth!</li>
+              <li><strong>2 Ways to Trigger:</strong> Swap a Core with any neighbor (swap two Cores together for a <em>Mega Combo Blast</em>!), OR simply <strong>click a selected Core a second time</strong> to detonate it in place!</li>
+            </ul>
+          </div>
+
+          <div class="howto-card">
+            <div class="howto-step-badge">STEP 3 · WARMTH & CAVERN HAZARDS</div>
+            <h3>Survive the Subterranean Cold</h3>
+            <p>
+              Every Chamber has a live <strong>Mission Checklist</strong> above the board. Complete all checklist items before your Turns run out:
+            </p>
+            <ul>
+              <li><strong style="color:#E28C6B;">Cavern Warmth:</strong> Drops slightly each turn. If Warmth drops below <strong>35%</strong>, hypothermia sets in and spawns Frost! Match <strong>Orange Ember (4 Pips)</strong> to gain +12% Warmth.</li>
+              <li><strong style="color:#91CBDE;">Creeping Frost & Webs:</strong> Locked tiles cannot be swapped. Make a match directly adjacent to them (or blast them) to thaw/cut them.</li>
+              <li><strong style="color:#E84D3D;">Cave Spiders:</strong> Guard their cells and spin webs every few turns. Match next to a Spider or hit it with a Core blast to repel it!</li>
+              <li><strong style="color:#DFE6E6;">Bedrock Obelisks:</strong> Stone pillars have 2–3 HP. Adjacent matches chip them; core blasts deal heavier damage. Shattering stone grants bonus depth.</li>
+            </ul>
+          </div>
+
+          <div class="howto-card">
+            <div class="howto-step-badge">STEP 4 · SEEKER CREATURE POWERS</div>
+            <h3>Spend Charge to Cast Instant Abilities</h3>
+            <p>
+              Campaign chambers begin with 20 charge. Each move earns 6 per cascade, capped at 18 before the Lens bonus. Spend Charge during play using the buttons on the right (or keys <code>1</code>–<code>4</code>):
+            </p>
+            <ul>
+              <li><strong>[1] Bat Sonar (25%):</strong> Highlights a valid swap AND upgrades a separate tile into a row/column Bat Core (✚).</li>
+              <li><strong>[2] Ember Torch (35%):</strong> Immediately thaws 3 Frost/Web tiles, restores <strong>+25% Warmth</strong>, and spawns a Spider Bomb Core (✕).</li>
+              <li><strong>[3] Squid Siphon (50%):</strong> Uses one turn to clear all tablets of the most common color across the entire board.</li>
+              <li><strong>[4] Buzzer 84Hz (60%):</strong> Spawns 4 Gold Reliquaries (yields 2× Depth & Score) + 2× rich Mineral Veins.</li>
+            </ul>
+          </div>
+
+          <div class="howto-card" style="grid-column: 1 / -1;">
+            <div class="howto-step-badge" style="background:#DEB874; color:#04060A;">STEP 5 · EXPEDITION RELIC LOADOUT & PERKS</div>
+            <h3>Equip Ancient Artifacts into your Backpack [R]</h3>
+            <p>
+              Completing all checklist objectives in each Chamber discovers an ancient passive <strong>Relic</strong>. Press <strong><code>R</code></strong> or click <strong>CODEX [R]</strong> in the bottom-right panel to equip up to <strong>2 Relics</strong> (expands to <strong>3 slots</strong> at Depth -750m / Backpack Lv 3).
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 10px;">
+              <div style="background:#0F1622; border:1px solid #28374D; border-radius:4px; padding:8px 10px; font-size:11px;">
+                <div style="color:#ABE3D9; font-weight:bold;"> Glacial Ammonite (Chamber 1)</div>
+                <div style="color:#DEB874; font-size:10px; margin:2px 0;">PERK: 2x Thaw Radius</div>
+                <div style="color:#94A6B1;">Earned after Chamber 1. Extends thawing from immediate neighbors to cells within two orthogonal steps.</div>
+              </div>
+              <div style="background:#0F1622; border:1px solid #28374D; border-radius:4px; padding:8px 10px; font-size:11px;">
+                <div style="color:#ABE3D9; font-weight:bold;"> Echoing Vertebra (Chamber 2)</div>
+                <div style="color:#DEB874; font-size:10px; margin:2px 0;">PERK: Free Bat Core (✚)</div>
+                <div style="color:#94A6B1;">Spawns a Bat Sonar Core at the start of each chamber for immediate row/column blast.</div>
+              </div>
+              <div style="background:#0F1622; border:1px solid #28374D; border-radius:4px; padding:8px 10px; font-size:11px;">
+                <div style="color:#ABE3D9; font-weight:bold;"> Silk-Bound Geode (Chamber 3)</div>
+                <div style="color:#DEB874; font-size:10px; margin:2px 0;">PERK: Web Thermal Siphon</div>
+                <div style="color:#94A6B1;">Cutting spider webs instantly restores <strong>+15% Cavern Warmth</strong>, preventing hypothermia.</div>
+              </div>
+              <div style="background:#0F1622; border:1px solid #28374D; border-radius:4px; padding:8px 10px; font-size:11px;">
+                <div style="color:#ABE3D9; font-weight:bold;"> Abyssal Squid Lens (Chamber 4)</div>
+                <div style="color:#DEB874; font-size:10px; margin:2px 0;">PERK: +50% Charge Surge</div>
+                <div style="color:#94A6B1;">All matches generate +50% more Resonance Gauge charge, letting you cast creature powers rapidly.</div>
+              </div>
+              <div style="background:#0F1622; border:1px solid #28374D; border-radius:4px; padding:8px 10px; font-size:11px;">
+                <div style="color:#ABE3D9; font-weight:bold;"> Theorem Tuning Fork (Chamber 5)</div>
+                <div style="color:#DEB874; font-size:10px; margin:2px 0;">PERK: 3x Gold Depth & Score</div>
+                <div style="color:#94A6B1;">Gold Reliquary (6-Pip) matches yield triple depth progression and score acceleration.</div>
+              </div>
+              <div style="background:#0F1622; border:1px solid #28374D; border-radius:4px; padding:8px 10px; font-size:11px;">
+                <div style="color:#ABE3D9; font-weight:bold;"> Planetary Guardian Crest (Chamber 6)</div>
+                <div style="color:#DEB874; font-size:10px; margin:2px 0;">PERK: Sanctuary Frost Immunity</div>
+                <div style="color:#94A6B1;">Center 3x3 board tiles are permanently shielded from Creeping Frost and will never freeze.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-bottom-actions">
+          <button id="btn-got-it" class="primary-btn">GOT IT — BACK TO EXPEDITION ➔</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expedition Sector Map Modal -->
+    <div id="chambers-modal" class="overlay" style="display: none;">
+      <div class="modal-box wide-modal">
+        <div class="modal-top-bar">
+          <div>
+            <p class="modal-kicker">THEOREM SECTORS // EXPEDITION ARCHIVE</p>
+            <h1>EXPEDITION CHAMBERS</h1>
+          </div>
+          <button id="btn-close-map" class="hud-btn">CLOSE [ESC]</button>
+        </div>
+        <p class="modal-lead" style="margin-bottom: 14px;">
+          Select an acoustic chamber to explore. Complete all chamber checklist objectives within the turn limit to unlock deeper sectors and equippable Backpack Relics.
+        </p>
+        <div id="chambers-list" class="chambers-grid"></div>
+        <div class="modal-bottom-actions">
+          <button id="btn-start-endless" class="hud-btn endless-btn">ENTER ENDLESS DESCENT MODE (FREE PLAY) ➔</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expedition Relic Codex & Loadout Modal -->
+    <div id="relics-modal" class="overlay" style="display: none;">
+      <div class="modal-box wide-modal">
+        <div class="modal-top-bar">
+          <div>
+            <p class="modal-kicker">EXPEDITION ARCHIVE // ANCIENT ARTIFACT CODEX</p>
+            <h1>EXPEDITION RELIC LOADOUT</h1>
+          </div>
+          <button id="btn-close-relics" class="hud-btn">RESUME GAME [ESC]</button>
+        </div>
+
+        <div class="backpack-tier-callout" style="background: #101622; border: 1px solid #28374D; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <span style="font-size: 10px; letter-spacing: 2px; color: #91CBDE; font-family: monospace;">CURRENT SEEKER CAPACITY</span>
+            <div style="font-size: 15px; font-weight: bold; color: #E8CD86; margin-top: 2px;" id="relic-modal-pack-status">BACKPACK LEVEL 1 · 2 RELIC SLOTS</div>
+            <div style="font-size: 11px; color: #94A6B1; margin-top: 2px;">
+              Equip discovered artifacts to activate passive survival perks. Reach <strong>-750m Depth</strong> to unlock Backpack Level 3 and a 3rd slot!
+            </div>
+          </div>
+          <div id="relic-modal-equipped-summary" style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <!-- Active slots populated by JS -->
+          </div>
+        </div>
+
+        <div id="relics-codex-grid" class="relic-codex-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+          <!-- Populated dynamically by updateRelicsUI() -->
+        </div>
+
+        <div class="modal-bottom-actions" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <span style="font-size: 11px; color: #8A919E;">Click any unlocked relic to equip or unequip it. Perks apply immediately.</span>
+          <button id="btn-close-relics-bottom" class="primary-btn">DONE · RESUME EXPEDITION ➔</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chamber Victory Modal -->
+    <div id="chamber-victory-modal" class="overlay" style="display: none;">
+      <div class="modal-box">
+        <p class="modal-kicker" style="color: #ABE3D9;">CHAMBER OBJECTIVES ACHIEVED</p>
+        <h1 id="vic-chamber-title">THE GLACIAL SHELF</h1>
+        <div id="vic-stars" class="stars-display">★★★</div>
+        <p id="vic-artifact-desc" class="artifact-callout"></p>
+        <p id="vic-stats" class="modal-lead" style="margin-bottom: 20px;"></p>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button id="btn-vic-cutscene" class="primary-btn" style="display: none; background: #E8CD86; color: #04060A;">BLAST OFF CUTSCENE </button>
+          <button id="btn-next-chamber" class="primary-btn">NEXT CHAMBER ➔</button>
+          <button id="btn-vic-map" class="hud-btn" style="padding: 12px 20px;">CHAMBER MAP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chamber Failed Modal -->
+    <div id="chamber-failed-modal" class="overlay" style="display: none;">
+      <div class="modal-box">
+        <p class="modal-kicker" style="color: #E84D3D;">TURNS DEPLETED</p>
+        <h1>RESONANCE COLLAPSE</h1>
+        <h2>CHAMBER OBJECTIVES INCOMPLETE</h2>
+        <p id="fail-stats" class="modal-lead" style="margin-bottom: 20px;"></p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button id="btn-retry-chamber" class="primary-btn">RETRY CHAMBER ↺</button>
+          <button id="btn-fail-map" class="hud-btn" style="padding: 12px 20px;">CHAMBER MAP</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="board.js"></script>
+  <script src="cinematics.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

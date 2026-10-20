@@ -1,0 +1,1292 @@
+/* The Seeker: Resonance Vault - Upgraded High-Readability Stylesheet
+   Strict adherence to The Seeker design grammar & interface palette:
+   panel #04060A (92%), well #12151D, empty well #0B0D13, line #29303E,
+   text #F0F2E8, muted #8A919E, disabled #454A4F, positive #ABE3D9, negative #E84D3D
+*/
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #04060A;
+  color: #F0F2E8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#vault-container {
+  position: relative;
+  width: 98vw;
+  height: 98vh;
+  max-width: 980px;
+  max-height: 780px;
+  background: radial-gradient(circle at 35% 25%, #111A2B 0%, #090D16 70%, #04060A 100%);
+  border: 1px solid #29303E;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.85), inset 0 0 24px rgba(105, 143, 155, 0.06);
+  overflow: hidden;
+}
+
+/* Header HUD */
+#hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 16px;
+  background: rgba(4, 6, 10, 0.95);
+  border-bottom: 1px solid #29303E;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hud-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-sub {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #91CBDE;
+  font-family: monospace;
+}
+
+.brand-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #E8CD86;
+}
+
+.hud-stats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.hud-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-label {
+  color: #8A919E;
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.hud-val {
+  color: #F0F2E8;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.gold-val  { color: #E8CD86; }
+.cyan-val  { color: #ABE3D9; }
+.green-val { color: #A5C77F; }
+.ember-val { color: #E28C6B; }
+
+.hud-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.hud-btn {
+  background: #12151D;
+  border: 1px solid #29303E;
+  color: #DFE6E6;
+  padding: 6px 11px;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.hud-btn:hover:not(:disabled) {
+  border-color: #91CBDE;
+  color: #ABE3D9;
+  background: #182338;
+}
+
+.hud-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.howto-btn {
+  background: #1B2418;
+  border-color: #A5C77F;
+  color: #C2E29C;
+}
+
+.cutscene-btn {
+  background: #251D14;
+  border-color: #E8CD86;
+  color: #FFF9D2;
+}
+
+.cutscene-btn:hover {
+  background: #382A1C !important;
+  border-color: #FFF9D2 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(232, 205, 134, 0.45);
+}
+
+.howto-btn:hover {
+  background: #263520 !important;
+  border-color: #C2E29C !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(165, 199, 127, 0.35);
+}
+
+.chamber-btn {
+  background: #182338;
+  border-color: #91CBDE;
+  color: #ABE3D9;
+}
+
+.chamber-btn:hover {
+  background: #223554 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 10px rgba(145, 203, 222, 0.4);
+}
+
+/* Main Two-Column Deck */
+#main-deck {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) 365px;
+  gap: 12px;
+  padding: 8px 14px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+/* Live Mission Checklist & Warmth Bar */
+#mission-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #0C1018;
+  border: 1px solid #263142;
+  border-radius: 5px;
+}
+
+.mission-objectives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.obj-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-weight: 700;
+  background: #131926;
+  border: 1px solid #2E3B52;
+  border-radius: 4px;
+  color: #C7D0D8;
+  transition: all 0.2s ease;
+}
+
+.obj-pill.done {
+  background: rgba(165, 199, 127, 0.16);
+  border-color: #A5C77F;
+  color: #C2E29C;
+}
+
+.obj-check {
+  color: #8A919E;
+}
+
+.obj-pill.done .obj-check {
+  color: #A5C77F;
+}
+
+.warmth-meter-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 135px;
+}
+
+.warmth-meter-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-weight: 700;
+}
+
+.warmth-label {
+  color: #8A919E;
+  letter-spacing: 0.8px;
+}
+
+.warmth-pct {
+  color: #E28C6B;
+}
+
+.warmth-track {
+  position: relative;
+  height: 7px;
+  background: #080B10;
+  border: 1px solid #2A3546;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.warmth-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #91CBDE 0%, #E8CD86 45%, #E28C6B 100%);
+  transition: width 0.25s ease;
+}
+
+.warmth-fill.cold-danger {
+  background: linear-gradient(90deg, #5695B8 0%, #91CBDE 100%);
+}
+
+.warmth-threshold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #E84D3D;
+  z-index: 2;
+}
+
+/* Live Chain & Harmonic Readout Banner */
+#chain-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #0B0D13;
+  border: 1px solid #29303E;
+  border-radius: 5px;
+  gap: 10px;
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.biome-pill {
+  background: #162234;
+  border: 1px solid #35506E;
+  color: #91CBDE;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.freq-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #F0F2E8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-badge {
+  background: #141923;
+  border: 1px solid #29303E;
+  color: #E8CD86;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Canvas Area */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+
+canvas#game-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 480px;
+  max-height: 560px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  background: #080B11;
+  border: 1px solid #2E3848;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.75), inset 0 0 18px rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+}
+
+/* Right Column: Tactical Guide & Controls */
+#guide-column {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.deck-card {
+  background: rgba(11, 14, 21, 0.92);
+  border: 1px solid #252D3B;
+  border-radius: 5px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1C2330;
+  padding-bottom: 4px;
+}
+
+.card-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #91CBDE;
+}
+
+.card-sub {
+  font-size: 9.5px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: #E8CD86;
+  font-weight: 600;
+}
+
+/* Creature Form Buttons */
+.forms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.form-btn {
+  background: #121722;
+  border: 1px solid #2A3446;
+  border-radius: 4px;
+  padding: 6px 8px;
+  text-align: left;
+  color: #F0F2E8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form-btn:hover:not(:disabled) {
+  background: #1A2538;
+  border-color: #91CBDE;
+  transform: translateY(-1px);
+}
+
+.form-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.form-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.form-key { color: #ABE3D9; }
+.form-cost { color: #E8CD86; }
+
+.form-desc {
+  font-size: 9.5px;
+  color: #9BA7B4;
+  line-height: 1.2;
+}
+
+/* Harmonic Tablet Legend Grid */
+.legend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 7px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0F131C;
+  border: 1px solid #1E2533;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 8px;
+  font-weight: 900;
+  color: #080C12;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
+
+.legend-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.glyph-preview {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  background: url('assets/glyphs.png') no-repeat;
+  background-position: calc(var(--glyph) * -32px) 0;
+  image-rendering: pixelated;
+}
+
+.legend-text strong {
+  font-size: 10.5px;
+  color: #F0F2E8;
+}
+
+.legend-text span {
+  font-size: 9px;
+  color: #8A919E;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+/* Creature Cores List */
+.core-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: #C7D0D8;
+}
+
+.core-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.core-badge {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  min-width: 92px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.green-badge  { background: rgba(119, 144, 81, 0.22); border: 1px solid #A5C77F; color: #C2E29C; }
+.cyan-badge   { background: rgba(145, 203, 222, 0.2); border: 1px solid #91CBDE; color: #D6EDF5; }
+.violet-badge { background: rgba(181, 132, 196, 0.22); border: 1px solid #B584C4; color: #E2B8F0; }
+.gold-badge   { background: rgba(232, 205, 134, 0.22); border: 1px solid #E8CD86; color: #FFF9D2; }
+.ember-badge  { background: rgba(226, 140, 107, 0.22); border: 1px solid #E28C6B; color: #FFD2C2; }
+.frost-badge  { background: rgba(105, 143, 155, 0.2); border: 1px solid #698F9B; color: #ABE3D9; }
+.rock-badge   { background: rgba(82, 98, 124, 0.25); border: 1px solid #5A6E8A; color: #DFE6E6; }
+
+/* Specimen Archive */
+.specimen-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #9BA7B4;
+}
+
+/* Footer */
+#footer {
+  padding: 7px 16px;
+  background: rgba(4, 6, 10, 0.96);
+  border-top: 1px solid #29303E;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+}
+
+.net-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #DFE6E6;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.net-sep { color: #454A4F; }
+
+.net-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ABE3D9;
+  box-shadow: 0 0 8px #ABE3D9;
+}
+
+/* Modal Overlays */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 6, 10, 0.88);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px;
+  z-index: 20;
+}
+
+.modal-box {
+  background: #0B0F18;
+  border: 1px solid #354256;
+  border-radius: 8px;
+  padding: 24px 28px;
+  max-width: 580px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.9);
+}
+
+.wide-intro {
+  max-width: 680px;
+}
+
+.wide-modal {
+  max-width: 840px;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.modal-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #1E2738;
+  padding-bottom: 8px;
+}
+
+.modal-kicker {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: #91CBDE;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  margin-bottom: 4px;
+}
+
+.modal-box h1 {
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: #E8CD86;
+  margin-bottom: 4px;
+}
+
+.modal-box h2 {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: #ABE3D9;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.modal-lead {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #C7D0D8;
+  margin-bottom: 16px;
+}
+
+.modal-rules {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.rule-box {
+  background: #121723;
+  border: 1px solid #253042;
+  border-radius: 5px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rule-box strong {
+  font-size: 10.5px;
+  color: #E8CD86;
+  letter-spacing: 0.5px;
+}
+
+.rule-box span {
+  font-size: 11px;
+  color: #9BA7B4;
+  line-height: 1.4;
+}
+
+/* How To Play Grid */
+.howto-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.howto-card {
+  background: #0F141F;
+  border: 1px solid #263246;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.howto-step-badge {
+  display: inline-block;
+  align-self: flex-start;
+  background: #172438;
+  border: 1px solid #3B587E;
+  color: #91CBDE;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
+
+.howto-card h3 {
+  font-size: 13px;
+  color: #E8CD86;
+  letter-spacing: 0.5px;
+}
+
+.howto-card p {
+  font-size: 11.5px;
+  color: #C7D0D8;
+  line-height: 1.45;
+}
+
+.howto-card ul {
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: #9BA7B4;
+  line-height: 1.4;
+}
+
+.howto-card li strong {
+  color: #F0F2E8;
+}
+
+/* Chambers Grid (Sector Map) */
+.chambers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.chamber-card {
+  background: #0D121B;
+  border: 1px solid #232C3D;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.chamber-card.unlocked:hover {
+  border-color: #91CBDE;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.chamber-card.active {
+  border-color: #E8CD86;
+  background: #121824;
+}
+
+.chamber-card.locked {
+  opacity: 0.45;
+  filter: grayscale(0.5);
+}
+
+.chamber-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chamber-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #F0F2E8;
+}
+
+.chamber-card-stars {
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
+.chamber-card-sub {
+  font-size: 10px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: #91CBDE;
+}
+
+.chamber-card-desc {
+  font-size: 10.5px;
+  color: #9BA7B4;
+  line-height: 1.35;
+  flex: 1;
+}
+
+.chamber-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid #1A212F;
+}
+
+.chamber-card-score {
+  font-size: 9.5px;
+  font-family: monospace;
+  color: #8A919E;
+}
+
+.chamber-card-btn {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.modal-bottom-actions {
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #1E2738;
+  padding-top: 12px;
+}
+
+.endless-btn {
+  border-color: #E8CD86;
+  color: #E8CD86;
+  padding: 8px 18px;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.relic-btn {
+  font-size: 9.5px;
+  padding: 4px 7px;
+  background: #101622;
+  border: 1px solid #283446;
+  color: #C7D0D8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 3px;
+}
+
+.relic-btn:hover:not(:disabled) {
+  border-color: #91CBDE;
+  color: #FFFFFF;
+}
+
+.relic-btn.equipped {
+  background: #18283E;
+  border-color: #ABE3D9;
+  color: #ABE3D9;
+  box-shadow: 0 0 8px rgba(171, 227, 217, 0.35);
+  font-weight: 700;
+}
+
+/* Sidebar Relic Loadout Styles */
+.relic-sidebar-cap-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #1C2738;
+}
+
+.relic-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.relic-sidebar-slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #101926;
+  border: 1px solid #25384F;
+  border-left: 3px solid #ABE3D9;
+  border-radius: 4px;
+  padding: 4px 8px;
+  gap: 8px;
+}
+
+.relic-sidebar-slot-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.relic-sidebar-slot-details {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.relic-sidebar-slot-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #FFF1CB;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.relic-sidebar-slot-perk {
+  font-size: 9px;
+  color: #91CBDE;
+  font-family: monospace;
+}
+
+.relic-sidebar-unequip-btn {
+  background: transparent;
+  border: 1px solid #3A4C62;
+  color: #8C9CAE;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.relic-sidebar-unequip-btn:hover {
+  background: #3B1C1C;
+  border-color: #E88B8B;
+  color: #FFA5A5;
+}
+
+.relic-sidebar-empty {
+  font-size: 9.5px;
+  color: #6C7D8F;
+  font-style: italic;
+  padding: 4px 2px;
+}
+
+/* Modal Relic Codex & Loadout Styles */
+.relic-chip-equipped {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #142738;
+  border: 1px solid #ABE3D9;
+  color: #EBF8F5;
+  font-size: 11px;
+  font-family: monospace;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(171, 227, 217, 0.2);
+  transition: all 0.15s ease;
+}
+
+.relic-chip-equipped:hover {
+  background: #1D3952;
+  border-color: #C6FFF4;
+}
+
+.relic-chip-close {
+  color: #8EADAA;
+  font-weight: bold;
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.relic-chip-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0B1018;
+  border: 1px dashed #28374D;
+  color: #617387;
+  font-size: 11px;
+  font-family: monospace;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.relic-codex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.relic-codex-card {
+  background: #0E1622;
+  border: 1px solid #223247;
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.relic-codex-card:hover {
+  border-color: #3B5475;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.relic-codex-card.equipped {
+  border-color: #ABE3D9;
+  background: linear-gradient(180deg, #132433 0%, #0D1722 100%);
+  box-shadow: 0 0 14px rgba(171, 227, 217, 0.22);
+}
+
+.relic-codex-card.locked {
+  opacity: 0.6;
+  border-style: dashed;
+  border-color: #1F2B3B;
+  background: #0A0F16;
+}
+
+.relic-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.relic-card-icon {
+  font-size: 24px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #162232;
+  border: 1px solid #2B3E57;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.relic-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #F0F4F8;
+  letter-spacing: 0.5px;
+}
+
+.relic-tag {
+  font-size: 8.5px;
+  font-family: monospace;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.tag-survival { background: #1C3326; color: #7FDDA4; border: 1px solid #2B573D; }
+.tag-sonar { background: #1B2E3D; color: #8FD5FF; border: 1px solid #294A63; }
+.tag-thermal { background: #382415; color: #FFAF6B; border: 1px solid #633C1E; }
+.tag-attunement { background: #2E1B3B; color: #DE8FFF; border: 1px solid #4D2866; }
+.tag-economy { background: #383015; color: #FFE66B; border: 1px solid #5E4E1C; }
+.tag-sanctuary { background: #153338; color: #6BFFF0; border: 1px solid #1C545E; }
+.tag-relic { background: #1E2838; color: #C0D0E0; border: 1px solid #2F3E57; }
+
+.relic-perk-box {
+  background: #080D15;
+  border: 1px solid #1B2737;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.relic-perk-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #DEB874;
+  font-family: monospace;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.relic-perk-desc {
+  font-size: 11px;
+  color: #A4B5C6;
+  line-height: 1.4;
+}
+
+.relic-action-btn {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: monospace;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.relic-action-btn.btn-equipped {
+  background: #18332E;
+  border: 1px solid #ABE3D9;
+  color: #ABE3D9;
+  box-shadow: 0 0 10px rgba(171, 227, 217, 0.25);
+}
+
+.relic-action-btn.btn-equipped:hover {
+  background: #3B1B1B;
+  border-color: #E88B8B;
+  color: #FFB5B5;
+  box-shadow: 0 0 10px rgba(232, 139, 139, 0.25);
+}
+
+.relic-action-btn.btn-equip {
+  background: #17273C;
+  border: 1px solid #91CBDE;
+  color: #F0F8FF;
+}
+
+.relic-action-btn.btn-equip:hover {
+  background: #91CBDE;
+  color: #04060A;
+  box-shadow: 0 0 14px rgba(145, 203, 222, 0.4);
+}
+
+.relic-action-btn.btn-locked {
+  background: #090E16;
+  border: 1px solid #1C2737;
+  color: #556677;
+  cursor: not-allowed;
+}
+
+.stars-display {
+  font-size: 32px;
+  letter-spacing: 8px;
+  color: #E8CD86;
+  margin: 12px 0;
+  text-shadow: 0 0 16px rgba(232, 205, 134, 0.6);
+}
+
+.artifact-callout {
+  background: #131A26;
+  border: 1px solid #35455E;
+  color: #ABE3D9;
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 5px;
+  margin-bottom: 14px;
+  font-family: monospace;
+}
+
+.primary-btn {
+  background: #18263C;
+  border: 1px solid #E8CD86;
+  color: #F0F2E8;
+  padding: 11px 24px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  background: #E8CD86;
+  color: #04060A;
+  box-shadow: 0 0 20px rgba(232, 205, 134, 0.45);
+}
+
+@media (max-width: 820px) {
+  #main-deck {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .modal-rules, .howto-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Community edition: preserve the board's aspect ratio and allow narrow screens
+   to scroll. The canvas bounding box must match its painted pixels for input. */
+html, body {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+  align-items: flex-start;
+}
+#vault-container {
+  width: min(100%, 1000px);
+  height: auto;
+  max-height: none;
+  min-height: 100vh;
+  border-radius: 0;
+}
+#main-deck { overflow: visible; align-items: start; }
+#board-column { min-width: 0; }
+#canvas-wrap { flex: none; }
+canvas#game-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 6 / 7;
+  max-height: none;
+  touch-action: none;
+  border: none;
+  border-radius: 0;
+}
+.overlay {
+  position: fixed;
+  overflow-y: auto;
+  align-items: safe center;
+}
+.modal-box { max-height: calc(100dvh - 36px); overflow-y: auto; }
+#intro-overlay .modal-box { margin: auto; }
+#intro-cutscene-canvas { max-width: min(420px, calc(54dvh * 6 / 7)) !important; }
+#footer { flex-wrap: wrap; gap: 12px; }
+#footer a { color: #94A6B1; }
+button:focus-visible, a:focus-visible, canvas:focus-visible {
+  outline: 2px solid #ABE3D9;
+  outline-offset: 3px;
+}
+button { min-height: 32px; }
+@media (max-width: 820px) {
+  #main-deck { grid-template-columns: minmax(0, 1fr); overflow: visible; }
+  #board-column, #guide-column { width: 100%; max-width: 480px; margin: 0 auto; }
+  #hud { padding: 10px; }
+  #main-deck { padding: 10px; }
+  .hud-actions { flex-wrap: wrap; }
+  .modal-box { padding: 16px; }
+  .overlay { padding: 10px; }
+  .relic-codex-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  #intro-overlay .modal-box > div:last-child { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+
+/* Review pass 2: preserve the original animated instrument panel. */
+.field-note { padding: 4px 10px; }
+.field-note p { color: #94A6B1; font-size: 12px; line-height: 1.6; margin-top: 6px; }
+#form-state { margin-top: 8px; min-height: 28px; font: 10px/1.5 monospace; color: #ABE3D9; }
+#specimen-count { display: block; margin-top: 5px; font-size: 9px; letter-spacing: 0; }
+#btn-open-relics { white-space: nowrap; }
+.empty-discovery { font-size: 12px; color: #94A6B1; line-height: 1.6; }
+.equipped-discovery { display: flex; align-items: center; gap: 10px; margin: 8px 0; color: #DEB874; font-size: 12px; }
+.relic-rune { display: inline-block; vertical-align: middle; width: 32px; height: 32px; flex: 0 0 32px; background: url("assets/relic-runes.svg") 0 0 / 192px 32px no-repeat; image-rendering: pixelated; }
+.rune-1 { background-position-x: -32px; }
+.rune-2 { background-position-x: -64px; }
+.rune-3 { background-position-x: -96px; }
+.rune-4 { background-position-x: -128px; }
+.rune-5 { background-position-x: -160px; }
+#field-guide summary { cursor: pointer; font: 11px/1.6 monospace; color: #ABE3D9; }
+#field-guide summary span { display: block; font-size: 10px; color: #94A6B1; margin-top: 3px; }
+#field-guide .deck-card { margin-top: 12px; border: 0; padding: 0; box-shadow: none; }
+.freq-text { white-space: normal; overflow: visible; line-height: 1.4; }
+.banner-right { flex-shrink: 0; }
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation: none !important; transition: none !important; }
+@media (max-width: 820px) {
+  .hud-stats { flex-wrap: wrap; gap: 12px; }
+  #mission-bar { flex-wrap: wrap; }
+  .warmth-meter-wrap { flex: 1; }
+  #chain-banner { flex-wrap: wrap; }
+  .field-note { order: 1; }
+  #field-guide { order: 2; }
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Resonance Vault — cinematic review</title>
+  <link rel="stylesheet" href="cinematics-review.css">
+</head>
+<body>
+  <main>
+    <header><p>RESONANCE VAULT / LOCAL REVIEW</p><h1>Landing &amp; departure</h1>
+      <p>This uses the game's actual renderer. Previewing does not change your progress.</p></header>
+    <div class="review">
+      <canvas id="scene" width="480" height="560" aria-label="Cinematic preview"></canvas>
+      <section aria-label="Preview controls">
+        <label for="sequence">Sequence</label>
+        <select id="sequence"><option value="landing">Landing</option><option value="ending">Victory &amp; departure</option></select>
+        <div class="buttons"><button id="play">Play</button><button id="restart">Restart</button></div>
+        <label for="time">Timeline <output id="time-label">0.00 s</output></label>
+        <input id="time" type="range" min="0" max="11" step="0.083333" value="0">
+        <label class="motion"><input id="low-motion" type="checkbox"> Low motion</label>
+        <div class="buttons">
+          <button data-kind="landing" data-time="10.5">Landed</button>
+          <button data-kind="ending" data-time="3.5">Boarding</button>
+          <button data-kind="ending" data-time="7.5">Liftoff</button>
+          <button data-kind="ending" data-time="13">High above the ice</button>
+          <button data-kind="ending" data-time="17">Victory card</button>
+        </div>
+        <p id="status" aria-live="polite">Loading sprites…</p>
+        <p>The capsule artwork is from The Seeker. The return flight is this community expedition's ending.</p>
+        <a href="../index.html">Return to the game</a>
+      </section>
+    </div>
+  </main>
+  <script src="../cinematics.js"></script>
+  <script src="cinematics-review.js"></script>
+</body>
+</html>

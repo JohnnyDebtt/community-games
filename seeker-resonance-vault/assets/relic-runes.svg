@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="16" viewBox="0 0 96 16" shape-rendering="crispEdges">
+  <!-- Original pixel-cluster field symbols. No fonts or external assets. -->
+  <g fill="#94A6B1">
+    <path d="M5 2h6v2H5zM3 4h2v7H3zM5 11h7v2H5zM11 4h2v7h-2zM6 5h4v2H6zM6 7h2v3H6zM8 8h3v2H8z"/>
+    <path d="M23 2h2v12h-2zM20 3h8v2h-8zM19 7h10v2H19zM20 11h8v2h-8z"/>
+    <path d="M37 2h6v2h-6zM35 4h2v8h-2zM43 4h2v8h-2zM37 12h6v2h-6z"/>
+    <path d="M50 7h2V5h3V4h3v1h3v2h2v3h-2v2h-3v1h-3v-1h-3v-2h-2z"/>
+    <path d="M67 2h2v6h2v6h2V8h2V2h2v7h-3v5h-4V9h-3z"/>
+    <path d="M82 3h12v7h-2v2h-2v2h-4v-2h-2v-2h-2z"/>
+  </g>
+  <g fill="#0F0E16">
+    <path d="M54 6h5v5h-5zM84 5h8v4h-2v2h-4V9h-2z"/>
+  </g>
+  <g fill="#B9A87B">
+    <path d="M39 5h2v2h2v3h-2v2h-2v-2h-2V7h2zM56 7h2v3h-2zM87 5h2v6h-2z"/>
+  </g>
+</svg>
