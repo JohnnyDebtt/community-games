@@ -8,7 +8,11 @@ export class Input {
     this.pressed = new Set();      // went down this frame
     this.look = { x: 0, y: 0 };    // accumulated mouse movement
     this.locked = false;
-    this.touch = { steer: 0, scan: false, move: { x: 0, y: 0 }, lookId: null, moveId: null, lx: 0, ly: 0, mx: 0, my: 0 };
+    this.touch = { steer: 0, steers: new Map(), scan: false, move: { x: 0, y: 0 }, lookId: null, moveId: null, lx: 0, ly: 0, mx: 0, my: 0, starts: new Map() };
+    this.stickR = 50;              // how far the walking thumb goes for full speed (CSS px)
+    // touch or keys: the hints and the buttons follow whichever was used last
+    this.touchMode = matchMedia('(pointer: coarse)').matches;
+    this.onMode = null;
     this.anyKey = false;
     this.onAny = null;
     this.uiCapture = false;        // a text field has focus: keys belong to it
@@ -19,6 +23,7 @@ export class Input {
 
     addEventListener('keydown', (e) => {
       if (this.uiCapture) return;
+      this._setTouch(false);
       const k = e.code;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(k)) e.preventDefault();
       if (!this.keys.has(k)) this.pressed.add(k);
@@ -45,36 +50,49 @@ export class Input {
         this._lastMouse = [e.clientX, e.clientY];
       }
     });
+    addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') this._setTouch(false);
+      else if (e.pointerType === 'touch') this._setTouch(true);
+    }, true);
+    // sound may only start from the end of a touch on phones, never its start
+    addEventListener('touchend', () => this._any(), { capture: true, passive: true });
     document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === canvas; });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // touch: on the canvas, the left and right edges steer; inside, the left half walks
-    // and the right half looks. Buttons in the HUD send their own intentions.
+    // touch: on the canvas, hold the left or right half to steer; inside, the left half
+    // walks (a thumb's drag from where it lands) and the right half looks. A short tap is
+    // a 'Tap'. Buttons in the HUD send their own intentions.
     const t = this.touch;
+    const last = () => { let s = 0; for (const v of t.steers.values()) s = v; return s; };
     canvas.addEventListener('touchstart', (e) => {
       this._any();
+      this._setTouch(true);
       for (const p of e.changedTouches) {
+        t.starts.set(p.identifier, { x: p.clientX, y: p.clientY, at: performance.now() });
         if (this.mode === 'walk') {
-          if (p.clientX < innerWidth / 2 && t.moveId === null) { t.moveId = p.identifier; t.mx = p.clientX; t.my = p.clientY; }
+          if (p.clientX < innerWidth / 2 && t.moveId === null) { t.moveId = p.identifier; t.mx = t.cx = p.clientX; t.my = t.cy = p.clientY; }
           else if (t.lookId === null) { t.lookId = p.identifier; t.lx = p.clientX; t.ly = p.clientY; }
         } else {
-          t.steerId = p.identifier;
-          t.steer = p.clientX < innerWidth / 2 ? -1 : 1;
+          t.steers.set(p.identifier, p.clientX < innerWidth / 2 ? -1 : 1);
+          t.steer = last();
         }
       }
       e.preventDefault();
     }, { passive: false });
     canvas.addEventListener('touchmove', (e) => {
+      this.lastInput = performance.now();
       for (const p of e.changedTouches) {
         if (p.identifier === t.moveId) {
-          t.move.x = Math.max(-1, Math.min(1, (p.clientX - t.mx) / 50));
-          t.move.y = Math.max(-1, Math.min(1, (p.clientY - t.my) / 50));
+          t.cx = p.clientX; t.cy = p.clientY;
+          t.move.x = Math.max(-1, Math.min(1, (p.clientX - t.mx) / this.stickR));
+          t.move.y = Math.max(-1, Math.min(1, (p.clientY - t.my) / this.stickR));
         } else if (p.identifier === t.lookId) {
           this.look.x += (p.clientX - t.lx) * 1.4;
           this.look.y += (p.clientY - t.ly) * 1.4;
           t.lx = p.clientX; t.ly = p.clientY;
-        } else if (p.identifier === t.steerId) {
-          t.steer = p.clientX < innerWidth / 2 ? -1 : 1;
+        } else if (t.steers.has(p.identifier)) {
+          t.steers.set(p.identifier, p.clientX < innerWidth / 2 ? -1 : 1);
+          t.steer = last();
         }
       }
       e.preventDefault();
@@ -83,11 +101,20 @@ export class Input {
       for (const p of e.changedTouches) {
         if (p.identifier === t.moveId) { t.moveId = null; t.move.x = 0; t.move.y = 0; }
         if (p.identifier === t.lookId) t.lookId = null;
-        if (p.identifier === t.steerId) { t.steerId = null; t.steer = 0; }
+        if (t.steers.delete(p.identifier)) t.steer = last();
+        const s = t.starts.get(p.identifier);
+        t.starts.delete(p.identifier);
+        if (e.type === 'touchend' && s && performance.now() - s.at < 350 && Math.hypot(p.clientX - s.x, p.clientY - s.y) < 16) this.pressed.add('Tap');
       }
     };
     canvas.addEventListener('touchend', end);
     canvas.addEventListener('touchcancel', end);
+  }
+
+  _setTouch(on) {
+    if (on === this.touchMode) return;
+    this.touchMode = on;
+    if (this.onMode) this.onMode(on);
   }
 
   _any() {
@@ -116,7 +143,7 @@ export class Input {
     if (!p) return;
     const prev = this._pad.prev;
     p.buttons.forEach((b, i) => {
-      if (b.pressed && !prev[i]) { this.pressed.add('Pad' + i); this._any(); }
+      if (b.pressed && !prev[i]) { this.pressed.add('Pad' + i); this._any(); this._setTouch(false); }
       prev[i] = b.pressed;
     });
     const dz = (v) => (Math.abs(v) < 0.18 ? 0 : v);
@@ -130,7 +157,7 @@ export class Input {
     if (this.down('KeyA', 'ArrowLeft')) s -= 1;
     if (this.down('KeyD', 'ArrowRight')) s += 1;
     if (this.padAxes) s += this.padAxes[0] || 0;
-    s += this.touch.steer;
+    if (this.touch.steers.size) { s += this.touch.steer; this.lastInput = performance.now(); }
     return Math.max(-1, Math.min(1, s));
   }
 

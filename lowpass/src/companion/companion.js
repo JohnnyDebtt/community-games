@@ -61,7 +61,7 @@ export class Companion {
     this.voice = new Voice(token, Art.info(token).traits);
     await this._build();
     if (!opts.quiet) {
-      g.hud.say(`SEEKER #${token} IS ABOARD`, 'It hovers by the Codex computer. Walk up and press E to listen.', 5);
+      g.hud.say(`SEEKER #${token} IS ABOARD`, `It hovers by the Codex computer. Walk up ${g.input.touchMode ? 'to it' : 'and press E'} to listen.`, 5);
       g.audio.play('send');
       this.greeted = false;
     } else this.greeted = true;
@@ -189,7 +189,7 @@ export class Companion {
       if (!this.greeted) {
         this.greeted = true;
         const st = this.look ? { activated: this.look.activated, stage: this.look.stage, charge: this.look.charge ?? 0 } : null;
-        this._speak([`SEEKER #${this.token} online. Hello, ship. Hello, you.`, 'I will be over here. Press E if you want to hear me think.', ...(st ? [stateLines(this.token, st, this._ctx())[0]] : [])]);
+        this._speak([`SEEKER #${this.token} online. Hello, ship. Hello, you.`, g.input.touchMode ? 'I will be over here. Tap LISTEN if you want to hear me think.' : 'I will be over here. Press E if you want to hear me think.', ...(st ? [stateLines(this.token, st, this._ctx())[0]] : [])]);
       } else if (time > this.remarkAt) {
         const st = this.look ? { activated: this.look.activated, stage: this.look.stage, charge: this.look.charge ?? 0 } : null;
         this._speak(this.voice.remark(st, this._ctx()));

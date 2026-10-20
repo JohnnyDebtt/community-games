@@ -67,6 +67,7 @@ export class Game {
       this.cams.setAspect(w / h);
       this.ui.u = this.px.uiUnit || 3;
       document.documentElement.style.setProperty('--u', `${this.ui.u}px`);
+      this.input.stickR = Math.round(this.ui.u * 30);
     };
     this.px.onResize = onResize;
     onResize(this.px.width, this.px.height);
@@ -79,6 +80,15 @@ export class Game {
     this.menu = new Menu(this);
     this.title = new Title(this);
     this.touch = new TouchControls(this);
+    // touch or keys: the hints and buttons follow whichever was used last
+    const touchMode = (on) => {
+      document.documentElement.classList.toggle('touchmode', on);
+      this.title.setTouch(on);
+      if (this.menu.open) this.menu.render();
+    };
+    this.input.onMode = touchMode;
+    touchMode(this.input.touchMode);
+    document.addEventListener('fullscreenchange', () => { if (this.menu.open) this.menu.render(); });
 
     // SEEKER NET: the clock, the moves, the art
     this.chain = new Chain();
@@ -225,6 +235,30 @@ export class Game {
     this.hud.say('WARM', 'Alertness restored', 3);
   }
 
+  // the whole screen, on phones and tablets: asked for on the first tap, and in the menu
+  get canFullscreen() {
+    const d = document.documentElement;
+    return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled) && !!(d.requestFullscreen || d.webkitRequestFullscreen);
+  }
+
+  get isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+
+  setFullscreen(on) {
+    const d = document.documentElement;
+    try {
+      let p = null;
+      if (on && !this.isFullscreen) p = d.requestFullscreen ? d.requestFullscreen({ navigationUI: 'hide' }) : d.webkitRequestFullscreen();
+      else if (!on && this.isFullscreen) p = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    } catch { /* not allowed here */ }
+  }
+
+  // a light tap of the phone's motor for the moments that matter (where phones have one)
+  buzz(pattern) {
+    if (!this.input.touchMode || !navigator.vibrate) return;
+    try { navigator.vibrate(pattern); } catch { /* not allowed */ }
+  }
+
   // ---------------------------------------------------------------- music to keep
   keepMusic() {
     const n = this.audio.keep();
@@ -279,6 +313,7 @@ export class Game {
     this.tips.learn('scan');
     this.hud.recorded(entry);
     this.audio.play('recorded');
+    this.buzz([14, 70, 22]);
     const { img, ...stored } = entry;
     await codexPut(stored);
     entry.img.onload = () => this.interior.drawScreen(this.codex, this.moves.status);
@@ -374,7 +409,7 @@ export class Game {
     const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
     const prevState = this.field.state;
     this.field.update(dt, canScan && input.scanHeld());
-    if (this.field.state === 'lock' && prevState !== 'lock') this.audio.play('lock');
+    if (this.field.state === 'lock' && prevState !== 'lock') { this.audio.play('lock'); this.buzz(10); }
     if (this.field.scan > 0 && input.scanHeld() && Math.floor(this.time * 6) !== this._scanTick) {
       this._scanTick = Math.floor(this.time * 6);
       this.audio.play('scan', { progress: this.field.scan });
@@ -400,7 +435,7 @@ export class Game {
       if (this.mode === 'fly') this.cams.auto = this.mode === 'fly' && performance.now() - input.lastInput > 60000 && !this.field.pending;
       this.cams.exterior(this.ship, dt);
     }
-    if (this.mode === 'coffee' && !overlay && this.coffee.t > 0.6 && input.hit('Escape', 'KeyE', 'Space', 'Enter', 'Pad0', 'Pad1')) this.coffee.skip();
+    if (this.mode === 'coffee' && !overlay && this.coffee.t > 0.6 && input.hit('Escape', 'KeyE', 'Space', 'Enter', 'Pad0', 'Pad1', 'Tap')) this.coffee.skip();
     this.cams.cam.updateMatrixWorld();
     this.companion.update(dt, this.time);
     const cw = this.cams.cam.position;
@@ -553,7 +588,8 @@ export class Game {
     const st = this.moves.status;
     h.setStatus(st === 'live' ? 'SEEKER NET LIVE' : st === 'offline' ? 'SEEKER NET OFFLINE · ARCHIVE' : st === 'retrying' ? 'SEEKER NET RETRYING' : 'SEEKER NET …', st === 'live' ? 'live' : st === 'offline' ? 'off' : '');
     let keys = [];
-    if (this.mode === 'fly') keys = [['A D', 'steer'], ['SPACE', 'scan'], ['V', 'go inside'], ['C', 'camera'], ['ESC', 'menu']];
+    if (this.input.touchMode) keys = [];     // the buttons on screen say it
+    else if (this.mode === 'fly') keys = [['A D', 'steer'], ['SPACE', 'scan'], ['V', 'go inside'], ['C', 'camera'], ['ESC', 'menu']];
     else if (this.mode === 'walk') keys = [['W A S D', 'walk'], ['E', 'use'], ['V', 'outside'], ['ESC', 'menu']];
     else if (this.mode === 'seat') keys = [['A D', 'steer'], ['SPACE', 'scan'], ['E', 'stand up'], ['V', 'outside']];
     h.setKeys(keys);
@@ -562,7 +598,9 @@ export class Game {
     this.tips.update(dt, overlay);
     h.keys.classList.toggle('dim', this.time - (this._keysShown || 0) > 20 && this.mode !== 'walk');
     h.cross.classList.toggle('on', this.mode === 'walk' && !overlay);
-    if (this.mode === 'walk' && this.companion.talking && !overlay) h.setPrompt('Next', 'E');
+    // (on a touch screen the button that appears says it)
+    if (this.input.touchMode) h.setPrompt(null);
+    else if (this.mode === 'walk' && this.companion.talking && !overlay) h.setPrompt('Next', 'E');
     else if (this.mode === 'walk' && this._spot && !overlay) h.setPrompt(this._spot.label, 'E');
     else h.setPrompt(null);
   }

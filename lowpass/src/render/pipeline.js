@@ -409,6 +409,7 @@ class Targets {
 }
 
 const TARGET_LINES = { fine: 360, standard: 288, chunky: 216 };
+const COARSE = matchMedia('(pointer: coarse)').matches;
 
 export class Pipeline {
   constructor(canvas) {
@@ -479,7 +480,12 @@ export class Pipeline {
     this.baseScale = Math.max(1, Math.min(12, scale));
     // the interface keeps one pixel size for the window: it never follows the render
     // pixel, which auto mode changes while the device works harder or less
-    const ui = Math.max(1, Math.min(12, Math.round(Math.min(devH / TARGET_LINES.fine, devW / (TARGET_LINES.fine * 0.62)))));
+    // On a touch screen it is sized for fingers and a screen held close, from the screen's
+    // short side: one size whichever way the phone is held, and while its keyboard is up.
+    const short = Math.min(screen.width, screen.height) || Math.min(vw, vh);
+    const ui = Math.max(1, Math.min(12, COARSE
+      ? Math.round(Math.min(2.6, Math.max(1.5, short / 250)) * dpr)
+      : Math.round(Math.min(devH / TARGET_LINES.fine, devW / (TARGET_LINES.fine * 0.62)))));
     const uiChanged = ui / dpr !== this.uiUnit;
     this.uiUnit = ui / dpr;
     if (this.pixelSize === 'auto') scale += this._bias;

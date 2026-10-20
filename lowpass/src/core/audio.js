@@ -65,7 +65,8 @@ export class Audio {
   // ---------------------------------------------------------------- setup
   unlock() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      // suspended until a gesture, or interrupted (a phone call, another app)
+      if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') { const r = this.ctx.resume(); if (r && r.catch) r.catch(() => {}); }
       return;
     }
     const AC = window.AudioContext || window.webkitAudioContext;

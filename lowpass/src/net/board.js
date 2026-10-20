@@ -37,6 +37,8 @@ const MAX_TEXT = 280;
 const MAX_NAME = 20;
 const HEAL_MAX = 16;          // notes passed on to relays that lost them, per session
 const MAX_PHOTO = 70000;
+const SEND_GAP = 20000;        // between one post and the next (ms)
+const NAME_GAP = 10000;        // between one name and the next
 const LINK_RE = /\b(?:https?|ftp|wss?|ipfs|nostr|lightning|magnet):\S+|\bwww\.\S+|\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|io|xyz|app|gg|me|co|dev|link|ly|to|sh|so|ai|fun|lol|club|site|online|top|info|biz|tv|us|uk|ru|cn|de|fr|eth|art|cc|ws|in|news|social|chat|zone|world|land|space|wtf)\b(?:\/\S*)?|\b(?:npub|nsec|nevent|note|nprofile|naddr|lnurl|lnbc)1[0-9a-z]{6,}/gi;
 
 export function hasLink(text) {
@@ -139,8 +141,7 @@ export class Board {
     if (!this.link) throw new Error('Link a wallet that holds a seeker first');
     const name = cleanName(raw);
     if (raw && String(raw).trim() && !name) throw new Error('Letters and numbers, up to 20; no links');
-    const wait = 10000 - (Date.now() - (this._namedAt || 0));
-    if (wait > 0) throw new Error(`Wait ${Math.ceil(wait / 1000)} s`);
+    if (this.nameWait > 0) throw new Error(`Wait ${Math.ceil(this.nameWait / 1000)} s`);
     const tags = [['t', BOARD_TAG], ['client', 'Low Pass'], ['lp', PROTO, 'name'], ['lp-proof', this.link.address, this.link.signature], ['lp-name', name]];
     const content = JSON.stringify(name ? { name, display_name: name, about: 'A seeker on the Low Pass Codex board.' } : { about: 'A seeker on the Low Pass Codex board.' });
     const ev = await signEvent({ kind: 0, tags, content }, this.key);
@@ -338,6 +339,10 @@ export class Board {
     this._changed();
   }
 
+  // how long until the next post, or the next name, may go (ms; 0: now)
+  get sendWait() { return Math.max(0, SEND_GAP - (Date.now() - this.lastSent)); }
+  get nameWait() { return Math.max(0, NAME_GAP - (Date.now() - (this._namedAt || 0))); }
+
   // Post words, or a scan with words. Throws a short reason when it cannot.
   async send(text, entry = null) {
     text = (text || '').replace(/\r/g, '').trim();
@@ -345,8 +350,7 @@ export class Board {
     if (!entry && !text) throw new Error('Nothing to send');
     if (text.length > MAX_TEXT) throw new Error(`At most ${MAX_TEXT} characters`);
     if (hasLink(text)) throw new Error('Text only: no links');
-    const wait = 20000 - (Date.now() - this.lastSent);
-    if (wait > 0) throw new Error(`Wait ${Math.ceil(wait / 1000)} s`);
+    if (this.sendWait > 0) throw new Error(`Wait ${Math.ceil(this.sendWait / 1000)} s`);
     const n = await this.holdingsOf(this.link.address, true);
     if (n < 1) throw new Error('This address holds no SEEKER NET seeker');
     const tags = [['t', BOARD_TAG], ['client', 'Low Pass'], ['lp', PROTO, entry ? 'scan' : 'msg'], ['lp-proof', this.link.address, this.link.signature]];

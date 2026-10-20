@@ -1,36 +1,93 @@
 import { el } from './dom.js';
 
-// On touch screens: hold the left or right of the view to steer (or, inside, drag the
-// left half to walk and the right half to look), and a few buttons for the rest.
+// On touch screens: hold the left or right of the view to steer (a mark at that edge
+// shows which way), and inside, drag from anywhere on the left half to walk (a ring
+// follows the thumb) and on the right half to look. Buttons appear only for what can be
+// done now, named for what they do: SCAN wakes when something is in the sights and fills
+// as it records; walking up to something shows what it is for (MAKE COFFEE, OPEN THE
+// CODEX). Whatever the teaching line is about glows until it has been done.
+
+const ACT = { coffee: 'MAKE COFFEE', codex: 'OPEN THE CODEX', seat: 'TAKE THE CONTROLS', companion: 'LISTEN' };
 
 export class TouchControls {
   constructor(game) {
     this.game = game;
-    this.on = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
     this.root = el('div', 'touch', game.uiRoot);
-    if (!this.on) return;
-    this.root.classList.add('on');
     const input = game.input;
     const btn = (label, cls, down, up) => {
-      const b = el('button', 'tb ' + cls, this.root, label);
-      b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); game.audio.unlock(); down(); b.classList.add('down'); }, { passive: false });
-      b.addEventListener('touchend', (e) => { e.preventDefault(); if (up) up(); b.classList.remove('down'); }, { passive: false });
-      b.addEventListener('touchcancel', () => { if (up) up(); b.classList.remove('down'); });
+      const b = el('button', 'tb ' + cls, this.root);
+      b.label = el('span', '', b, label);
+      b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); input._any(); down(); b.classList.add('down'); }, { passive: false });
+      const lift = (e) => { if (e.cancelable) e.preventDefault(); if (up) up(); b.classList.remove('down'); };
+      b.addEventListener('touchend', lift, { passive: false });
+      b.addEventListener('touchcancel', lift);
       return b;
     };
-    this.scan = btn('SCAN', 'scan', () => { input.touch.scan = true; }, () => { input.touch.scan = false; });
-    this.view = btn('CABIN', 'view', () => input.pressed.add('KeyV'));
-    this.use = btn('USE', 'use', () => input.pressed.add('KeyE'));
     this.pause = btn('II', 'pause', () => input.pressed.add('Escape'));
+    this.view = btn('CABIN', 'view', () => input.pressed.add('KeyV'));
+    this.cam = btn('CAMERA', 'cam', () => input.pressed.add('KeyC'));
+    this.stand = btn('STAND UP', 'stand', () => input.pressed.add('KeyE'));
+    this.scan = btn('SCAN', 'scan', () => { input.touch.scan = true; }, () => { input.touch.scan = false; });
+    this.scanFill = el('i', 'fill', this.scan);
+    this.act = btn('', 'act', () => input.pressed.add('KeyE'));
+    this.left = el('div', 'steer l', this.root);
+    this.right = el('div', 'steer r', this.root);
+    this.stick = el('div', 'stick', this.root);
+    this.knob = el('i', '', this.stick);
+    // what the seeker aboard says goes on with a tap on its words
+    game.hud.speech.addEventListener('touchstart', (e) => { e.preventDefault(); input._any(); input.pressed.add('KeyE'); }, { passive: false });
   }
 
   update() {
-    if (!this.on) return;
-    const m = this.game.mode;
-    const overlay = this.game.terminal.open || this.game.menu.open;
+    const g = this.game, input = g.input, t = input.touch, m = g.mode;
+    this.root.classList.toggle('on', input.touchMode);
+    if (!input.touchMode) return;
+    const overlay = g.terminal.open || g.menu.open;
     this.root.classList.toggle('hide', m === 'title' || m === 'coffee' || overlay);
-    this.scan.style.display = m === 'fly' || m === 'seat' ? '' : 'none';
-    this.use.style.display = m === 'walk' || m === 'seat' ? '' : 'none';
-    this.view.textContent = m === 'fly' ? 'CABIN' : 'OUTSIDE';
+    const flying = m === 'fly' || m === 'seat';
+    const show = (b, on) => b.classList.toggle('off', !on);
+    const text = (b, s) => { if (b.label.textContent !== s) b.label.textContent = s; };
+    show(this.scan, flying);
+    show(this.cam, m === 'fly');
+    show(this.stand, m === 'seat');
+    text(this.view, m === 'fly' ? 'CABIN' : 'OUTSIDE');
+    const act = m === 'walk' ? (g.companion.talking ? 'NEXT' : g._spot ? ACT[g._spot.id] || g._spot.label.toUpperCase() : '') : '';
+    show(this.act, !!act);
+    if (act) text(this.act, act);
+    // the scan button sleeps until something is in the sights, then fills as it records
+    const f = g.field;
+    this.scan.classList.toggle('ready', flying && f.state === 'lock');
+    this.scan.classList.toggle('far', flying && f.state !== 'lock' && f.state !== 'near');
+    this.scanFill.style.width = `${Math.round(f.scan * 100)}%`;
+    // what the teaching line is about
+    const tip = g.tips.shown;
+    const hint = tip ? tip.btn : null;
+    for (const [k, b] of [['view', this.view], ['cam', this.cam], ['stand', this.stand]]) b.classList.toggle('hint', hint === k);
+    // steering: a mark at the edge being held; both, softly, while steering is taught
+    const teachSteer = flying && tip && tip.id === 'steer';
+    this.left.classList.toggle('on', flying && t.steer < 0);
+    this.right.classList.toggle('on', flying && t.steer > 0);
+    this.left.classList.toggle('hint', teachSteer && t.steer >= 0);
+    this.right.classList.toggle('hint', teachSteer && t.steer <= 0);
+    // walking: the ring where the thumb landed; a resting one while walking is taught
+    const R = input.stickR;
+    if (m === 'walk' && t.moveId !== null && !overlay) {
+      this._place(t.mx, t.my, R, 'on');
+      const dx = t.move.x * R, dy = t.move.y * R;
+      this.knob.style.transform = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
+    } else if (m === 'walk' && tip && tip.id === 'walk' && !overlay) {
+      this._place(innerWidth * 0.2, innerHeight * 0.68, R, 'ghost');
+      this.knob.style.transform = '';
+    } else this._place(0, 0, R, '');
+  }
+
+  _place(x, y, R, state) {
+    const s = this.stick;
+    s.classList.toggle('on', state === 'on');
+    s.classList.toggle('ghost', state === 'ghost');
+    if (!state) return;
+    s.style.left = `${Math.round(x - R)}px`;
+    s.style.top = `${Math.round(y - R)}px`;
+    s.style.width = s.style.height = `${Math.round(R * 2)}px`;
   }
 }

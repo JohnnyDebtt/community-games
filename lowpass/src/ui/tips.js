@@ -6,14 +6,17 @@ import { load, save } from '../core/store.js';
 // browser); inside, small marks hang over the coffee machine and the Codex computer until
 // each has been used. The keys that work right now sit along the bottom for a while
 // after each change of place, and come back when a key that does nothing here is pressed.
+// On a touch screen the same lessons name the buttons on screen instead of keys (and say
+// which one, so it can glow), and there is no row of keys.
 
-const QUIET = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'ShiftLeft', 'ShiftRight', 'Mouse0', 'Mouse1', 'Mouse2']);
+const QUIET = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'ShiftLeft', 'ShiftRight', 'Mouse0', 'Mouse1', 'Mouse2', 'Tap']);
 
 export class Tips {
   constructor(game) {
     this.g = game;
     this.learned = load('learned', {});
     this.cur = null;
+    this.shown = null;    // the tip on screen now
     this.on = 0;          // seconds the current tip has been up
     this.rest = {};       // tip id → seconds before it may come back
     this.inMode = 0;
@@ -31,29 +34,33 @@ export class Tips {
     save('learned', this.learned);
   }
 
-  // what to say now: { id, caps: [[key, ...], ...], text, on (secs up), off (secs away) }
+  // what to say now: { id, caps: [[key, ...], ...], text, on (secs up), off (secs away),
+  // btn (on touch: the button it is about) }
   pick() {
-    const g = this.g, L = this.learned, t = this.inMode;
+    const g = this.g, L = this.learned, t = this.inMode, touch = g.input.touchMode;
     if (g.mode === 'fly' || g.mode === 'seat') {
       const f = g.field;
       if (f.state === 'near' || f.state === 'lock') return null;   // the brackets say it
-      if (!L.steer) return t > 1.5 ? { id: 'steer', caps: [['A', 'D'], ['←', '→']], text: 'steer' } : null;
+      if (!L.steer) return t > 1.5 ? (touch ? { id: 'steer', caps: [], text: 'hold the left or right side of the screen to steer' } : { id: 'steer', caps: [['A', 'D'], ['←', '→']], text: 'steer' }) : null;
       if (g.alertness < 0.3) {
+        if (touch) return g.mode === 'fly' ? { id: 'tired', caps: [['CABIN']], text: 'tired: go inside and make coffee', on: 9, off: 35, btn: 'view' } : { id: 'tired', caps: [['STAND UP']], text: 'tired: go and make coffee', on: 9, off: 35, btn: 'stand' };
         return g.mode === 'fly'
           ? { id: 'tired', caps: [['V']], text: 'tired: go inside and make coffee', on: 9, off: 35 }
           : { id: 'tired', caps: [['E']], text: 'tired: stand up and make coffee', on: 9, off: 35 };
       }
       if (f.state === 'far' && !L.scan) return { id: 'signal', caps: [], text: 'a signal: steer toward the mark along the top', on: 8, off: 30 };
-      if (g.mode === 'fly' && !L.cabin && t > 16) return { id: 'cabin', caps: [['V']], text: 'step inside the ship', on: 10, off: 45 };
-      if (g.mode === 'fly' && L.cabin && !L.camera && t > 45) return { id: 'camera', caps: [['C']], text: 'change the camera', on: 7, off: 150 };
-      if (g.mode === 'seat' && !L.stand && t > 5) return { id: 'stand', caps: [['E']], text: 'stand up', on: 8, off: 60 };
+      if (g.mode === 'fly' && !L.cabin && t > 16) return { id: 'cabin', caps: [[touch ? 'CABIN' : 'V']], text: 'step inside the ship', on: 10, off: 45, btn: 'view' };
+      if (g.mode === 'fly' && L.cabin && !L.camera && t > 45) return { id: 'camera', caps: [[touch ? 'CAMERA' : 'C']], text: 'change the camera', on: 7, off: 150, btn: 'cam' };
+      if (g.mode === 'seat' && !L.stand && t > 5) return touch ? { id: 'stand', caps: [['STAND UP']], text: 'walk around the cabin', on: 8, off: 60, btn: 'stand' } : { id: 'stand', caps: [['E']], text: 'stand up', on: 8, off: 60 };
     } else if (g.mode === 'walk') {
-      if (g._spot || g.companion.talking) return null;   // the prompt (or the seeker) says it
-      if (!L.walk) return t > 0.8 ? { id: 'walk', caps: [['W', 'A', 'S', 'D']], text: 'walk · drag the mouse to look' } : null;
-      if (!L.coffee || g.alertness < 0.3) return { id: 'coffee', caps: [], text: 'walk to the coffee machine, then press E', on: 10, off: 20 };
-      if (g.companion.deployed && !L.companion && !g.companion.talking) return { id: 'companion', caps: [], text: `SEEKER #${g.companion.token} is aboard: walk up to it and press E to listen`, on: 10, off: 30 };
-      if (!L.codex) return { id: 'codex', caps: [], text: 'the Codex computer keeps your scans: walk to it, then press E', on: 10, off: 20 };
-      if (!L.outside && t > 25) return { id: 'outside', caps: [['V']], text: 'back outside', on: 8, off: 60 };
+      // the prompt (or the seeker) says it; the controls, right in front as you come in,
+      // do not stop the lessons
+      if (g.companion.talking || (g._spot && g._spot.id !== 'seat')) return null;
+      if (!L.walk) return t > 0.8 ? (touch ? { id: 'walk', caps: [], text: 'drag on the left to walk, on the right to look around' } : { id: 'walk', caps: [['W', 'A', 'S', 'D']], text: 'walk · drag the mouse to look' }) : null;
+      if (!L.coffee || g.alertness < 0.3) return { id: 'coffee', caps: [], text: touch ? 'walk up to the coffee machine' : 'walk to the coffee machine, then press E', on: 10, off: 20 };
+      if (g.companion.deployed && !L.companion && !g.companion.talking) return { id: 'companion', caps: [], text: `SEEKER #${g.companion.token} is aboard: walk up to it ${touch ? 'to listen' : 'and press E to listen'}`, on: 10, off: 30 };
+      if (!L.codex) return { id: 'codex', caps: [], text: touch ? 'the Codex computer keeps your scans: walk up to it' : 'the Codex computer keeps your scans: walk to it, then press E', on: 10, off: 20 };
+      if (!L.outside && t > 25) return { id: 'outside', caps: [[touch ? 'OUTSIDE' : 'V']], text: 'back outside', on: 8, off: 60, btn: 'view' };
     }
     return null;
   }
@@ -82,6 +89,7 @@ export class Tips {
       this.on += dt;
       if (tip.on && this.on > tip.on) { this.rest[tip.id] = tip.off; tip = null; this.cur = null; }
     } else this.cur = null;
+    this.shown = tip;
     g.hud.setTip(tip ? tip.caps : null, tip ? tip.text : '');
     g.hud.setMarks(overlay || g.mode !== 'walk' ? [] : this.marks());
   }

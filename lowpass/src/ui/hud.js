@@ -180,7 +180,9 @@ export class Hud {
         this.bracket.style.width = `${s * 2}px`;
         this.bracket.style.height = `${s * 2}px`;
         this.bracket.classList.toggle('lock', f.state === 'lock');
-        this.brLabel.textContent = (sp ? 'WITNESSED · ' : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
+        // low in the view (a short screen held sideways), the words go above it
+        this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
+        this.brLabel.textContent = (sp ? 'WITNESSED · ' : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;
       }
     }

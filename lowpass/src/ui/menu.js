@@ -3,7 +3,7 @@ import { clamp } from '../core/math.js';
 
 // The title over the flying forest, and the pause menu: rows one width, the chosen one
 // lit and marked with a diamond, a choice among values as one row ( < value > ), as in
-// The Seeker's menus. Everything by keyboard or pointer.
+// The Seeker's menus. Everything by keyboard, pointer or touch.
 
 export class Title {
   constructor(game) {
@@ -12,10 +12,15 @@ export class Title {
     el('div', 'tname', this.root, 'LOW PASS');
     el('div', 'tsub', this.root, 'a slow survey flight over the fog belt');
     this.press = el('div', 'tpress', this.root, 'CLICK OR PRESS ANY KEY');
+    // held upright, a phone sees a narrow slice of the forest
+    el('div', 'trot muted', this.root, 'turn your phone sideways for the widest view');
     el('div', 'tcred muted', this.root, 'Set in the universe of The Seeker · when a SEEKER NET seeker moves on chain, every ship flying sees the same light');
     this.root.addEventListener('mousedown', () => game.start());
     this.root.addEventListener('touchstart', () => game.start(), { passive: true });
+    // the whole screen, asked for as the first tap lifts (a phone allows it only then)
+    this.root.addEventListener('touchend', () => { if (game.canFullscreen) game.setFullscreen(true); }, { passive: true });
   }
+  setTouch(on) { this.press.textContent = on ? 'TAP TO BEGIN' : 'CLICK OR PRESS ANY KEY'; }
   hide() { this.root.classList.remove('on'); }
 }
 
@@ -62,6 +67,7 @@ export class Menu {
         { label: 'PIXELS', value: s.pixel.toUpperCase(), change: (d) => { s.pixel = PIXELS[(PIXELS.indexOf(s.pixel) + d + PIXELS.length) % PIXELS.length]; g.applySettings(); } },
         { label: 'LIGHT SHAFTS', value: s.shafts ? 'ON' : 'OFF', change: () => { s.shafts = !s.shafts; g.applySettings(); } },
         { label: 'INTERFACE', value: s.hud ? 'ON' : 'OFF', change: () => { s.hud = !s.hud; g.applySettings(); } },
+        ...(g.input.touchMode && g.canFullscreen ? [{ label: 'FULL SCREEN', value: g.isFullscreen ? 'ON' : 'OFF', change: () => g.setFullscreen(!g.isFullscreen) }] : []),
         { label: 'CONTROLS', act: () => { this.page = 'controls'; this.sel = 0; this.render(); } },
         { label: 'ABOUT', act: () => { this.page = 'about'; this.sel = 0; this.render(); } },
       ];
@@ -73,7 +79,16 @@ export class Menu {
     const p = this.panel;
     clear(p);
     el('div', 'mhead', p, this.page === 'main' ? 'PAUSED' : this.page.toUpperCase());
-    if (this.page === 'controls') {
+    if (this.page === 'controls' && this.game.input.touchMode) {
+      const t = el('div', 'mtext', p);
+      for (const [k, v] of [
+        ['HOLD LEFT OR RIGHT', 'steer: hold either side of the screen'], ['SCAN (hold)', 'record what is in your sights'],
+        ['CABIN, OUTSIDE', 'go inside the ship, or back out'], ['CAMERA', 'chase, far, low, cinematic'],
+        ['DRAG LEFT, RIGHT', 'inside: walk with the left thumb, look with the right'],
+        ['MAKE COFFEE, OPEN THE CODEX', 'buttons like these appear when you are close enough to use something'],
+        ['TAP', 'skip the coffee scene to the window; tap a seeker’s words to hear the next'], ['II', 'pause, and this menu'],
+      ]) { const r = el('div', 'krow', t); el('span', 'kk', r, k); el('span', 'muted', r, v); }
+    } else if (this.page === 'controls') {
       const t = el('div', 'mtext', p);
       for (const [k, v] of [
         ['A D  ← →', 'steer (outside, and at the controls)'], ['SPACE (hold)', 'scan what is in your sights'], ['V', 'go inside the ship, or back outside'],

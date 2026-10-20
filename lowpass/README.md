@@ -48,8 +48,18 @@ Safari). Keyboard and mouse, gamepad, or touch.
 | H | hide the interface |
 | ESC | pause: volumes, pixel size, light shafts, controls, credits |
 
-Gamepad: left stick steers and walks, A scans and uses, Y goes in and out. Touch: hold
-the left or right of the screen to steer; buttons for the rest.
+Gamepad: left stick steers and walks, A scans and uses, Y goes in and out.
+
+On a phone or tablet: hold the left or right side of the screen to steer (a mark at that
+edge shows which way), and hold SCAN while something is in your sights; it lights up when
+there is, and fills as it records. Inside, drag on the left to walk (a ring follows your
+thumb) and on the right to look. Buttons appear only for what you can do right then, named
+for what they do: CABIN or OUTSIDE, CAMERA, STAND UP, and, when you walk up to something,
+MAKE COFFEE, OPEN THE CODEX, TAKE THE CONTROLS or LISTEN. A tap skips the coffee scene,
+and a tap on a seeker's words brings its next line. There are no key hints on a touch
+screen; the hints follow whichever you used last, touch or keys. The first tap asks for
+the full screen where the browser allows it (the pause menu turns it off), and the
+interface is sized for fingers, the same whichever way the phone is held.
 
 The game teaches itself, one thing at a time: a line above the keys says what to press
 next until it has been done once (remembered in the browser), and inside, marks hang over

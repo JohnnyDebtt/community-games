@@ -137,7 +137,7 @@ export class Terminal {
     if (!list.length) {
       const e = el('div', 'empty', this.body);
       el('div', 'big', e, 'NOTHING RECORDED YET');
-      el('div', 'muted', e, 'Lights in the fog are artifacts. Most grow for you alone: nobody else will ever find the same one. But when a SEEKER NET seeker moves on chain while you fly, the next one is witnessed: the same for every ship flying then. Steer toward a light, and hold SPACE while it is in your sights.');
+      el('div', 'muted', e, `Lights in the fog are artifacts. Most grow for you alone: nobody else will ever find the same one. But when a SEEKER NET seeker moves on chain while you fly, the next one is witnessed: the same for every ship flying then. Steer toward a light, and hold ${g.input.touchMode ? 'SCAN' : 'SPACE'} while it is in your sights.`);
       if (g.moves.waiting) el('div', 'muted', e, `${g.moves.waiting} witnessed move${g.moves.waiting === 1 ? '' : 's'} waiting in the fog.`);
       return;
     }
@@ -203,10 +203,11 @@ export class Terminal {
         } catch (err) {
           msg.textContent = err.message;
           msg.className = 'msg neg';
-          b.disabled = false;
+          this._countdown(b, 'SHARE TO BOARD', 'SHARE IN', () => this.board.sendWait);
           this.game.audio.play('error');
         }
       };
+      this._countdown(b, 'SHARE TO BOARD', 'SHARE IN', () => this.board.sendWait);
     } else {
       const b = el('button', 'btn ghost', share, 'LINK A WALLET TO SHARE');
       b.onclick = () => this.setTab('seekers');
@@ -228,6 +229,25 @@ export class Terminal {
       input.classList.toggle('bad', hasLink(input.value));
     });
     return input;
+  }
+
+  // A button that cannot be pressed again yet says when it can, counting down each
+  // second, and keeps one width while it does.
+  _countdown(btn, label, waiting, left) {
+    if (!btn.isConnected) return;
+    if (!btn.style.minWidth) {
+      btn.textContent = `${waiting} 20`;
+      btn.style.minWidth = `${btn.offsetWidth}px`;
+    }
+    clearTimeout(btn._tick);
+    const tick = () => {
+      if (!btn.isConnected) return;
+      const ms = left();
+      btn.disabled = ms > 0;
+      btn.textContent = ms > 0 ? `${waiting} ${Math.ceil(ms / 1000)}` : label;
+      if (ms > 0) btn._tick = setTimeout(tick, (ms % 1000) + 20);
+    };
+    tick();
   }
 
   // ---------------------------------------------------------------- BOARD
@@ -282,8 +302,9 @@ export class Terminal {
           nameMsg.textContent = err.message;
           this.game.audio.play('error');
         }
-        nameBtn.disabled = false;
+        this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
       };
+      this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
       const input = this._textField(comp, 'Words for the board: text only, no links (280)', 280);
       const send = el('button', 'btn', comp, 'SEND');
       const msg = el('div', 'msg', comp);
@@ -303,8 +324,9 @@ export class Terminal {
           msg.className = 'msg neg';
           this.game.audio.play('error');
         }
-        send.disabled = false;
+        this._countdown(send, 'SEND', 'SEND IN', () => b.sendWait);
       };
+      this._countdown(send, 'SEND', 'SEND IN', () => b.sendWait);
     } else {
       el('div', 'muted', comp, 'Read only. To post, link a wallet that holds a SEEKER NET seeker.');
       const l = el('button', 'btn ghost', comp, 'LINK WALLET');
@@ -324,7 +346,8 @@ export class Terminal {
     clear(list);
     const posts = b.posts.filter((p) => this.boardFilter === 'all' || p.type === this.boardFilter);
     if (!posts.length) {
-      el('div', 'muted empty', list, b.loaded ? 'Nothing here yet. The first scan shared will be the first thing here.' : 'Listening to the relays…');
+      if (b.loaded) el('div', 'muted empty', list, 'Nothing here yet. The first scan shared will be the first thing here.');
+      else loader(list, 'Listening to the relays');
       return;
     }
     // the newest 120, in the order they were written
@@ -389,7 +412,17 @@ export class Terminal {
       msg.className = 'msg muted';
       msg.textContent = 'Looking for wallets…';
       const ws = await discover();
-      if (!ws.length) { msg.className = 'msg neg'; msg.textContent = 'No browser wallet found. MetaMask, Rabby and other EIP-6963 wallets work.'; return; }
+      if (!ws.length) {
+        if (!this.game.input.touchMode) { msg.className = 'msg neg'; msg.textContent = 'No browser wallet found. MetaMask, Rabby and other EIP-6963 wallets work.'; return; }
+        // a phone's browser has no wallet in it: the wallet app has a browser of its own
+        msg.className = 'msg muted';
+        msg.textContent = 'No wallet in this browser. On a phone, open Low Pass in your wallet app’s own browser. ';
+        const a = el('a', '', msg, 'OPEN IN METAMASK');
+        a.href = `https://metamask.app.link/dapp/${location.host}${location.pathname}`;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        return;
+      }
       const go = async (w) => {
         try { await fn(w, msg); } catch (err) {
           msg.className = 'msg neg';
@@ -536,7 +569,13 @@ export class Terminal {
       clear(this._seekDetail);
       return;
     }
-    if (S.loading) { el('div', 'muted empty', grid, `Reading ${short(S.address)} from Robinhood Chain…`); return; }
+    if (S.loading) {
+      loader(grid, `Reading ${short(S.address)} from Robinhood Chain`);
+      // where the seekers will be, breathing in turn until they come
+      for (let i = 0; i < this._cols * 2; i++) el('div', 'well ghost', grid).style.animationDelay = `${i * 0.12}s`;
+      clear(this._seekDetail);
+      return;
+    }
     if (S.err) { el('div', 'neg empty', grid, S.err); return; }
     if (!S.ids) return;
     if (!S.ids.length) { el('div', 'muted empty', grid, `${short(S.address)} holds no SEEKER NET seekers.`); clear(this._seekDetail); return; }
@@ -655,6 +694,15 @@ export class Terminal {
       if (st.status === 1) row('RECORDING', 'anyone can record it on chain; its charge above 9,000 counts from then', 'muted');
     }
   }
+}
+
+// Waiting: three marks lit in turn beside the words.
+function loader(parent, words) {
+  const w = el('div', 'loader', parent);
+  const m = el('span', 'lmarks', w);
+  for (let i = 0; i < 3; i++) el('i', '', m);
+  el('span', 'muted', w, words);
+  return w;
 }
 
 function lookOf(st) {
