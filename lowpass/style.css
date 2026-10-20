@@ -149,7 +149,7 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 #ui .field.bad { border-color: var(--neg); }
 #ui .field.one { width: auto; flex: 1; }
 #ui .msg { min-height: calc(var(--u) * 12); }
-#ui a.tx { color: var(--glow); text-decoration: none; border-bottom: var(--u) solid rgba(145, 203, 222, 0.35); pointer-events: auto; }
+#ui a.tx, #ui .wnote a { color: var(--glow); text-decoration: none; border-bottom: var(--u) solid rgba(145, 203, 222, 0.35); pointer-events: auto; }
 
 /* ---------------------------------------------------------------- the Codex computer */
 .term { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 10, 0.45); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
@@ -171,6 +171,7 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .term .grid { overflow-y: auto; display: grid; grid-auto-rows: max-content; gap: calc(var(--u) * 3); align-content: start; padding: var(--u); }
 .term .grid.photos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .term .grid.seekers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.term .grid > .empty { grid-column: 1 / -1; }
 .term .well { position: relative; background: var(--well); border: var(--u) solid var(--line); clip-path: var(--cut1); overflow: hidden; display: block; width: 100%; }
 .term .grid.photos .well { aspect-ratio: 16 / 9; }
 .term .grid.seekers .well { aspect-ratio: 1; }
@@ -201,6 +202,7 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .term .wallet { display: flex; flex-direction: column; gap: calc(var(--u) * 2); padding-bottom: calc(var(--u) * 3); border-bottom: var(--u) solid var(--line); margin-bottom: calc(var(--u) * 3); }
 .term .wallet .wrow { display: flex; gap: calc(var(--u) * 3); align-items: center; flex-wrap: wrap; }
 .term .wallet .net { padding-top: var(--u); }
+.term .wallet .wnote { opacity: 0.75; }
 .term .shead { display: grid; grid-template-columns: auto 1fr; gap: calc(var(--u) * 5); align-items: start; }
 .term .portrait { width: calc(var(--u) * 54); height: calc(var(--u) * 54); image-rendering: pixelated; background: var(--empty); }
 .term .charge { color: var(--text); margin-top: calc(var(--u) * 2); }

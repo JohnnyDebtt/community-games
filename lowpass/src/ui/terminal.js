@@ -434,6 +434,15 @@ export class Terminal {
       const row = el('div', 'wrow', top);
       const c = el('button', 'btn', row, 'CONNECT');
       const l = el('button', 'btn ghost', row, 'CONNECT AND SIGN');
+      // MetaMask's site scanner flags every *.github.io host, so say so before it does
+      if (/\.github\.io$/.test(location.hostname) || this.game.dev) {
+        const note = el('div', 'muted wnote', top, 'MetaMask may warn you here. It does that for every github.io site, not this game in particular. You can check the ');
+        const src = el('a', '', note, 'source code');
+        src.href = 'https://github.com/TheSeekerGame/community-games/tree/main/lowpass';
+        src.target = '_blank';
+        src.rel = 'noopener noreferrer';
+        note.append(' yourself.');
+      }
       const msg = msgRow();
       c.onclick = () => withWallet(row, msg, async (w) => {
         msg.className = 'msg muted';
