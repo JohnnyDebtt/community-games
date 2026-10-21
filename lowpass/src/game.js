@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Pipeline, FOG, POST } from './render/pipeline.js';
 import { U } from './render/materials.js';
 import { World } from './world/chunks.js';
-import { autumn } from './world/terrain.js';
+import { autumn, mountain, mountainEnv } from './world/terrain.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { Ship } from './ship/ship.js';
 import { Interior } from './ship/interior.js';
@@ -160,6 +160,8 @@ export class Game {
     this.boot.step(0.2, 'growing the forest');
     await new Promise((r) => setTimeout(r, 30));     // let the screen show first
     while (this.world.update(this.ship.x, this.ship.z, 0, 1, 64) > 0);
+    // from here on, what is made as the ship flies comes into view in the dither
+    this.world.instant = false;
     if (q.has('t')) this._devTime = Number(q.get('t'));
     if (this.dev) this._devHooks();
     // wait (a few seconds at most) for the chain's block, so the sky opens at the hour
@@ -326,7 +328,8 @@ export class Game {
       // something from below the surface: its own call, and always a word
       const d = a.d, st = stratum(d.depth);
       const title = `DEPTH ${st.numeral} · ${d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
-      const sub = d.glimpse ? `Deeper than your scanner reaches: ${d.cls.toLowerCase()}, rising out of the fog` : `From ${st.title}: ${d.cls.toLowerCase()}, rising out of the fog`;
+      const where = d.mountain ? 'on the mountain ahead' : 'rising out of the fog';
+      const sub = d.glimpse ? `Deeper than your scanner reaches: ${d.cls.toLowerCase()}, ${where}` : `From ${st.title}: ${d.cls.toLowerCase()}, ${where}`;
       this.audio.play('deep', { depth: d.depth, chord: d.params.voice.chord, glimpse: d.glimpse, pan: clamp(-(a.bearing || 0), -1, 1) });
       if (this._aboard()) {
         this.audio.play('chime');
@@ -340,8 +343,12 @@ export class Game {
       // that goes by itself
       if (this._aboard()) {
         this.audio.play('chime');
-        if (this.mode === 'seat' && !this.menu.open) this.hud.say('WILD ARTIFACT AHEAD', 'Rising out of the fog ahead of the ship', 4);
-        else this.hud.toast('WILD ARTIFACT NEARBY', 'Rising out of the fog ahead of the ship. Only this ship will ever find it.');
+        const where = a.d.mountain ? 'On the mountain ahead of the ship' : 'Rising out of the fog ahead of the ship';
+        if (this.mode === 'seat' && !this.menu.open) this.hud.say('WILD ARTIFACT AHEAD', where, 4);
+        else this.hud.toast('WILD ARTIFACT NEARBY', `${where}. Only this ship will ever find it.`);
+      } else if (a.d.mountain) {
+        // the mountains' own are always named
+        this.hud.say('SIGNAL ON THE MOUNTAIN', `${a.d.cls} · only this ship can find it`, 4.5);
       } else {
         // said the first times only; after that the low swell is enough
         this._wilds = (this._wilds || 0) + 1;
@@ -364,6 +371,13 @@ export class Game {
       FOG.uMist.value = near ? 1 : 0;
     }
     this.atmo.autumn = this._autumn;
+    // and into the mountains, the same
+    const mt = mountain(ex, ez);
+    if (mt < 0.1) this._mountainSaid = false;
+    else if (mt > 0.5 && !this._mountainSaid && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
+      this._mountainSaid = true;
+      this.hud.say('MOUNTAINS', 'peaks rising out of the fog', 4);
+    }
     if (this._autumn < 0.1) this._autumnSaid = false;
     else if (this._autumn > 0.5 && !this._autumnSaid && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
       this._autumnSaid = true;
@@ -390,6 +404,7 @@ export class Game {
       block: d.block, time: a.move.time || null, scannedAt: Date.now(), clock: this.atmo.clockString(), photo,
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
       ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
+      ...(d.mountain ? { mountain: true } : {}),
     };
     if (d.depth) this.progress.met(d.depth);
     entry.img = new Image();
@@ -516,7 +531,10 @@ export class Game {
       this._spawning = true;
       // a wild one comes from as deep as the scanner's reach decides (progress.js)
       const depth = rollDepth(this.progress.depth);
-      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth })).finally(() => { this._spawning = false; });
+      // where it would rise is on a mountain: it is one of the mountains' own
+      const [fx0, fz0] = this.ship.forward(), sd = this.field.spawnDistance();
+      const onMountain = mountainEnv(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain })).finally(() => { this._spawning = false; });
       const [g0, g1] = this.progress.gap;
       this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
     }
@@ -700,10 +718,10 @@ export class Game {
   }
 
   _inspectCam() {
-    const { a, dist, height } = this._inspect;
+    const { a, dist, height, ang: fixed } = this._inspect;
     const c = new THREE.Vector3().copy(a.model.focus).applyMatrix4(a.model.group.matrixWorld);
     const r = dist || a.model.span * 2.6 + 12;
-    const ang = this.time * 0.12;
+    const ang = fixed ?? this.time * 0.12;
     this.cams.cam.position.set(c.x + Math.sin(ang) * r, c.y + (height ?? r * 0.6), c.z + Math.cos(ang) * r);
     this.cams.cam.up.set(0, 1, 0);
     this.cams.cam.lookAt(c);
@@ -795,11 +813,12 @@ export class Game {
         return tx;
       },
       clear: () => { for (const a of [...this.field.active]) this.field.remove(a); },
-      inspect: (a, dist = null, height = null) => { this._inspect = a ? { a, dist, height } : null; },
-      // a deep one: of a depth, and a form if asked (orbited, like look)
-      deep: async (depth = 1, form = null, ahead = 700) => {
+      inspect: (a, dist = null, height = null, ang = null) => { this._inspect = a ? { a, dist, height, ang } : null; },
+      // a deep one: of a depth, and a form if asked (orbited, like look); mountain: one of
+      // the mountains' own (a surface one too, depth 0, family named as form)
+      deep: async (depth = 1, form = null, ahead = 700, mountain = false) => {
         for (const a of [...this.field.active]) this.field.remove(a);
-        const a = await this.field.spawnWild({ depth, form, ahead, lateral: 0 });
+        const a = depth > 0 ? await this.field.spawnWild({ depth, form, ahead, lateral: 0, mountain }) : await this.field.spawnWild({ ahead, lateral: 0, mountain: true, family: form || undefined });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, form: a.d.form, notes: a.d.notes, params: a.d.params };
       },

@@ -1057,7 +1057,289 @@ function watcher(k, P, S, art, mini) {
   return { light: new THREE.Vector3(0, H, Re), focus: new THREE.Vector3(0, H, 0), span: P.eyes && !mini ? Re * 2.6 : Re * 1.5, height: H + Re * (P.eyes && !mini ? 2.2 : 1.1), solid: P.eyes && !mini ? Re * 2.4 : Re * 1.2 };
 }
 
-const FORMS = { corolla, spine, nest, armillary, choir, geode, bloom, knot, nautilus, archipelago, murmuration, medusa, sun, watcher };
+// ------------------------------------------------------------------ the mountains' forms
+// Found only where a deep one rises on a range: set on the summit, reaching down into the
+// stone, or hanging over it.
+
+// a tube whose spine moves: its rings rewritten every frame (the serpent's body)
+function liveTube(k, art, N, seg, colorOf) {
+  const nv = (N - 1) * seg * 6;
+  const pos = new Float32Array(nv * 3), col = new Float32Array(nv * 3), em = new Float32Array(nv);
+  const cc = new THREE.Color();
+  let o = 0;
+  for (let i = 0; i < N - 1; i++) { cc.setHex(colorOf(i / (N - 1))); for (let q = 0; q < seg * 6; q++) col.set([cc.r, cc.g, cc.b], 3 * o++); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('emissive', new THREE.BufferAttribute(em, 1));
+  const mesh = new THREE.Mesh(g, art.mats.shell);
+  mesh.frustumCulled = false;
+  k.group.add(mesh);
+  const C = Array.from({ length: N }, () => new THREE.Vector3()), Rad = new Float32Array(N), ring = new Float32Array(N * seg * 3);
+  const up = new THREE.Vector3(0, 1, 0), tng = new THREE.Vector3(), side = new THREE.Vector3(), nrm = new THREE.Vector3();
+  return {
+    set(i, p, r) { C[i].copy(p); Rad[i] = r; },
+    commit() {
+      for (let i = 0; i < N; i++) {
+        tng.subVectors(C[Math.min(N - 1, i + 1)], C[Math.max(0, i - 1)]).normalize();
+        side.crossVectors(tng, up);
+        if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+        side.normalize();
+        nrm.crossVectors(side, tng).normalize();
+        for (let s2 = 0; s2 < seg; s2++) {
+          const a = (s2 / seg) * TAU, ca = Math.cos(a) * Rad[i], sa = Math.sin(a) * Rad[i], j = (i * seg + s2) * 3;
+          ring[j] = C[i].x + side.x * ca + nrm.x * sa; ring[j + 1] = C[i].y + side.y * ca + nrm.y * sa; ring[j + 2] = C[i].z + side.z * ca + nrm.z * sa;
+        }
+      }
+      let q = 0;
+      const put = (i, s2) => { const j = (i * seg + (s2 % seg)) * 3; pos[q++] = ring[j]; pos[q++] = ring[j + 1]; pos[q++] = ring[j + 2]; };
+      for (let i = 0; i < N - 1; i++) for (let s2 = 0; s2 < seg; s2++) { put(i, s2); put(i + 1, s2); put(i + 1, s2 + 1); put(i, s2); put(i + 1, s2 + 1); put(i, s2 + 1); }
+      g.attributes.position.needsUpdate = true;
+    },
+  };
+}
+
+function spire(k, P, S, art, mini) {
+  const R = art.R, c = art.pal;
+  const H = (mini ? 24 : 60 + R() * 22) * S, y0 = mini ? -H * 0.45 : -6 * S, f = mini ? 0.6 : 1;
+  if (!mini) {
+    // a collar of broken rock, where it came up through the summit
+    const g = new THREE.ConeGeometry(12 * S, 10 * S, 9, 2);
+    roughen(g, 2 * S, 17);
+    k.stone.add(g, mat(0, 0, 0), c.stone[1]);
+  }
+  shard(k.shell, new THREE.Vector3(0, y0, 0), new THREE.Vector3(0, 1, 0), H, 4.6 * S * f, P.facets, c.shellHi, 0, mixHex(c.light, 0xffffff, 0.4));
+  bar(k.glow, new THREE.Vector3(0, y0 + 4 * S, 0), new THREE.Vector3(0, y0 + H * 0.85, 0), 1.3 * S * f, mixHex(c.light, 0xffffff, 0.45), 1);
+  const n = mini ? 6 : P.shards;
+  for (let i = 0; i < n; i++) {
+    const a = i * GOLDEN, dir = new THREE.Vector3(Math.cos(a), 0.5 + R() * 0.9, Math.sin(a));
+    const L = H * (0.18 + R() * 0.3);
+    shard(k.shell, new THREE.Vector3(Math.cos(a) * 3 * S * f, y0 + (2 + R() * 4) * S * f, Math.sin(a) * 3 * S * f), dir, L, L * 0.09, R.pick([5, 6]), mixHex(c.shellLo, c.shellHi, R()), 0, R() < 0.4 ? c.light : null);
+  }
+  const rings = [];
+  for (let i = 0; i < P.rings; i++) {
+    const w = k.sub(0, y0 + H * (0.3 + (0.45 * (i + 0.5)) / P.rings), 0);
+    const r = (9 - i * 1.5) * S * f;
+    w.glow.add(new THREE.TorusGeometry(r, 0.18 * S, 3, 60), mat(0, 0, 0, Math.PI / 2, 0, 0), [c.light, c.second, c.third][i % 3], 0.9);
+    for (let j = 0; j < 8; j++) { const a = (j / 8) * TAU; w.lit.box(0.8 * S * f, 0.8 * S * f, 0.8 * S * f, mat(Math.cos(a) * r, 0, Math.sin(a) * r, a, a, 0), [c.light, c.second][j % 2], PULSE); }
+    w.group.rotation.set(R.range(-0.3, 0.3), 0, R.range(-0.3, 0.3));
+    rings.push({ w, sp: (0.12 + R() * 0.1) * (i % 2 ? -1 : 1) });
+  }
+  art.updates.push((t) => { for (const r of rings) r.w.group.rotation.y = t * r.sp; });
+  return { light: new THREE.Vector3(0, y0 + H * 0.7, 0), focus: new THREE.Vector3(0, y0 + H * 0.45, 0), span: Math.max(H * 0.42, 14 * S * f), height: y0 + H, solid: 10 * S * f, low: 0 };
+}
+
+function temple(k, P, S, art, mini) {
+  const c = art.pal, f = mini ? 0.45 : 1;
+  const Hc = mini ? 0 : 52 * S, W0 = 26 * S * f, th = 3.2 * S * f;
+  const t = k.sub(0, Hc, 0);
+  // the rock it was lifted on, hanging under it
+  const g = new THREE.ConeGeometry(W0 * 0.62, W0 * 0.9, 8, 3);
+  roughen(g, W0 * 0.06, 23);
+  g.rotateX(Math.PI);
+  t.stone.add(g, mat(0, -W0 * 0.45, 0), c.stone[1]);
+  const round = P.shape === 'round';
+  for (let i = 0; i < P.tiers; i++) {
+    const w = W0 * (1 - i / (P.tiers + 1)), y = i * th + th / 2;
+    if (round) t.stone.cyl(w * 0.55, w * 0.58, th, 16, mat(0, y, 0), c.stone[i % 4]);
+    else t.stone.box(w, th, w, mat(0, y, 0), c.stone[i % 4]);
+    // a lit lip on every tier, and a band of the sheen on every other
+    if (round) t.lit.add(new THREE.TorusGeometry(w * 0.58, 0.18 * S * f, 3, 32), mat(0, y + th / 2, 0, Math.PI / 2, 0, 0), c.light, PULSE);
+    else for (let q = 0; q < 4; q++) { const a = (q / 4) * TAU; t.lit.box(w, 0.25 * S * f, 0.25 * S * f, mat(Math.cos(a) * w / 2, y + th / 2, Math.sin(a) * w / 2, 0, -a + Math.PI / 2, 0), c.light, PULSE); }
+    if (i % 2 === 0) { if (round) t.shell.cyl(w * 0.565, w * 0.565, th * 0.3, 16, mat(0, y, 0), c.shellHi); else t.shell.box(w * 1.01, th * 0.3, w * 1.01, mat(0, y, 0), c.shellHi); }
+  }
+  const top = P.tiers * th;
+  // the shrine on top: a cell of the sheen with a light in it, and a point over it
+  t.shell.box(4 * S * f, 4 * S * f, 4 * S * f, mat(0, top + 2 * S * f, 0), c.shellHi);
+  t.glow.ico(2.4 * S * f, 1, mat(0, top + 2.2 * S * f, 0), mixHex(c.light, 0xffffff, 0.5), 1);
+  t.stone.cone(2.4 * S * f, 7 * S * f, 4, mat(0, top + 7.5 * S * f, 0, 0, Math.PI / 4, 0), c.stone[3]);
+  // stairs of light down to the stone
+  if (!mini) for (let q = 0; q < P.stairs; q++) {
+    const a = (q / P.stairs) * TAU + 0.3, dx = Math.cos(a), dz = Math.sin(a);
+    const x0 = dx * W0 * 0.5, z0 = dz * W0 * 0.5, y0 = Hc + th * 0.5, run = Hc * 1.1;
+    const x1 = x0 + dx * run, z1 = z0 + dz * run, y1 = art.ground(x1, z1);
+    for (let j = 0; j < 26; j++) { const u = j / 26; t.glow.box(3.2 * S, 0.25 * S, 1.6 * S, mat(x0 + (x1 - x0) * u, y0 - Hc + (y1 - y0) * u, z0 + (z1 - z0) * u, 0, -a + Math.PI / 2, 0), mixHex(c.light, 0xffffff, 0.3), 0.85); }
+  }
+  art.updates.push((tt) => { t.group.position.y = Hc + Math.sin(tt * 0.35) * 1.2 * S * f; });
+  return { light: new THREE.Vector3(0, Hc + top + 2 * S * f, 0), focus: new THREE.Vector3(0, Hc + top * 0.4, 0), span: W0 * 0.85, height: Hc + top + 11 * S * f, solid: W0 * 0.6, low: Hc - W0 * 0.9 };
+}
+
+function halo(k, P, S, art, mini) {
+  const R = art.R, c = art.pal, f = mini ? 0.4 : 1;
+  const Hc = mini ? 0 : 58 * S, Rr = 28 * S * f;
+  const ring = k.sub(0, Hc, 0);
+  ring.group.rotation.x = P.tilt;
+  const spin = ring.sub();
+  spin.stone.add(new THREE.TorusGeometry(Rr, 1.3 * S * f, 6, 96), mat(0, 0, 0, Math.PI / 2, 0, 0), c.stone[2]);
+  spin.shell.add(new THREE.CylinderGeometry(Rr, Rr, 2.2 * S * f, 96, 1, true), null, c.shellHi);
+  for (let i = 0; i < 36; i++) { const a = (i / 36) * TAU; spin.lit.box(0.6 * S * f, 1.6 * S * f, 0.3 * S * f, mat(Math.cos(a) * Rr * 1.02, 0, Math.sin(a) * Rr * 1.02, 0, -a + Math.PI / 2, 0), i % 3 ? c.light : c.second, i % 2 ? PULSE : 1); }
+  const n = mini ? 10 : P.pendants;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + R() * 0.1, L = (6 + R() * 12) * S * f;
+    const p = new THREE.Vector3(Math.cos(a) * Rr, -1.4 * S * f, Math.sin(a) * Rr);
+    shard(spin.shell, p, new THREE.Vector3(0, -1, 0), L, L * 0.08, 5, mixHex(c.shellLo, c.shellHi, R()), 0, c.light);
+    spin.glow.ico(0.5 * S * f, 0, mat(p.x, p.y - L, p.z), c.light, 1);
+    // and from every third, light falling on to the stone
+    if (!mini && i % 3 === 0) bar(spin.glow, new THREE.Vector3(p.x, p.y - L, p.z), new THREE.Vector3(p.x, p.y - L - Hc * 1.1, p.z), 0.35 * S, mixHex(c.light, 0xffffff, 0.2), 0.35);
+  }
+  for (let r = 1; r < P.rings; r++) ring.glow.add(new THREE.TorusGeometry(Rr * (1 + r * 0.12), 0.14 * S * f, 3, 96), mat(0, r * 1.5 * S * f, 0, Math.PI / 2, 0, 0), [c.second, c.third][r % 2], 0.8);
+  art.updates.push((t) => { spin.group.rotation.y = t * 0.05; ring.group.position.y = Hc + Math.sin(t * 0.3) * 1.5 * S * f; });
+  return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, Hc - 6 * S * f, 0), span: Rr * 1.15, height: Hc + 6 * S * f, solid: Rr * 1.05, low: Hc - 22 * S * f };
+}
+
+function loom(k, P, S, art, mini) {
+  const R = art.R, c = art.pal;
+  const H = (mini ? 20 : 48) * S, Wf = (mini ? 10 : 22) * S;
+  const frames = mini ? 1 : P.frames;
+  const all = [];
+  for (let fi = 0; fi < frames; fi++) {
+    const a = (fi - (frames - 1) / 2) * 0.9;
+    const fr = k.sub(Math.sin(a) * Wf * 1.1, mini ? -H / 2 : 0, (1 - Math.cos(a)) * Wf * 0.4);
+    fr.group.rotation.y = -a;
+    for (const q of [-1, 1]) { fr.stone.box(2.2 * S, H + 6, 2.2 * S, mat(q * Wf / 2, H / 2 - 3, 0), c.stone[2]); fr.lit.box(2.4 * S, 0.6 * S, 2.4 * S, mat(q * Wf / 2, H * 0.7, 0), c.light, PULSE); }
+    fr.stone.box(Wf + 4 * S, 2 * S, 2.6 * S, mat(0, H, 0), c.stone[3]);
+    fr.shell.box(Wf + 4.4 * S, 0.6 * S, 2.8 * S, mat(0, H - 1 * S, 0), c.shellHi);
+    // ribbons of aurora hung from the beam, moving in no wind
+    const n = mini ? 5 : P.ribbons, M = 18;
+    const st = strips(art, fr.group, n, M, (q, u, side) => mixHex(side ? c.third : c.light, c.second, u), (q, u, side) => Math.pow(1 - u, 0.6) * (0.4 + 0.3 * ((q * 7) % 3)) * (side ? 0.6 : 1), 0.55);
+    all.push({ st, n, M, ph: R() * TAU });
+  }
+  art.updates.push((t) => {
+    for (const L of all) {
+      for (let q = 0; q < L.n; q++) {
+        const x0 = ((q + 0.5) / L.n - 0.5) * Wf * 0.9, w = (Wf / L.n) * 0.42;
+        for (let i = 0; i < L.M; i++) {
+          const u = i / (L.M - 1), y = H - 1.5 * S - u * H * 0.85;
+          const sway = Math.sin(t * 0.7 + q * 0.8 + u * 3 + L.ph) * u * 2.4 * S, dz = Math.cos(t * 0.5 + q * 1.3 + u * 2.2) * u * 3 * S;
+          L.st.set(q, i, x0 - w + sway, y, dz, x0 + w + sway, y, dz);
+        }
+      }
+      L.st.commit();
+    }
+  });
+  const wide = Wf * (frames > 1 ? 1.4 : 0.7);
+  return { light: new THREE.Vector3(0, mini ? 0 : H * 0.6, 0), focus: new THREE.Vector3(0, mini ? 0 : H * 0.5, 0), span: Math.max(wide, H * 0.5), height: (mini ? H / 2 : H) + 2 * S, solid: wide * 0.85, low: 0 };
+}
+
+function storm(k, P, S, art, mini) {
+  const R = art.R, c = art.pal, f = mini ? 0.42 : 1;
+  const Hc = mini ? 0 : 66 * S, Rr = 26 * S * f;
+  const ring = k.sub(0, Hc, 0);
+  const n = mini ? 12 : P.clouds;
+  // its clouds: storm grey above, lit from within below
+  const grey = mixHex(c.stone[3], 0xaab0bc, 0.65), under = mixHex(grey, c.light, 0.35), at = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + R() * 0.2, rr = Rr * (0.8 + R() * 0.4), y = (R() - 0.5) * 6 * S * f, r0 = (3 + R() * 4) * S * f;
+    // a broad puff, and smaller ones heaped on it
+    const puffs = [[0, 0, 0, r0, 0.6]];
+    for (let j = R.int(1, 2); j > 0; j--) puffs.push([(R() - 0.5) * r0 * 1.4, r0 * (0.35 + R() * 0.2), (R() - 0.5) * r0, r0 * (0.5 + R() * 0.2), 0.85]);
+    for (const [dx, dy, dz, rp, sy] of puffs) {
+      const g = new THREE.IcosahedronGeometry(rp, rp === r0 ? 2 : 1);
+      roughen(g, 0.4 * S * f, i);
+      const lo = (y2) => clamp((-0.15 * rp - y2) / (rp * 0.8), 0, 1);
+      ring.stone.add(g, mat(Math.cos(a) * rr + dx, y + dy, Math.sin(a) * rr + dz, 0, R() * TAU, 0, 1.4, sy, 1.15), (x, y2) => mixHex(grey, under, lo(y2)), (x, y2) => 0.3 * lo(y2), { flat: true });
+    }
+    at.push([Math.cos(a) * rr, y - 1.5 * S * f, Math.sin(a) * rr]);
+  }
+  // the light inside them, that flares with each bolt
+  const inner = cloud(art, ring.group, at.length, mixHex(c.light, 0xffffff, 0.5), 15 * S * f, 0);
+  at.forEach((p, i) => inner.pos.set(p, i * 3));
+  inner.attr.needsUpdate = true;
+  const flare = art.fades[art.fades.length - 1];
+  // its eye: a disc of light turning at its heart
+  const re = Rr * 0.45, rr0 = (x, y) => Math.min(1, Math.hypot(x, y) / re);
+  ring.glow.add(new THREE.RingGeometry(0.01, re, 40, 4), mat(0, 0, 0, -Math.PI / 2, 0, 0), (x, y) => mixHex(mixHex(c.light, 0xffffff, 0.4), c.second, rr0(x, y)), (x, y) => 0.1 + 0.7 * Math.pow(1 - rr0(x, y), 2));
+  // lightning: a bolt at a time, from the crown down to the stone
+  const bolt = strips(art, k.group, 1, 12, () => mixHex(c.light, 0xffffff, 0.7), () => 1, 0);
+  const fade = art.fades[art.fades.length - 1];
+  let next = 1, life = 0;
+  art.updates.push((t, dt) => {
+    ring.group.rotation.y = t * 0.12;
+    next -= dt;
+    life -= dt;
+    if (next <= 0 && !mini) {
+      next = P.bolts * (0.5 + R());
+      life = 0.22;
+      const a = R() * TAU, from = new THREE.Vector3(Math.cos(a) * Rr * 0.8, Hc - 2 * S, Math.sin(a) * Rr * 0.8), to = new THREE.Vector3((R() - 0.5) * 8 * S, art.ground(0, 0) + 1, (R() - 0.5) * 8 * S);
+      for (let i = 0; i < 12; i++) {
+        const u = i / 11, p = from.clone().lerp(to, u), j = Math.sin(Math.PI * u) * 6 * S;
+        p.x += (R() - 0.5) * j; p.z += (R() - 0.5) * j;
+        bolt.set(0, i, p.x - 0.5 * S, p.y, p.z, p.x + 0.5 * S, p.y, p.z);
+      }
+      bolt.commit();
+    }
+    fade[1] = life > 0 ? 1.2 : 0;
+    flare[1] = 0.12 + 0.6 * Math.max(0, life / 0.22) + (life > -0.3 && life < -0.18 ? 0.4 : 0);
+  });
+  return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, mini ? 0 : Hc * 0.6, 0), span: Rr * 1.2, height: Hc + 6 * S * f, solid: Rr * 1.1, low: Hc - 8 * S * f };
+}
+
+function serpent(k, P, S, art, mini) {
+  const c = art.pal, f = mini ? 0.4 : 1;
+  const N = mini ? 60 : 140, H0 = mini ? -10 * S : 14 * S, Hs = 70 * S * f, Rr = 24 * S * f;
+  const body = liveTube(k, art, N, 7, (u) => mixHex(c.shellLo, c.shellHi, 0.5 + 0.5 * Math.sin(u * 30)));
+  const head = k.sub();
+  head.shell.cone(2.4 * S * f, 6 * S * f, 6, mat(0, 0, 2 * S * f, Math.PI / 2, 0, 0), c.shellHi);
+  for (const q of [-1, 1]) head.glow.ico(0.6 * S * f, 0, mat(q * 1.1 * S * f, 0.8 * S * f, 1 * S * f), mixHex(c.light, 0xffffff, 0.5), 1);
+  // light along its back
+  const lights = cloud(art, k.group, mini ? 20 : 48, mixHex(c.light, 0xffffff, 0.3), 1.2 * S * f, 1.2);
+  const path = (u, t) => {
+    const ph = u * P.coils * TAU - t * 0.25, r = Rr * (0.75 + 0.25 * Math.sin(u * 5 + t * 0.3));
+    return new THREE.Vector3(Math.cos(ph) * r, H0 + u * Hs + Math.sin(u * 9 + t) * 2 * S * f, Math.sin(ph) * r);
+  };
+  const look = new THREE.Vector3();
+  art.updates.push((t) => {
+    for (let i = 0; i < N; i++) { const u = i / (N - 1); body.set(i, path(u, t), 1.7 * S * f * Math.sin(Math.PI * Math.pow(u, 0.7)) + 0.2 * S * f); }
+    body.commit();
+    const nl = lights.pos.length / 3;
+    for (let i = 0; i < nl; i++) { const p = path((i + 0.5) / nl, t); lights.pos[i * 3] = p.x; lights.pos[i * 3 + 1] = p.y + 1.8 * S * f; lights.pos[i * 3 + 2] = p.z; }
+    lights.attr.needsUpdate = true;
+    const p = path(1, t), q = path(0.985, t);
+    head.group.position.copy(p);
+    look.subVectors(p, q);
+    head.group.rotation.set(-Math.atan2(look.y, Math.hypot(look.x, look.z)), Math.atan2(look.x, look.z), 0, 'YXZ');
+  });
+  return { light: new THREE.Vector3(0, H0 + Hs * 0.5, 0), focus: new THREE.Vector3(0, H0 + Hs * 0.5, 0), span: Math.max(Rr * 1.3, Hs * 0.55), height: H0 + Hs + 4 * S * f, solid: Rr * 1.1, low: H0 - 4 * S * f };
+}
+
+function cathedral(k, P, S, art, mini) {
+  const c = art.pal, f = mini ? 0.4 : 1;
+  const bayL = 9 * S * f, Wn = 16 * S * f, Hn = 34 * S * f, nb = mini ? 3 : P.bays;
+  const y0 = mini ? -Hn / 2 : -3 * S, L = nb * bayL;
+  const n = k.sub(0, 0, -L / 2);
+  const ice = (t) => mixHex(c.shellLo, c.shellHi, t);
+  // a pointed arch across the nave at z (u: 1 at its feet, 0 at its point)
+  const arch = (z, w, h, rot = 0) => {
+    const pts = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20, q = t < 0.5 ? -1 : 1, u = Math.abs(t - 0.5) * 2;
+      const x = q * (w / 2) * Math.pow(u, 0.55), y = y0 + h * (1 - Math.pow(u, 1.8));
+      pts.push(new THREE.Vector3(x * Math.cos(rot), y, z + x * Math.sin(rot)));
+    }
+    return pts;
+  };
+  for (let b = 0; b <= nb; b++) {
+    const z = b * bayL;
+    n.shell.tube(arch(z, Wn, Hn), 0.9 * S * f, 6, ice);
+    n.glow.tube(arch(z, Wn * 0.94, Hn * 0.97), 0.14 * S * f, 3, mixHex(c.light, 0xffffff, 0.3), 0.8);
+  }
+  // ribs along it: at its point, and down each side
+  for (const [x, y] of [[0, y0 + Hn], [-Wn * 0.38, y0 + Hn * 0.62], [Wn * 0.38, y0 + Hn * 0.62]]) n.shell.tube([new THREE.Vector3(x, y, 0), new THREE.Vector3(x, y, L)], 0.6 * S * f, 5, ice(0.7));
+  // the apse: arches turned about the far end
+  for (let j = 0; j < 5; j++) { const a = -Math.PI / 2 + (j / 4) * Math.PI; n.shell.tube(arch(L, Wn, Hn * 0.9, a), 0.8 * S * f, 6, ice); }
+  // the rose window over its front
+  const rw = n.sub(0, y0 + Hn * 0.6, -0.5 * S);
+  rw.glow.add(new THREE.CircleGeometry(Wn * 0.3, 32), null, mixHex(c.light, 0xffffff, 0.4), 0.55);
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; bar(rw.glow, new THREE.Vector3(0, 0, 0.2), new THREE.Vector3(Math.cos(a) * Wn * 0.3, Math.sin(a) * Wn * 0.3, 0.2), 0.3 * S * f, c.second, 1); }
+  rw.lit.add(new THREE.TorusGeometry(Wn * 0.3, 0.4 * S * f, 4, 32), null, c.light, PULSE);
+  for (let q = 0; q < P.spires && !mini; q++) for (const sx of [-1, 1]) n.shell.cone(2 * S, 26 * S, 6, mat(sx * Wn * (0.5 + q * 0.2), y0 + Hn + 10 * S, q * bayL), ice(0.9));
+  if (!mini) bar(n.glow, new THREE.Vector3(0, y0 + 3.2, 0), new THREE.Vector3(0, y0 + 3.2, L), 0.5 * S, c.light, 0.7);
+  art.updates.push((t) => { rw.group.rotation.z = t * 0.1; });
+  return { light: new THREE.Vector3(0, y0 + Hn * 0.6, -L / 2), focus: new THREE.Vector3(0, y0 + Hn * 0.5, 0), span: Math.max(L, Wn) * 0.65, height: y0 + Hn + (P.spires && !mini ? 24 * S : 2 * S), solid: Math.max(L, Wn) * 0.55, low: 0 };
+}
+
+const FORMS = { corolla, spine, nest, armillary, choir, geode, bloom, knot, nautilus, archipelago, murmuration, medusa, sun, watcher,
+  spire, temple, halo, loom, storm, serpent, cathedral };
 
 // ------------------------------------------------------------------ ornaments
 const ORN = {
@@ -1091,9 +1373,12 @@ const ORN = {
     let sk = R.int(2, Math.floor((sn - 1) / 2));
     const gcd = (a, b) => (b ? gcd(b, a % b) : a);
     while (gcd(sn, sk) !== 1) sk--;
-    for (let i = 0; i < sn; i++) {
-      const a0 = (i / sn) * TAU, a1 = (((i + sk) % sn) / sn) * TAU;
-      line(new THREE.Vector3(Math.cos(a0) * Rg * 0.72, 0, Math.sin(a0) * Rg * 0.72), new THREE.Vector3(Math.cos(a1) * Rg * 0.72, 0, Math.sin(a1) * Rg * 0.72), 0.28 * S, c.third);
+    // inside, figures of sn sides, each set in the last and turned half a side
+    for (let j = 0, r = Rg * 0.72; j < sk; j++, r *= Math.cos(Math.PI / sn)) {
+      for (let i = 0; i < sn; i++) {
+        const a0 = ((i + j * 0.5) / sn) * TAU, a1 = ((i + 1 + j * 0.5) / sn) * TAU;
+        line(new THREE.Vector3(Math.cos(a0) * r, 0, Math.sin(a0) * r), new THREE.Vector3(Math.cos(a1) * r, 0, Math.sin(a1) * r), 0.28 * S, c.third);
+      }
     }
   },
   orbiters(art, root, info, S, R) {

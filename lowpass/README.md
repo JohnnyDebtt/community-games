@@ -82,7 +82,13 @@ to it and press E.
   birches gone gold, amber and rust among the dark spruce, in any weather with banks of
   mist drifting between the trunks under the crowns, the ground russet with fallen leaves
   and the fog a little warmer; a few hundred meters to a kilometer across, its edges
-  turning over a couple of hundred.
+  turning over a couple of hundred. Rarer still (about a third as often) and larger (one
+  to three kilometers with its foothills), **mountains**: ridged peaks up to some 320
+  meters over the forest, rising out of the fog, the trees thinning up their flanks to a
+  treeline, bare rock on every steep face and snow above a ragged line. The ship climbs
+  them steadily (it starts early enough to pass just over the top) and drifts down the
+  far side. Ground and trees newly built come out of the fog in the dither, over a
+  couple of seconds, rather than all at once.
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
   steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a
   pale blue-violet trail, and the ship climbs to about 58 m/s while the view widens. The
@@ -103,7 +109,11 @@ to it and press E.
   lone artifact appears just past what the fog lets you see, nearly dead ahead, and
   keeps ahead of you until you have seen it. Once you have come near one and lost it
   from sight (or left one far behind), it dissolves back into the fog: there is no
-  turning back for it.
+  turning back for it. On a mountain, a wild artifact is one of the mountains' own,
+  found nowhere else and set on the summit: cairns marching up the slope, wind lines of
+  banners, an old relay mast whose light blinks and waits, a door cut into the rock,
+  a stone arch hung with threads of light, an observatory following a star, a harp
+  strung with light that shivers on the rhythm, a frozen fall of ice.
 - **The deep.** A wild artifact may come from below the surface, from a **depth**: the
   deeper the scanner is tuned (in the Codex's SHOP), the more of them do. Each starts at
   the surface and goes one depth deeper three times in four, as far as the scanner
@@ -118,9 +128,12 @@ to it and press E.
   armillaries, choirs of monoliths, geodes, corals that flower at their tips, knots and
   linked rings, nautilus shells, horns and galaxies, floating archipelagos with falls of
   light, strange attractors traced by thousands of motes, medusae trailing arms of light,
-  star engines with plates on their orbits, eyes that follow the ship. Deeper, one form
+  star engines with plates on their orbits, eyes that follow the ship. The mountains
+  have seven of their own, for every depth: crystal spires, sky temples with stairs of
+  light, stone halos hung with shards, aurora looms, storm crowns throwing lightning,
+  wind serpents, ice cathedrals. Deeper, one form
   crowns another, a court of small ones stands about it, and ornaments gather: rings,
-  sigils on the ground, beams, pillars, rain of light, aurora veils, its double hanging
+  figures of light on the ground, beams, pillars, rain of light, aurora veils, its double hanging
   upside down in the sky, its echoes a moment behind it. Each sings (below). Witnessed
   seekers are never touched by any of it.
 - **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
@@ -385,7 +398,8 @@ src/ship/                 the ship and its flight, cameras, the cabin, the Seeke
 src/artifacts/            from a seed or a move to an artifact: generation, models (the
                           first families, the witnessed seeker, the auras), the newer
                           families, their shared parts, the field, the photograph; the
-                          deep: its strata, its descriptions, its forms
+                          mountains' own; the deep: its strata, its descriptions, its
+                          forms
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the
                           witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the

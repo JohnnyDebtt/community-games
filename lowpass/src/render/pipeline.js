@@ -142,7 +142,7 @@ float cloudCover(vec2 xz) {
 }
 
 float canopyAt(vec2 xz) {
-  return texture(tCanopy, (xz + uCanopyOff) / 2048.0).r * 318.75 - 128.0;
+  return texture(tCanopy, (xz + uCanopyOff) / 2048.0).r * 637.5 - 128.0;
 }
 
 // A turned stand's mist, whatever the weather: banks of it drifting between the trunks,
@@ -153,7 +153,7 @@ float canopyAt(vec2 xz) {
 float mistAt(vec3 p) {
   vec2 c = texture(tCanopy, (p.xz + uCanopyOff) / 2048.0).rg;
   if (c.g < 0.004) return 0.0;
-  float top = c.r * 318.75 - 128.0;
+  float top = c.r * 637.5 - 128.0;
   float band = smoothstep(top - 38.0, top - 24.0, p.y) * (1.0 - smoothstep(top - 12.0, top + 2.0, p.y));
   if (band <= 0.0) return 0.0;
   vec3 q = (p + uNoiseOff) * vec3(0.0031, 0.0055, 0.0031) + uFogDrift * uTime * 0.001;

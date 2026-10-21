@@ -29,6 +29,10 @@ import { describeDeep } from './deep.js';
 
 export const GENERATOR_VERSION = 5;
 
+// What stands on the mountains is its own (mountain.js): a wild one that rises there is
+// drawn from these instead, and at any depth from the mountains' own forms (deep.js).
+export const MOUNTAIN_FAMILIES = ['cairns', 'banners', 'relay', 'door', 'arch', 'observatory', 'harp', 'ice'];
+
 // (echo, the witnessed seeker, stays last: a wild one is never drawn from it)
 export const FAMILIES = ['ring', 'obelisk', 'orb', 'lattice', 'shell', 'crystal', 'tether', 'fungi', 'gate', 'solids', 'glyph', 'chimes',
   'beacon', 'orrery', 'helix', 'tesseract', 'wreck', 'stair', 'arbor', 'pool', 'sentinel', 'swarm', 'cradle', 'lanterns', 'dish', 'echo'];
@@ -44,6 +48,7 @@ const BY_COLORWAY = {
 const CODE = {
   ring: 'HNG', obelisk: 'OBL', orb: 'ORB', lattice: 'LTC', shell: 'SHL', crystal: 'CRY', tether: 'TTH', fungi: 'FNG', gate: 'GTE', solids: 'SLD', glyph: 'GLY', chimes: 'CHM', echo: 'ECH',
   beacon: 'BCN', orrery: 'ORR', helix: 'HLX', tesseract: 'TSR', wreck: 'DRL', stair: 'ASC', arbor: 'ARB', pool: 'MRR', sentinel: 'SNT', swarm: 'SWM', cradle: 'CRD', lanterns: 'LNT', dish: 'ANT',
+  cairns: 'CRN', banners: 'WND', relay: 'RLY', door: 'DOR', arch: 'ARH', observatory: 'OBS', harp: 'HRP', ice: 'ICE',
 };
 
 const CLASS = {
@@ -51,6 +56,7 @@ const CLASS = {
   tether: 'Tether', fungi: 'Luminous grove', gate: 'Gate', solids: 'Polyhedra', glyph: 'Geoglyph', chimes: 'Resonator', echo: 'Witnessed seeker',
   beacon: 'Beacon', orrery: 'Orrery', helix: 'Helix', tesseract: 'Hypersolid', wreck: 'Derelict', stair: 'Ascent', arbor: 'Elder growth',
   pool: 'Mirror', sentinel: 'Sentinels', swarm: 'Swarm', cradle: 'Cradle', lanterns: 'Lanterns', dish: 'Listening post',
+  cairns: 'Cairns', banners: 'Wind lines', relay: 'Relay', door: 'Door in the rock', arch: 'Arch', observatory: 'Observatory', harp: 'Wind harp', ice: 'Frozen fall',
 };
 
 const NOUNS = {
@@ -80,6 +86,10 @@ const NOUNS = {
   cradle: ['Cradle', 'Hand', 'Nest', 'Ribs', 'Clutch', 'Egg'],
   lanterns: ['Lanterns', 'Lights', 'Vigil', 'Procession', 'Host', 'Wake'],
   dish: ['Array', 'Ear', 'Dish', 'Listener', 'Antenna', 'Station'],
+  cairns: ['Cairns', 'Markers', 'Waymarks', 'Stacks', 'Count', 'Trail'], banners: ['Banners', 'Lines', 'Flags', 'Prayer', 'Pennants', 'Weather'],
+  relay: ['Relay', 'Mast', 'Station', 'Repeater', 'Signal', 'Post'], door: ['Door', 'Threshold', 'Portal', 'Entrance', 'Way In', 'Gate'],
+  arch: ['Arch', 'Span', 'Bridge', 'Brow', 'Window', 'Bow'], observatory: ['Observatory', 'Dome', 'Watch', 'Eye', 'Lookout', 'Star House'],
+  harp: ['Harp', 'Lyre', 'Strings', 'Instrument', 'Choir', 'Loom'], ice: ['Fall', 'Cascade', 'Curtain', 'Icefall', 'Organ', 'Silence'],
 };
 const ADJ = ['Hollow', 'Pale', 'Silent', 'Patient', 'Drowned', 'Sleeping', 'Unlit', 'Folded', 'Listening', 'Distant', 'Last',
   'Second', 'Inverted', 'Quiet', 'Slow', 'Cold', 'Borrowed', 'Forgotten', 'Waking', 'Nameless', 'Leaning', 'Humming',
@@ -107,6 +117,12 @@ const WILD_ORIGIN = [
   'The Codex holds no other record of it, anywhere.',
   'It grew where no one was looking, except you.',
   'Nothing on the chain explains it. Nothing needs to.',
+];
+const MOUNTAIN_ORIGIN = [
+  'On the mountain, over the fog. No other ship will find it.',
+  'High on the range, where the forest gives out; seen from this ship alone.',
+  'Above the treeline. The Codex holds no other record of it.',
+  'Out of the fog, on stone. Nobody else will ever stand where it stands.',
 ];
 const WILD_LIGHT = [0x91cbde, 0xd6edf5, 0x8ca893, 0x7bacbc, 0x97acb0, 0xcfdde4, 0x8f7aa8, 0xaf634b];
 
@@ -158,7 +174,7 @@ export function describe(move, seekerInfo, force = null) {
   const charge = move.charge || 0;
 
   // family: a witnessed artifact is the seeker itself
-  let family = wild ? FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))] : 'echo';
+  let family = wild ? (move.mountain ? R0.pick(MOUNTAIN_FAMILIES) : FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))]) : 'echo';
   if (force) family = force;
   if (family === 'echo' && !lead) family = 'obelisk';
 
@@ -172,7 +188,7 @@ export function describe(move, seekerInfo, force = null) {
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !!move.mountain,
   };
   const P = d.params;
   let structure = '';
@@ -435,6 +451,62 @@ export function describe(move, seekerInfo, force = null) {
       structure = `A dish ${Math.round(P.radius * 2)} meters across${P.small ? `, ${NUMW[P.small].toLowerCase()} smaller ones about it` : ''}; ${P.tracks ? 'it turns to follow the ship' : 'it listens to one fixed point in the sky'}.`;
       break;
     }
+    case 'cairns':
+      P.n = R1.pick([5, 7, 9, 11, 13]);
+      P.seq = R1.pick(['primes', 'Fibonacci numbers', 'odd numbers', 'squares']);
+      P.spacing = R1.range(9, 14) * size;
+      P.path = R1.pick(['line', 'spiral', 'zigzag']);
+      structure = `${NUMW[P.n]} cairns ${P.path === 'spiral' ? 'winding up to the summit' : 'marching up the slope'}; their stones count the ${P.seq}, and the last is lit.`;
+      break;
+    case 'banners':
+      P.poles = R1.int(3, 6);
+      P.height = R1.range(12, 20) * size;
+      P.span = R1.range(14, 22) * size;
+      P.flags = R1.int(5, 9);
+      structure = `${NUMW[P.poles]} poles and the lines strung between them, ${P.flags} banners on each, never still.`;
+      break;
+    case 'relay':
+      P.height = R1.range(34, 52) * size;
+      P.sides = R1.pick([3, 4]);
+      P.guys = R1.pick([3, 4]);
+      P.dishes = R1.int(1, 3);
+      P.blink = R1.pick([2, 3, 5]);
+      structure = `A mast ${Math.round(P.height)} meters tall on ${NUMW[P.guys].toLowerCase()} guy lines; its light blinks ${P.blink} times and waits. ${P.dishes === 1 ? 'A dish still listens' : `${NUMW[P.dishes]} dishes still listen`}.`;
+      break;
+    case 'door':
+      P.height = R1.range(22, 32) * size;
+      P.width = P.height * R1.range(0.42, 0.55);
+      P.ajar = R1.range(0.12, 0.35);
+      P.glyphs = R1.pick([5, 7, 9, 11]);
+      structure = `A door ${Math.round(P.height)} meters tall, cut into the mountain and a little open; ${P.glyphs} signs over it, lit.`;
+      break;
+    case 'arch':
+      P.span = R1.range(34, 52) * size;
+      P.rise = R1.range(18, 30) * size;
+      P.threads = R1.int(9, 21);
+      P.thick = R1.range(3.5, 5.5) * size;
+      structure = `A stone arch ${Math.round(P.span)} meters across; ${P.threads} threads of light hang from it.`;
+      break;
+    case 'observatory':
+      P.radius = R1.range(9, 13) * size;
+      P.height = R1.range(8, 12) * size;
+      P.slit = R1.range(0.25, 0.4);
+      P.scope = R1.range(14, 22) * size;
+      P.star = R1.int(1, 88);
+      structure = `A dome, its slit open on the fog; the telescope in it follows a star the Codex numbers ${P.star}.`;
+      break;
+    case 'harp':
+      P.strings = R1.pick([7, 9, 11, 13, 15]);
+      P.height = R1.range(20, 30) * size;
+      P.width = R1.range(12, 18) * size;
+      structure = `A frame ${Math.round(P.height)} meters tall strung with ${P.strings} strings of light, their lengths one, a half, a third… of the first; the wind plays them on its rhythm.`;
+      break;
+    case 'ice':
+      P.height = R1.range(28, 44) * size;
+      P.width = R1.range(16, 26) * size;
+      P.columns = R1.int(9, 17);
+      structure = `A fall of water stopped where it fell: ${P.columns} columns of ice down a cliff, lit from within.`;
+      break;
     case 'echo': {
       P.scale = R1.range(0.55, 0.66) * size;     // meters per art pixel: 30 to 60 meters tall
       P.hover = R1.range(9, 14) * size;
@@ -467,7 +539,7 @@ export function describe(move, seekerInfo, force = null) {
   const noun = R3.pick(NOUNS[family]);
   const adj = R3.pick(ADJ);
   let name;
-  const numbered = { ring: P.n, crystal: P.n, gate: P.n, fungi: P.n, chimes: P.n, sentinel: P.n, lanterns: P.n, stair: P.steps }[family];
+  const numbered = { ring: P.n, crystal: P.n, gate: P.n, fungi: P.n, chimes: P.n, sentinel: P.n, lanterns: P.n, stair: P.steps, cairns: P.n }[family];
   const r = R3();
   if (family === 'echo') name = `The ${adj} ${noun} of #${lead}`;
   else if (numbered && r < 0.3) name = `The ${noun} of ${NUMW[numbered] || numbered}`;
@@ -477,7 +549,7 @@ export function describe(move, seekerInfo, force = null) {
   d.code = `${CODE[family]}-${seedHex.slice(2, 6).toUpperCase()}`;
   d.cls = CLASS[family];
   let origin;
-  if (wild) origin = R3.pick(WILD_ORIGIN);
+  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : WILD_ORIGIN);
   else {
     const total = move.total || tokens.length;
     const who = tokens.length > 1 ? `SEEKER ${tokens.map((t) => '#' + t).join(', ')} moved together` : total > 1 ? `SEEKER #${lead} moved, one of ${total} that moved together` : `SEEKER #${lead} moved`;
@@ -502,9 +574,10 @@ export function describe(move, seekerInfo, force = null) {
 // seeker hovers over.
 function glyphParams(R1, size) {
   const P = {};
-  P.kind = R1.pick(['star', 'lissajous', 'rose', 'hilbert', 'phyllotaxis', 'circles']);
+  P.kind = R1.pick(['polygons', 'lissajous', 'rose', 'hilbert', 'phyllotaxis', 'circles']);
   P.radius = R1.range(34, 52) * size;
-  if (P.kind === 'star') { P.n = R1.pick([5, 7, 9, 11, 12, 13]); P.k = R1.int(2, Math.floor((P.n - 1) / 2)); while (gcd(P.n, P.k) !== 1) P.k--; }
+  // (n sides; k + 1 of them, each set in the last, turned half a side)
+  if (P.kind === 'polygons') { P.n = R1.pick([5, 7, 9, 11, 12, 13]); P.k = R1.int(2, Math.floor((P.n - 1) / 2)); while (gcd(P.n, P.k) !== 1) P.k--; }
   if (P.kind === 'lissajous') { P.a = R1.int(1, 5); P.b = P.a + R1.int(1, 3); P.phase = R1.range(0, 1.5); }
   if (P.kind === 'rose') { P.k = R1.pick([2, 3, 4, 5, 7, 3 / 2, 5 / 3]); }
   if (P.kind === 'hilbert') P.order = R1.int(3, 4);
@@ -516,7 +589,7 @@ function glyphParams(R1, size) {
 
 function glyphText(P) {
   return {
-    star: () => `A star polygon {${P.n}/${P.k}} cut into the ground in light.`,
+    polygons: () => `${NUMW[P.k + 1]} figures of ${P.n} sides drawn in light, each set within the last.`,
     lissajous: () => `A figure of two motions, ${P.a}:${P.b}, drawn in light across the clearing.`,
     rose: () => `A rose of ${P.k} petals${P.k % 1 ? ' that will not close' : ''}, drawn in light.`,
     hilbert: () => `One line that fills a square, folded ${P.order} times over itself.`,

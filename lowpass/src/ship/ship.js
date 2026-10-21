@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { Builder, mat } from '../render/build.js';
 import { worldMaterial, halo, U } from '../render/materials.js';
 import { FOG, LAYER_FX } from '../render/pipeline.js';
-import { damp, clamp, lerp, TAU } from '../core/math.js';
+import { damp, clamp, lerp, smoothstep, TAU } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { canopyTop } from '../world/terrain.js';
+import { canopyTop, mountainEnv } from '../world/terrain.js';
 
 // The survey craft: Seeker technology as the codex describes it, dark and minimal, fused
 // with the organic. A long black hull like a seed, ribs over it like a vine that has
@@ -17,6 +17,7 @@ export const SPEED = 24;            // m/s
 const BOOST = 1.4;                  // boosting adds this much of SPEED again (to about 58 m/s)
 const MAX_YAW = 0.5;                // rad/s
 const CLEARANCE = 17;               // above the canopy
+const CLIMB = 0.45;                 // the slope it climbs a mountain at
 
 // hull sections along z: [z, half width, half height, center y]
 const SECTIONS = [
@@ -228,6 +229,7 @@ export class Ship {
     this.z = z;
     this.heading = heading;
     this.y = this._target();
+    this._ty = this.y;
     this.vy = 0;
   }
 
@@ -238,11 +240,21 @@ export class Ship {
   _target() {
     const [fx, fz] = this.forward();
     let top = -Infinity;
+    // in the mountains, what is ahead counts less the farther off it is, at the slope the
+    // ship climbs (about 24 degrees): it rises steadily up a range to pass just over it,
+    // rather than leaping up early; elsewhere, as it always has
     for (const d of [0, 35, 70, 110, 160, 220, 290]) {
       const x = this.x + fx * d, z = this.z + fz * d;
       const w = 1 - d / 420;
-      top = Math.max(top, canopyTop(x, z) - (1 - w) * 18);
-      top = Math.max(top, canopyTop(x - fz * 14, z + fx * 14) - (1 - w) * 22, canopyTop(x + fz * 14, z - fx * 14) - (1 - w) * 22);
+      const m = d > 0 && mountainEnv(x, z) > 0;
+      const a = m ? Math.max((1 - w) * 18, d * CLIMB) : (1 - w) * 18, b = m ? Math.max((1 - w) * 22, d * CLIMB) : (1 - w) * 22;
+      top = Math.max(top, canopyTop(x, z) - a);
+      top = Math.max(top, canopyTop(x - fz * 14, z + fx * 14) - b, canopyTop(x + fz * 14, z - fx * 14) - b);
+    }
+    // a range ahead: look further, to start that climb in time
+    for (const d of [380, 480, 600, 750]) {
+      const x = this.x + fx * d, z = this.z + fz * d;
+      if (mountainEnv(x, z) > 0) top = Math.max(top, canopyTop(x, z) - d * CLIMB);
     }
     // and over anything large standing in the way (the deep's artifacts)
     if (this.obstacle) {
@@ -271,14 +283,17 @@ export class Ship {
     this.x += fx * this.speed * dt;
     this.z += fz * this.speed * dt;
     this.distance += this.speed * dt;
-    // height follows the canopy ahead: a spring, quicker to climb than to sink
-    const ty = this._target() + Math.sin(this._t * 0.37) * 1.2;
-    const err = ty - this.y;
-    const k = err > 0 ? 1.6 : 0.55;
+    // height follows the canopy ahead: a spring, quicker to climb than to sink, toward a
+    // height eased over a moment (a ridge coming into view must not jolt it), and the
+    // spring's stiffness easing between climbing and sinking rather than snapping
+    const raw = this._target();
+    this._ty = this._ty === undefined ? raw : damp(this._ty, raw, raw > this._ty ? 2.2 : 1.2, dt);
+    const err = this._ty + Math.sin(this._t * 0.37) * 1.2 - this.y;
+    const k = 0.55 + 1.05 * smoothstep(-6, 6, err);
     this.vy += (err * k * k - 2 * k * this.vy) * dt;
     this.vy = clamp(this.vy, -9, 14);
     this.y += this.vy * dt;
-    this.pitch = damp(this.pitch, clamp(-this.vy / this.speed, -0.25, 0.3), 3, dt);
+    this.pitch = damp(this.pitch, clamp(-this.vy / this.speed, -0.25, 0.3), 1.6, dt);
   }
 
   // Place the model in render space; light the canopy under it and the fog around it.

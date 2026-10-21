@@ -64,7 +64,7 @@ you wherever you are, with the way out.
 
 The rest comes from the seed: counts from the primes and the Fibonacci numbers, a
 cellular automaton's rule, a spiral's growth ratio, Kepler's law, the golden angle, a
-star polygon, a number spelled in binary. Mathematics to look at, not to read about.
+set of polygons one inside another, a number spelled in binary. Mathematics to look at, not to read about.
 
 Each has a voice: two or three quiet layers chosen by its family and seed (breath through
 drifting resonances, beating glass, an inharmonic warble, a gliding voice, soft ticks on
@@ -142,6 +142,27 @@ fog's jittered ones (a thin, thick layer would show the dither), and lays it ove
 behind. Three crown shapes, each tree
 squashed, leaned and turned its own way. The bark is a true grey, which the tree shader
 gives the tint's brightness and not its hue, so the trunks stay pale whatever the leaves.
+
+Rarer still, mountains: another slow field over the world, about a third as many ranges as
+there are turned stands and larger (a kilometer to three across with the foothills), each
+a ridged massif up to some 320 meters over the forest, rising gently from its foothills and
+steepest at its heart. The forest thins up their flanks to a treeline; every steep face is
+bare rock (judged by the whole terrain square, so a face reads as one), and snow lies
+above a ragged line, thinning on the steeps. They are what the fog's sea is for: peaks
+standing out of it. The ship climbs a range at a steady slope, starting early enough to
+pass just over the top, toward a height eased over a moment so the ridges coming into view
+do not jolt it. High ground shows over the fog from as far as the world is built, so
+every chunk built in flight (ground and trees alike) comes into view in the dither over a
+couple of seconds rather than all at once; the canopy map that shades the fog now reaches
+509 meters, for the peaks.
+
+A mountain has its own artifacts, at the surface and at every depth: a wild one that rises
+on a range is drawn from them alone and set on the highest ground near where it would have
+been. At the surface, eight families (cairns, banners, a relay mast, a door in the rock, an
+arch, an observatory, a harp of light, a frozen fall); below, seven forms the strata open
+as they do the forest's (crystal spire, sky temple, halo, aurora loom from the first; storm
+crown from the second; wind serpent and ice cathedral from the third), crowning and
+holding court only among themselves; their voices always carry breath, like wind on a ridge.
 
 ## Time and weather, shared
 

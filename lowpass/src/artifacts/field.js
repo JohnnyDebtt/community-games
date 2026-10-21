@@ -80,7 +80,21 @@ export class Field {
   // A wild artifact, from a seed nobody else will draw; from below the surface if
   // opts.depth (opts.glimpse: deeper than the scanner reaches).
   spawnWild(opts = {}) {
-    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form }, opts);
+    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain }, opts);
+  }
+
+  // The highest ground near (x, z): where a mountain's artifact stands (a summit, a ridge).
+  _summit(x, z) {
+    const w = this.game.world;
+    let best = [x, z, w.groundAt(x, z)];
+    for (const [step, reach] of [[40, 160], [10, 40]]) {
+      const [cx, cz] = best;
+      for (let j = -reach; j <= reach; j += step) for (let i = -reach; i <= reach; i += step) {
+        const h = w.groundAt(cx + i, cz + j);
+        if (h > best[2]) best = [cx + i, cz + j, h];
+      }
+    }
+    return best;
   }
 
   // Bring one move (or a wild seed) into the forest now. opts: ahead/lateral (meters,
@@ -161,9 +175,12 @@ export class Field {
     if (a.model) this._dispose(a);
     const [fx, fz] = ship.forward();
     const dist = a.spawnDist, lat = a.latK * dist;
-    const x = a.at ? a.at.x : ship.x + fx * dist + fz * lat, z = a.at ? a.at.z : ship.z + fz * dist - fx * lat;
+    let x = a.at ? a.at.x : ship.x + fx * dist + fz * lat, z = a.at ? a.at.z : ship.z + fz * dist - fx * lat;
+    // on the mountains: on the highest ground near there
+    if (d.mountain && !a.at) [x, z] = this._summit(x, z);
     const ground = Math.max(g.world.groundAt(x, z), WATER);
-    const yaw = d.family === 'gate' ? ship.heading : (d.seed[2] / 4294967296) * TAU;
+    // (a gate lies across the way; a door faces the ship)
+    const yaw = d.family === 'gate' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : (d.seed[2] / 4294967296) * TAU;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     // a witnessed one: its seeker, giant, built from its art as it is now
     let seeker = null;

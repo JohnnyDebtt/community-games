@@ -24,6 +24,8 @@ const WORDS = ['Lumen', 'Vesper', 'Halcyon', 'Umbral', 'Seraphic', 'Cobalt', 'Ar
 // the forms (and the depth that first has them), the ornaments likewise
 export const FORMS = [['corolla', 1], ['spine', 1], ['nest', 1], ['armillary', 1], ['choir', 1], ['geode', 1], ['bloom', 1],
   ['knot', 2], ['nautilus', 2], ['archipelago', 2], ['murmuration', 3], ['medusa', 3], ['sun', 4], ['watcher', 4]];
+// the mountains' own forms (deep.js draws from these for one that rises on a range)
+export const MOUNTAIN_FORMS = [['spire', 1], ['temple', 1], ['halo', 1], ['loom', 1], ['storm', 2], ['serpent', 3], ['cathedral', 3]];
 export const ORNAMENTS = [['halo', 1], ['sigil', 1], ['orbiters', 1], ['motes', 1], ['pillar', 2], ['beams', 2], ['shards', 2],
   ['rain', 3], ['veil', 4], ['twin', 5], ['skyring', 6], ['echoes', 7]];
 
@@ -74,6 +76,7 @@ export function stratum(depth) {
     glow: Math.min(2.4, 1 + 0.14 * depth),
     veins: Math.min(1, 0.35 + depth * 0.12),
     forms: FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
+    mountainForms: MOUNTAIN_FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
     ornaments: ORNAMENTS.filter(([, d]) => d <= depth).map(([f]) => f),
     harmonics: Array.from({ length: depth }, (_, i) => harmonicOf(i + 1)),
   });

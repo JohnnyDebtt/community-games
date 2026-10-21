@@ -51,6 +51,8 @@ const FAMILY = {
   beacon: ['fm', 'chirp'], orrery: ['glass', 'grains'], helix: ['grains', 'chirp'], tesseract: ['fm', 'glitch'], wreck: ['breath', 'glitch'],
   stair: ['whale', 'chirp'], arbor: ['breath', 'chirp'], pool: ['glass', 'chirp'], sentinel: ['fm', 'glitch'], swarm: ['grains', 'glitch'],
   cradle: ['whale', 'grains'], lanterns: ['glass', 'chirp'], dish: ['grains', 'glitch'],
+  cairns: ['breath', 'grains'], banners: ['breath', 'chirp'], relay: ['fm', 'glitch'], door: ['whale', 'grains'],
+  arch: ['breath', 'glass'], observatory: ['glass', 'chirp'], harp: ['glass', 'grains'], ice: ['glass', 'chirp'],
 };
 
 export class ArtifactVoices {
@@ -107,6 +109,8 @@ export class ArtifactVoices {
     v.tone.connect(v.send); v.send.connect(a.verbIn);
     const deep = d.depth >= 1 && d.params && d.params.voice;
     const layers = deep ? d.params.voice.layers.slice() : (FAMILY[d.family] || ['glass', 'chirp']).slice();
+    // the mountains' deep ones have the wind in them too
+    if (deep && d.mountain && !layers.includes('breath')) layers.push('breath');
     if (deep) {
       v.chord = d.params.voice.chord;
       v.oct = d.params.voice.oct;

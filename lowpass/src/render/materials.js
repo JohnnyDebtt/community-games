@@ -363,9 +363,10 @@ varying vec3 vColor;
 varying vec3 vWorld;
 varying float vH;
 varying float vLo, vHi;
+uniform float uReveal;
 void main() {
   float b = bayer4(gl_FragCoord.xy);
-  if (b < vLo || b >= vHi) discard;
+  if (b < vLo || b >= vHi || b >= uReveal) discard;
   vec3 v = normalize(uCamPos - vWorld);
   vec3 n = flatNormal(vWorld, v);
   vec3 base = vColor * mix(0.5, 1.0, smoothstep(0.0, 0.75, vH));
@@ -378,16 +379,17 @@ void main() {
 // one material for each level of detail, and one (3) for trees that never change (they
 // share every uniform)
 const _tree = [];
-export function treeMaterial(lod = 0) {
-  if (!_tree[lod]) {
-    _tree[lod] = new THREE.ShaderMaterial({
-      uniforms: { ...U, ...TREES },
-      defines: { TREE_LOD: lod },
-      vertexShader: TREE_VERT,
-      fragmentShader: TREE_FRAG,
-      vertexColors: true,
-    });
-  }
+// (unique: one of its own, to dissolve one chunk's trees into view by uReveal)
+export function treeMaterial(lod = 0, unique = false) {
+  const make = () => new THREE.ShaderMaterial({
+    uniforms: { ...U, ...TREES, uReveal: { value: 1 } },
+    defines: { TREE_LOD: lod },
+    vertexShader: TREE_VERT,
+    fragmentShader: TREE_FRAG,
+    vertexColors: true,
+  });
+  if (unique) return make();
+  if (!_tree[lod]) _tree[lod] = make();
   return _tree[lod];
 }
 

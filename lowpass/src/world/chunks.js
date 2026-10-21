@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { hash2, fbm2, smoothstep, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { height, forestDensity, treeKind, autumn, WATER } from './terrain.js';
+import { height, forestDensity, treeKind, autumn, mountainEnv, WATER } from './terrain.js';
 import { treeGeometries, BIRCH, BIRCH_SHAPES } from './trees.js';
 import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS } from '../render/materials.js';
 
@@ -57,7 +57,8 @@ function groundColor(x, z, h, steep, dens) {
   const n = fbm2(x * 0.045 + 7.7, z * 0.045 - 3.1, 2) * 0.85 + hash2(Math.floor(x * 0.25), Math.floor(z * 0.25)) * 0.15;
   if (h < WATER + 0.6) return 0x20242a;
   if (h < WATER + 2.6) return n < 0.5 ? 0x6c7983 : 0x5d666d;
-  if (steep > 0.75) return n < 0.5 ? 0x353e50 : 0x4f5d73;
+  const mtn = h > 90 ? mountainEnv(x, z) : 0;
+  if (steep > 0.75 && mtn <= 0) return n < 0.5 ? 0x353e50 : 0x4f5d73;
   const frost = smoothstep(34, 70, h + (fbm2(x * 0.02, z * 0.02, 2) - 0.5) * 24);
   let c;
   if (dens > 0.45) c = n < 0.33 ? 0x1c1d22 : n < 0.7 ? 0x21252c : 0x2a2f32;
@@ -69,6 +70,15 @@ function groundColor(x, z, h, steep, dens) {
   if (au > 0.01) {
     const litter = dens > 0.45 ? (n < 0.4 ? 0x3a2c25 : n < 0.75 ? 0x4a3524 : 0x5c4129) : (n < 0.35 ? 0x6b4a2c : n < 0.7 ? 0x7d5a31 : 0x8c6a3a);
     c = mixHex(c, litter, au * 0.8 * (1 - frost * 0.5));
+  }
+  // the mountains: bare rock up their flanks and on every steep face, and snow above a
+  // ragged line, thinning (not ending at once) as the faces steepen
+  if (mtn > 0) {
+    const rock = n < 0.4 ? 0x4b4f55 : n < 0.75 ? 0x52565c : 0x464a50;
+    c = mixHex(c, rock, Math.max(smoothstep(110, 175, h) * (0.55 + 0.45 * smoothstep(0.3, 0.6, steep)), smoothstep(0.55, 0.95, steep)));
+    const line = 250 + (fbm2(x * 0.008 + 3.3, z * 0.008 - 7.1, 2) - 0.5) * 70;
+    const snow = smoothstep(line - 20, line + 18, h) * (1 - smoothstep(0.5, 1.1, steep) * 0.85);
+    if (snow > 0.01) c = mixHex(c, n < 0.5 ? 0xdfe5ec : 0xd4dbe3, snow);
   }
   return c;
 }
@@ -92,7 +102,8 @@ export class CanopyMap {
     this.dirty = false;
     this._since = 0;
   }
-  static encode(h) { return Math.max(0, Math.min(255, Math.round((h + 128) / 1.25))); }
+  // 2.5 meters a step, from 128 below the root to 509 above it (the mountains' peaks)
+  static encode(h) { return Math.max(0, Math.min(255, Math.round((h + 128) / 2.5))); }
   bake(chunk, trees) {
     const n = CHUNK / CANOPY_TEXEL, S = CANOPY_SIZE, D = this.data;
     const i0 = (((chunk.x0 / CANOPY_TEXEL) % S) + S) % S, j0 = (((chunk.z0 / CANOPY_TEXEL) % S) + S) % S;
@@ -256,7 +267,8 @@ export class Chunk {
         const hs = xs.map((a, q) => (a ? (zs[q] ? h11 : h10) : (zs[q] ? h01 : h00)));
         const cxw = this.x0 + (i + (xs[0] + xs[1] + xs[2]) / 3) * s, czw = this.z0 + (j + (zs[0] + zs[1] + zs[2]) / 3) * s;
         const ch = (hs[0] + hs[1] + hs[2]) / 3;
-        const steep = (Math.max(...hs) - Math.min(...hs)) / s;
+        // how steep: the whole square's (both its triangles alike, so a face reads as one)
+        const steep = (Math.max(h00, h10, h01, h11) - Math.min(h00, h10, h01, h11)) / s;
         const c = groundColor(cxw, czw, ch, steep, forestDensity(cxw, czw, ch));
         // wind the triangle upward
         const order = flip ? [0, 2, 1] : [0, 2, 1];
@@ -269,6 +281,14 @@ export class Chunk {
     g.setAttribute('emissive', new THREE.BufferAttribute(new Float32Array(pos.length / 3), 1));
     g.computeBoundingSphere();
     this.ground = new THREE.Mesh(g, worldMaterial({ side: THREE.DoubleSide }));
+    // a chunk made as the ship flies comes into view in the dither over a moment (its
+    // ground and its trees), never all at once: materials of its own until it has
+    if (!this.world.instant) {
+      this.ground.material = worldMaterial({ side: THREE.DoubleSide, unique: true });
+      this.ground.material.uniforms.uReveal.value = 0;
+      this.fade = 0;
+      this.fadeTrees = [];
+    }
     this.group.add(this.ground);
     if (this.minH < WATER) {
       const wg = new THREE.PlaneGeometry(CHUNK, CHUNK, 1, 1);
@@ -297,8 +317,14 @@ export class Chunk {
       const r1 = hash2(gx, gz), r2 = hash2(gx + 917, gz - 331), r3 = hash2(gx - 71, gz + 1201), r4 = hash2(gx * 3 + 7, gz * 5 - 3);
       const x = (gx + 0.15 + r2 * 0.7) * CELL, z = (gz + 0.15 + r3 * 0.7) * CELL;
       if (x < this.x0 || x >= this.x0 + CHUNK || z < this.z0 || z >= this.z0 + CHUNK) continue;
-      const h = this.groundAt(x - this.x0, z - this.z0);
-      const d = forestDensity(x, z, h);
+      const lx = x - this.x0, lz = z - this.z0;
+      const h = this.groundAt(lx, lz);
+      let d = forestDensity(x, z, h);
+      // and none on a face too steep to hold them
+      if (d > 0 && h > 40) {
+        const sl = Math.hypot(this.groundAt(lx + 3, lz) - this.groundAt(lx - 3, lz), this.groundAt(lx, lz + 3) - this.groundAt(lx, lz - 3)) / 6;
+        d *= 1 - smoothstep(0.75, 1.15, sl);
+      }
       if (r1 > d) continue;
       let kind = treeKind(x, z, r4);
       // giants, rarely: dark spires over the canopy
@@ -335,7 +361,7 @@ export class Chunk {
       this.base[k] = null;
       if (!arr.length) continue;
       if (k === 3 || k === 4) { for (const t of arr) this.giants.push({ t, k }); continue; }
-      const mesh = new THREE.InstancedMesh(geos[k][0], treeMaterial(0), arr.length);
+      const mesh = new THREE.InstancedMesh(geos[k][0], this._treeMat(0), arr.length);
       arr.forEach((t, i) => {
         mesh.setMatrixAt(i, treeMatrix(t, this.x0, this.z0, m4));
         mesh.setColorAt(i, treeTint(t, k, c));
@@ -356,7 +382,7 @@ export class Chunk {
       let mesh;
       if (lod === 0) mesh = b.first;
       else {
-        mesh = new THREE.InstancedMesh(geos[k][lod], treeMaterial(lod), 0);
+        mesh = new THREE.InstancedMesh(geos[k][lod], this._treeMat(lod), 0);
         mesh.count = b.count;
         mesh.instanceMatrix = b.matrix;
         mesh.instanceColor = b.color;
@@ -367,6 +393,32 @@ export class Chunk {
       this.group.add(mesh);
     }
     return (this.sets[lod] = set);
+  }
+
+  // the trees' material for a level: the shared one, or while the chunk comes into view
+  // one of its own (made when first asked for)
+  _treeMat(lod) {
+    if (this.fade === undefined) return treeMaterial(lod);
+    if (!this.fadeTrees[lod]) {
+      this.fadeTrees[lod] = treeMaterial(lod, true);
+      this.fadeTrees[lod].uniforms.uReveal.value = this.fade;
+    }
+    return this.fadeTrees[lod];
+  }
+
+  // in view now: the shared materials again
+  _faded() {
+    this.ground.material.dispose();
+    this.ground.material = worldMaterial({ side: THREE.DoubleSide });
+    // every tree mesh of it, shown yet or not (a level's first mesh waits until needed)
+    const meshes = new Set([...this.group.children, ...this.base.filter(Boolean).map((b) => b.first), ...this.sets.flat().filter(Boolean)]);
+    for (const m of meshes) {
+      const lod = this.fadeTrees.indexOf(m.material);
+      if (lod >= 0) m.material = treeMaterial(lod);
+    }
+    for (const m of this.fadeTrees) if (m) m.dispose();
+    this.fadeTrees = [];
+    this.fade = undefined;
   }
 
   // which levels this chunk draws (trees inside it may stand in two bands at once)
@@ -394,6 +446,7 @@ export class Chunk {
 
   dispose() {
     this.ground.geometry.dispose();
+    if (this.fade !== undefined) { this.ground.material.dispose(); for (const m of this.fadeTrees) if (m) m.dispose(); }
     if (this.water) this.water.geometry.dispose();
     for (const set of this.sets) if (set) for (const m of set) this.group.remove(m);
     // the instance data is shared by the levels: let the first mesh free it
@@ -410,6 +463,7 @@ export class World {
     this.canopy = new CanopyMap();
     this.giants = new Giants(scene);
     this.radius = opts.radius ?? 900;
+    this.instant = true;        // chunks made now appear at once (the start, behind the loading screen)
     this.onShift = null;
   }
 
@@ -513,6 +567,13 @@ export class World {
       if (ch.giants.length) this.giants.dirty = true;
     }
     for (const [k, ch] of this.chunks) {
+      if (ch.fade !== undefined) {
+        ch.fade += dt / 2.4;
+        if (ch.fade < 1) {
+          ch.ground.material.uniforms.uReveal.value = ch.fade;
+          for (const m of ch.fadeTrees) if (m) m.uniforms.uReveal.value = ch.fade;
+        } else ch._faded();
+      }
       if (!ch.seen) {
         const mx = (ch.cx + 0.5) * CHUNK - x, mz = (ch.cz + 0.5) * CHUNK - z;
         if (Math.hypot(mx, mz) > R + CHUNK * 2) {

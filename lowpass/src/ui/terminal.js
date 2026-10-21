@@ -213,7 +213,7 @@ export class Terminal {
     const o = el('div', 'rows', d);
     const row = (k, v, cls) => { const r = el('div', 'row', o); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
     if (e.kind === 'wild') {
-      row('ORIGIN', 'WILD · found by this ship alone');
+      row('ORIGIN', e.mountain ? 'WILD · on the mountain · found by this ship alone' : 'WILD · found by this ship alone');
       if (e.depth) row('DEPTH', `${stratum(e.depth).numeral} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');
     } else {

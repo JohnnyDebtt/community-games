@@ -8,6 +8,7 @@ import { SEQ } from './generate.js';
 import { STONE, RIM, PULSE, Y, beam, flatSeg, slab, motes, driftMotes } from './parts.js';
 import { NEWER } from './families.js';
 import { buildDeep } from './deepforms.js';
+import { MOUNTAIN, mountainMats } from './mountain.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
@@ -563,10 +564,14 @@ function glyph(d, A, mats, ctx) {
   const g = (x, z) => new THREE.Vector3(x, ctx.ground(x, z), z);
   const lines = [];
   const poly = (list, closed) => { for (let i = 0; i < list.length - (closed ? 0 : 1); i++) lines.push([list[i], list[(i + 1) % list.length]]); };
-  if (P.kind === 'star') {
+  if (P.kind === 'polygons') {
     const pts = [];
     for (let i = 0; i < P.n; i++) { const a = (i / P.n) * TAU; pts.push([Math.cos(a) * R, Math.sin(a) * R]); }
-    for (let i = 0; i < P.n; i++) lines.push([pts[i], pts[(i + P.k) % P.n]]);
+    for (let j = 0, r = R; j <= P.k; j++, r *= Math.cos(Math.PI / P.n)) {
+      const list = [];
+      for (let i = 0; i < P.n; i++) { const a = ((i + j * 0.5) / P.n) * TAU; list.push([Math.cos(a) * r, Math.sin(a) * r]); }
+      poly(list, true);
+    }
     if (P.stones) for (const p of pts) slab(sb, p[0], p[1], -1, 2.6, 9, 1.4, Math.atan2(p[0], p[1]), 0, STONE[1]);
   } else if (P.kind === 'lissajous') {
     const list = [];
@@ -698,14 +703,14 @@ function echo(d, A, mats, ctx) {
   return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, deep: buildDeep };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, deep: buildDeep };
 
 // ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {
-  const mats = { body: worldMaterial({ unique: true }), glow: worldMaterial({ unique: true }) };
+  const mats = { body: worldMaterial({ unique: true }), glow: worldMaterial({ unique: true }), ...(d.family === 'banners' ? mountainMats() : {}) };
   const A = d.accent;
   const out = BUILD[d.family](d, A, mats, ctx);
-  out.mats = [mats.body, mats.glow, ...(out.mats || [])];
+  out.mats = [mats.body, mats.glow, ...(mats.cloth ? [mats.cloth] : []), ...(out.mats || [])];
   // motes of its light, for every artifact but those that already have them
   if (!['fungi', 'solids', 'deep'].includes(d.family)) {
     const m = motes(mixHex(A, 0xffffff, 0.35), 26, Math.max(10, out.span * 0.8), Math.max(10, out.height), d.seed[7], 0.4);

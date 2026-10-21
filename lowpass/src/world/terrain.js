@@ -18,7 +18,25 @@ export function height(x, z) {
   const b = fbm2(x * 0.00105 - 7.1, z * 0.00105 + 3.3, 3);
   h -= smoothstep(0.56, 0.74, b) * 52;
   h += (fbm2(x * 0.011, z * 0.011, 2) - 0.5) * 7;
-  return h;
+  return h + lift(x, z);
+}
+
+// Rarer still (about a third as often as a turned stand, and larger: a range one to
+// three kilometers across with its foothills), mountains: ridged peaks up to some 320
+// meters over the forest, rising out of the fog. mountainEnv: how far into a range a
+// place is (0 outside, its foothills low, 1 at its heart); mountain: its heart, for
+// saying that one is in the mountains.
+const mfield = (x, z) => fbm2(x * 0.0004 - 517.3, z * 0.0004 + 333.9, 3);
+export function mountainEnv(x, z) {
+  return smoothstep(0.62, 0.86, mfield(x, z));
+}
+export function mountain(x, z) {
+  return smoothstep(0.77, 0.84, mfield(x, z));
+}
+function lift(x, z) {
+  const env = mountainEnv(x, z);
+  if (env <= 0) return 0;
+  return 330 * env * env * (0.3 + 0.7 * ridged2(x * 0.0016 + 19.3, z * 0.0016 - 41.7, 4));
 }
 
 // How thickly the forest grows here, 0..1.
@@ -27,9 +45,10 @@ export function forestDensity(x, z, h) {
   let d = 0.62 + (fbm2(x * 0.0035 + 5.2, z * 0.0035 - 9.4, 3) - 0.5) * 1.5;
   // glades and bogs
   d *= smoothstep(0.2, 0.36, fbm2(x * 0.0082 - 3.3, z * 0.0082 + 11.1, 2));
-  // thin near the shore, and on the high frost
+  // thin near the shore, and on the high frost; none above the treeline (the mountains')
   d *= smoothstep(WATER + 1.2, WATER + 6, h);
   d *= 1 - smoothstep(58, 80, h) * 0.75;
+  d *= 1 - smoothstep(150, 215, h);
   return clamp(d, 0, 1);
 }
 

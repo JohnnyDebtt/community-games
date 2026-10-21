@@ -12,9 +12,11 @@ const NUMW = ['None', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Ei
 const num = (n) => NUMW[n] || String(n);
 
 export const DEEP_CODE = { corolla: 'COR', spine: 'AXS', nest: 'NST', armillary: 'ARM', choir: 'CHO', geode: 'GEO', bloom: 'CRL', knot: 'KNT',
-  nautilus: 'NTL', archipelago: 'ARC', murmuration: 'ATR', medusa: 'MDS', sun: 'SUN', watcher: 'WTC' };
+  nautilus: 'NTL', archipelago: 'ARC', murmuration: 'ATR', medusa: 'MDS', sun: 'SUN', watcher: 'WTC',
+  spire: 'SPR', temple: 'TMP', halo: 'HAL', loom: 'LOM', storm: 'STM', serpent: 'SRP', cathedral: 'CTH' };
 const CLASS = { corolla: 'Corolla', spine: 'Axis', nest: 'Nested solids', armillary: 'Armillary', choir: 'Choir', geode: 'Geode', bloom: 'Coral',
-  knot: 'Knot', nautilus: 'Nautilus', archipelago: 'Archipelago', murmuration: 'Attractor', medusa: 'Medusa', sun: 'Star engine', watcher: 'Watcher' };
+  knot: 'Knot', nautilus: 'Nautilus', archipelago: 'Archipelago', murmuration: 'Attractor', medusa: 'Medusa', sun: 'Star engine', watcher: 'Watcher',
+  spire: 'Crystal spire', temple: 'Sky temple', halo: 'Halo', loom: 'Aurora loom', storm: 'Storm crown', serpent: 'Wind serpent', cathedral: 'Ice cathedral' };
 const NOUN = {
   corolla: ['Corolla', 'Lotus', 'Bloom', 'Rose', 'Calyx', 'Chalice'], spine: ['Spine', 'Axis', 'Totem', 'Spindle', 'Stem', 'Mast'],
   nest: ['Nest', 'Reliquary', 'Cage', 'Seed', 'Kernel', 'Shrine'], armillary: ['Armillary', 'Gyre', 'Astrolabe', 'Gimbal', 'Sphere', 'Engine'],
@@ -23,6 +25,10 @@ const NOUN = {
   nautilus: ['Nautilus', 'Horn', 'Galaxy', 'Whorl', 'Spiral', 'Ammonite'], archipelago: ['Archipelago', 'Isles', 'Reach', 'Shoals', 'Stair', 'Garden'],
   murmuration: ['Murmuration', 'Attractor', 'Weather', 'Flock', 'Thought', 'Storm'], medusa: ['Medusa', 'Drifter', 'Bell', 'Veil', 'Lantern', 'Bloom'],
   sun: ['Sun', 'Engine', 'Furnace', 'Heart', 'Swarm', 'Crown'], watcher: ['Watcher', 'Eye', 'Witness', 'Iris', 'Regard', 'Vigil'],
+  spire: ['Spire', 'Shard', 'Needle', 'Lance', 'Prism', 'Tooth'], temple: ['Temple', 'Ziggurat', 'Sanctum', 'Altar', 'Shrine', 'House'],
+  halo: ['Halo', 'Ring', 'Diadem', 'Wheel', 'Circlet', 'Corona'],
+  loom: ['Loom', 'Weave', 'Curtain', 'Veil', 'Tapestry', 'Frame'], storm: ['Storm', 'Tempest', 'Crown', 'Gyre', 'Thunder', 'Weather'],
+  serpent: ['Serpent', 'Wyrm', 'Ribbon', 'Coil', 'Dragon', 'Current'], cathedral: ['Cathedral', 'Nave', 'Chapel', 'Vault', 'Choir', 'Basilica'],
 };
 const ADJ = ['Gilded', 'Burning', 'Singing', 'Unfolding', 'Weightless', 'Drowned', 'Woken', 'Endless', 'Opaline', 'Sleepless', 'Inverted',
   'Radiant', 'Hollow', 'Recursive', 'Patient', 'Unborn', 'Eleventh', 'Mirrored', 'Ascending', 'Dreaming', 'Luminous', 'Unspoken',
@@ -43,6 +49,9 @@ const ATTRACTORS = ['lorenz', 'aizawa', 'thomas', 'halvorsen', 'chen', 'dadras']
 const ATTR_NAME = { lorenz: 'Lorenz', aizawa: 'Aizawa', thomas: 'Thomas', halvorsen: 'Halvorsen', chen: 'Chen', dadras: 'Dadras' };
 const CROWNABLE = ['nest', 'armillary', 'corolla', 'geode', 'knot', 'sun'];
 const COURTLY = ['nest', 'corolla', 'geode', 'knot', 'armillary'];
+// (on the mountains, from the mountains' own)
+const CROWNABLE_M = ['halo', 'spire', 'storm', 'temple'];
+const COURTLY_M = ['spire', 'temple', 'halo', 'loom'];
 
 // the voice's layers, and the depth that first has each
 const VOICES = [['bells', 1], ['pad', 1], ['shimmer', 2], ['arp', 2], ['comb', 3], ['glide', 3], ['poly', 4], ['swell', 4],
@@ -158,6 +167,43 @@ export function formParams(form, R, depth) {
       P.arcs = R.int(3, 6);
       P.text = `A star the size of a house, ${P.plates} plates on ${num(P.planes).toLowerCase()} orbits about it, catching its light.`;
       break;
+    case 'spire':
+      P.facets = R.pick([5, 6, 7, 8]);
+      P.rings = deep(1, 4, 2);
+      P.shards = Math.min(24, 7 + depth * 2);
+      P.text = `A crystal of ${P.facets} faces grown out of the summit, ${P.shards} smaller about its foot; ${P.rings === 1 ? 'a ring of light turns' : `${num(P.rings).toLowerCase()} rings of light turn`} about it.`;
+      break;
+    case 'temple':
+      P.tiers = deep(3, 7, 2);
+      P.shape = R.pick(['square', 'round']);
+      P.stairs = R.int(1, 4);
+      P.text = `A temple of ${num(P.tiers).toLowerCase()} ${P.shape} tiers hanging over the summit, ${P.stairs === 1 ? 'a stair' : `${num(P.stairs).toLowerCase()} stairs`} of light down to the stone.`;
+      break;
+    case 'halo':
+      P.pendants = Math.min(36, 12 + depth * 2);
+      P.tilt = R.range(0.08, 0.32);
+      P.rings = deep(1, 3, 3);
+      P.text = `A ring of stone hanging over the summit, ${P.pendants} shards hung from it; light falls from them to the rock.`;
+      break;
+    case 'loom':
+      P.frames = deep(1, 3, 3);
+      P.ribbons = Math.min(16, 6 + depth);
+      P.text = `${P.frames === 1 ? 'A frame' : `${num(P.frames)} frames`} as tall as the trees, ${P.ribbons} ribbons of aurora woven on ${P.frames === 1 ? 'it' : 'them'}, moving in no wind.`;
+      break;
+    case 'storm':
+      P.clouds = Math.min(48, 18 + depth * 3);
+      P.bolts = R.range(1.2, 2.6) / (1 + depth * 0.08);
+      P.text = `A crown of storm turning over the summit, an eye of light at its heart; lightning falls from it to the stone every few seconds.`;
+      break;
+    case 'serpent':
+      P.coils = Math.min(4, R.range(1.6, 2.4) + depth * 0.1);
+      P.text = `A serpent of light, ${P.coils.toFixed(1)} coils about the summit, never still.`;
+      break;
+    case 'cathedral':
+      P.bays = deep(3, 7, 2);
+      P.spires = R.int(0, 2);
+      P.text = `A nave of ice ${num(P.bays).toLowerCase()} bays long, its rose window lit${P.spires ? `, ${num(P.spires * 2).toLowerCase()} spires over its front` : ''}.`;
+      break;
     case 'watcher':
       P.eyes = depth >= 6 ? R.int(3, 7) : R.int(0, 2);
       P.iris = R.pick([24, 36, 48]);
@@ -172,11 +218,13 @@ export function formParams(form, R, depth) {
 export function describeDeep(d, move, R1, R3) {
   const depth = d.depth, st = stratum(depth);
   // (development may ask for a form: then any, at any depth)
-  const form = move.form && DEEP_CODE[move.form] ? (R1(), move.form) : R1.pick(st.forms);
+  // on the mountains, from the mountains' own forms (crowns and courts too)
+  const forms = d.mountain ? st.mountainForms : st.forms;
+  const form = move.form && DEEP_CODE[move.form] ? (R1(), move.form) : R1.pick(forms);
   const P = formParams(form, R1, depth);
   // deeper: another form crowning it, a court of small ones about it
-  if (depth >= 5 && R1() < 0.5) P.crown = formParams(R1.pick(CROWNABLE.filter((f) => f !== form && st.forms.includes(f))), R1, Math.max(1, depth - 3));
-  if (depth >= 7 && R1() < 0.5) { const c = R1.pick(COURTLY.filter((f) => f !== form)); P.court = { n: R1.int(3, 6), form: formParams(c, R1, Math.max(1, depth - 4)) }; }
+  if (depth >= 5 && R1() < 0.5) P.crown = formParams(R1.pick((d.mountain ? CROWNABLE_M : CROWNABLE).filter((f) => f !== form && forms.includes(f))), R1, Math.max(1, depth - 3));
+  if (depth >= 7 && R1() < 0.5) { const c = R1.pick((d.mountain ? COURTLY_M : COURTLY).filter((f) => f !== form && forms.includes(f))); P.court = { n: R1.int(3, 6), form: formParams(c, R1, Math.max(1, depth - 4)) }; }
   P.ornaments = pickNew(R1, [['halo', 1], ['sigil', 1], ['orbiters', 1], ['pillar', 2], ['beams', 2], ['shards', 2], ['rain', 3], ['veil', 4], ['twin', 5], ['skyring', 6], ['echoes', 7]],
     depth, Math.min(5, 1 + Math.ceil(depth / 2)), ['motes']);
   // its voice: layers (the newer likelier), and its chord: the palette's harmonics and
@@ -202,7 +250,7 @@ export function describeDeep(d, move, R1, R3) {
   const crowned = P.crown ? ` Over it, ${P.crown.text[0].toLowerCase()}${P.crown.text.slice(1)}` : '';
   const court = P.court ? ` About it stand ${num(P.court.n).toLowerCase()} small ${CLASS[P.court.form.form].toLowerCase()}s.` : '';
   d.structure = P.text + crowned + court;
-  d.origin = move.glimpse
+  d.origin = d.mountain && !move.glimpse ? `From Depth ${roman(depth)}, ${st.title}, on the mountain; no other ship will find it.` : move.glimpse
     ? `From Depth ${roman(depth)}, ${st.title}: deeper than this scanner reaches. It came up anyway.`
     : `From Depth ${roman(depth)}, ${st.title}, where the scanner now reaches; no other ship will find it.`;
   d.flavor = R3.pick(FLAVOR);
