@@ -33,6 +33,14 @@ export function forestDensity(x, z, h) {
   return clamp(d, 0, 1);
 }
 
+// Now and then, a stand gone to autumn: birches turned gold among the dark spruces, the
+// ground under them russet with fallen leaves. A smooth field over the world (0 to 1),
+// the same for everyone: about one part in twenty of the forest, in stands a few hundred
+// meters to a kilometer across, their edges turning over a couple of hundred.
+export function autumn(x, z) {
+  return smoothstep(0.73, 0.8, fbm2(x * 0.0006 + 211.7, z * 0.0006 - 87.3, 3));
+}
+
 // Which kind of tree: 0 spruce, 1 fir, 2 dead snag
 export function treeKind(x, z, r) {
   const k = fbm2(x * 0.0027 + 77.3, z * 0.0027 - 41.2, 2);

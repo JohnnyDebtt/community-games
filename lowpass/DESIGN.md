@@ -88,6 +88,21 @@ throw beams between the trees and breaks in the overcast send shafts down by day
 screen-space pass streams light from the sun past whatever stands in front of it. The
 cloud deck's shadows roll over the forest in stepped bands.
 
+The forest is spruce and fir, dark blue-greens. Rarely, a turned stand: one smooth field
+over the world (about a twentieth of it, stands a few hundred meters to a kilometer
+across) where most trees are birches, each a single lobed crown on a pale, marked trunk,
+gold, deep gold, amber or rust by the tree, more of them still green toward the edges,
+and fewer, so a stand fades out into the spruce. The ground under it goes russet, the fog
+in it warms a little, and the giants stand dark over it. Whatever the weather, mist lies
+in it: banks drifting between the trunks, under the crowns so their tops stand clear, and
+only within a few hundred meters of the eye, so the horizon stays as the weather has it.
+The canopy map carries how turned each place is beside the crowns' height; the fog pass
+takes the mist along the stretch of each ray that can hold it, at even steps and not the
+fog's jittered ones (a thin, thick layer would show the dither), and lays it over what is
+behind. Three crown shapes, each tree
+squashed, leaned and turned its own way. The bark is a true grey, which the tree shader
+gives the tint's brightness and not its hue, so the trunks stay pale whatever the leaves.
+
 ## Time and weather, shared
 
 The planet keeps Robinhood Chain's time: a day is 14,400 blocks (about 24 minutes), three
@@ -168,6 +183,7 @@ The forest must never visibly change around the ship. Each tree chooses its leve
 on the GPU, at its own distance inside a band (from 250 m, and from 560 m), dissolving from
 one level to the next over 16 m on the same 4x4 dither as everything else; a chunk only
 decides which levels it may need, so no block of forest ever switches at once. The rare
-giants keep their full shape at every distance (all of them drawn in one mesh). Artifact
-clearings dissolve the trees standing in them the same way, in the shader, instead of
+giants keep their full shape at every distance (all of them drawn in one mesh). The
+birches cost about what the spruce do: one crown of about a hundred faces near, ten far.
+Artifact clearings dissolve the trees standing in them the same way, in the shader, instead of
 rebuilding the chunk's trees.

@@ -256,7 +256,9 @@ void main() {
   vH = h;
   vColor = color;
 #ifdef USE_INSTANCING_COLOR
-  vColor *= instanceColor;
+  // a true grey (the birch's bark) takes the tint's brightness, not its hue
+  float grey = step(abs(color.r - color.g) + abs(color.g - color.b), 0.004);
+  vColor *= mix(instanceColor, vec3(dot(instanceColor, vec3(0.3333))), grey);
 #endif
   vWorld = w.xyz;
   gl_Position = projectionMatrix * viewMatrix * w;

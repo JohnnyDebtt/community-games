@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Pipeline, FOG, POST } from './render/pipeline.js';
 import { U } from './render/materials.js';
 import { World } from './world/chunks.js';
+import { autumn } from './world/terrain.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { Ship } from './ship/ship.js';
 import { Interior } from './ship/interior.js';
@@ -66,6 +67,8 @@ export class Game {
     this.audio = new Audio();
     this.plasma = new Plasma(this.scene);
     this._back = new THREE.Vector3();
+    this._autumn = 0;           // how turned the stand about the eye is, eased
+    this._autumnSaid = false;
     this.world.onShift = (dx, dz) => { this.cams.shift(dx, dz); this.plasma.shift(dx, dz); };
 
     // the interface shares the world's pixel
@@ -334,6 +337,27 @@ export class Game {
   }
 
   // inside the ship: on foot (at the Codex too), at the controls, over coffee
+  // A turned stand: the air about it warms a little; flying into one the first time in
+  // a while, a word about it.
+  _turned(dt, eye, overlay) {
+    const ex = eye.x + this.world.origin.x, ez = eye.z + this.world.origin.z;
+    this._autumn = damp(this._autumn, autumn(ex, ez), 1.2, dt);
+    // the fog lays its mist through any stand within its reach (looked for now and then)
+    this._mistT = (this._mistT || 0) - dt;
+    if (this._mistT <= 0) {
+      this._mistT = 0.5;
+      let near = autumn(ex, ez) > 0;
+      for (let i = 0; i < 12 && !near; i++) for (const r of [450, 900]) near = near || autumn(ex + Math.cos(i * 0.5236) * r, ez + Math.sin(i * 0.5236) * r) > 0;
+      FOG.uMist.value = near ? 1 : 0;
+    }
+    this.atmo.autumn = this._autumn;
+    if (this._autumn < 0.1) this._autumnSaid = false;
+    else if (this._autumn > 0.5 && !this._autumnSaid && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
+      this._autumnSaid = true;
+      this.hud.say('A TURNED STAND', 'birches gone to gold among the spruce', 4);
+    }
+  }
+
   _aboard() {
     return this.mode === 'walk' || this.mode === 'seat' || this.mode === 'coffee';
   }
@@ -510,6 +534,7 @@ export class Game {
     this.companion.update(dt, this.time);
     const cw = this.cams.cam.position;
     this.world.lods(cw.x + this.world.origin.x, cw.z + this.world.origin.z);
+    this._turned(dt, cw, overlay);
     U.uPxScale.value = this.px.height / 2 / Math.tan((this.cams.cam.fov * Math.PI) / 360);
 
     // the score listens to the world

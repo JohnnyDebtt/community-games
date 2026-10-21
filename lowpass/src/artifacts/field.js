@@ -30,6 +30,8 @@ import { angleDelta, clamp, TAU, damp } from '../core/math.js';
 
 const SCAN_RANGE = 340;
 const SCAN_CONE = 0.52;       // radians either side of the nose
+const HOLD_CONE = 1.3;        // once a scan is under way and held, it holds on this far
+const NEAR_CONE = 0.5;        // and close by (within 150 m) the cone opens by up to this
 const SCAN_TIME = 2.4;        // seconds of holding
 const FIRST_DELAY = 30;
 const REVEAL_SECS = 2.6;
@@ -247,7 +249,9 @@ export class Field {
       }
       // come near and then lost from sight, or left far behind: back into the fog
       a.closest = Math.min(a.closest, a.dist);
-      const lost = Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
+      // (not the one being scanned while the scan goes on)
+      const scanningThis = a === this.target && this.scan > 0;
+      const lost = !scanningThis && Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
       if (lost && !a.passed && !a.scanned) {
         a.passed = true;
         if (this.onMissed) this.onMissed(a);
@@ -298,7 +302,11 @@ export class Field {
     const score = (a) => Math.abs(a.bearing) * 600 + a.dist;
     let t = null;
     for (const a of open) if (!t || score(a) < score(t)) t = a;
-    const held = this.target && open.includes(this.target) && this.state === 'lock' && Math.abs(this.target.bearing) < SCAN_CONE && this.target.dist < SCAN_RANGE + this.target.model.span * 0.5;
+    // how far off the nose still counts: wider close by, and wider still once a scan is
+    // under way and held, so flying right past one does not lose it
+    const cone = (a, scanning) => (scanning ? HOLD_CONE : SCAN_CONE) + clamp(1 - a.dist / 150, 0, 1) * NEAR_CONE;
+    const going = this.scan > 0 && scanHeld;
+    const held = this.target && open.includes(this.target) && this.state === 'lock' && Math.abs(this.target.bearing) < cone(this.target, going) && this.target.dist < SCAN_RANGE + this.target.model.span * 0.5;
     if (held && t !== this.target && score(t) > score(this.target) - 150) t = this.target;
     if (t !== this.target) this.scan = 0;
     this.target = t;
@@ -308,7 +316,7 @@ export class Field {
       return;
     }
     const inRange = t.dist < SCAN_RANGE + t.model.span * 0.5;
-    const inCone = Math.abs(t.bearing) < SCAN_CONE;
+    const inCone = Math.abs(t.bearing) < cone(t, going && t === this.target);
     if (inRange && inCone && !g.asleep) {
       this.state = 'lock';
       if (scanHeld) this.scan = Math.min(1, this.scan + dt / SCAN_TIME);
@@ -321,7 +329,8 @@ export class Field {
       }
     } else {
       this.state = inRange ? 'near' : 'far';
-      this.scan = Math.max(0, this.scan - dt * 0.6);
+      // lost for a moment, the progress lingers: it drains slowly, and comes back on
+      this.scan = Math.max(0, this.scan - dt * 0.25);
     }
     ship.scanGlow = damp(ship.scanGlow, this.state === 'lock' && scanHeld ? 1 : 0, 8, dt);
   }

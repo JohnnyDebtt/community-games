@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { hash2, fbm2, smoothstep, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { height, forestDensity, treeKind, WATER } from './terrain.js';
-import { treeGeometries } from './trees.js';
+import { height, forestDensity, treeKind, autumn, WATER } from './terrain.js';
+import { treeGeometries, BIRCH, BIRCH_SHAPES } from './trees.js';
 import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS } from '../render/materials.js';
 
 // The forest streams in around the ship in square chunks, and the world keeps a floating
@@ -11,7 +11,7 @@ import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS } from '..
 export const CHUNK = 128;
 const GRID = 16;                 // terrain quads per side (8 m)
 const CELL = 6.2;                // one tree candidate per cell
-const KINDS = 5;                 // spruce, fir, snag, and the rare giant spruce and fir
+const KINDS = BIRCH + BIRCH_SHAPES; // spruce, fir, snag, the rare giant spruce and fir, birches
 const CLEAR_SECS = 1.6;          // a clearing opens (or grows back) over this long
 
 const WATER_VERT = /* glsl */ `
@@ -64,6 +64,12 @@ function groundColor(x, z, h, steep, dens) {
   else if (dens > 0.15) c = n < 0.4 ? 0x2a2f32 : n < 0.75 ? 0x353e50 : 0x3e545b;
   else c = n < 0.4 ? 0x3e545b : n < 0.75 ? 0x49573d : 0x4f7368;
   if (frost > 0.15) c = mixHex(c, n < 0.6 ? 0x758399 : 0x667389, clamp(frost * (dens > 0.45 ? 0.4 : 0.7), 0, 0.7));
+  // a turned stand: the floor russet with fallen needles, umber in the deep shade
+  const au = autumn(x, z);
+  if (au > 0.01) {
+    const litter = dens > 0.45 ? (n < 0.4 ? 0x3a2c25 : n < 0.75 ? 0x4a3524 : 0x5c4129) : (n < 0.35 ? 0x6b4a2c : n < 0.7 ? 0x7d5a31 : 0x8c6a3a);
+    c = mixHex(c, litter, au * 0.8 * (1 - frost * 0.5));
+  }
   return c;
 }
 
@@ -74,8 +80,10 @@ function groundColor(x, z, h, steep, dens) {
 export const CANOPY_SIZE = 512, CANOPY_TEXEL = 4, CANOPY_SPAN = CANOPY_SIZE * CANOPY_TEXEL;
 export class CanopyMap {
   constructor() {
-    this.data = new Uint8Array(CANOPY_SIZE * CANOPY_SIZE);
-    this.texture = new THREE.DataTexture(this.data, CANOPY_SIZE, CANOPY_SIZE, THREE.RedFormat, THREE.UnsignedByteType);
+    // red: the crowns' height; green: how turned the stand there is (the fog lays its
+    // mist through the trees by it)
+    this.data = new Uint8Array(CANOPY_SIZE * CANOPY_SIZE * 2);
+    this.texture = new THREE.DataTexture(this.data, CANOPY_SIZE, CANOPY_SIZE, THREE.RGFormat, THREE.UnsignedByteType);
     this.texture.wrapS = this.texture.wrapT = THREE.RepeatWrapping;
     this.texture.minFilter = this.texture.magFilter = THREE.LinearFilter;
     this.texture.generateMipmaps = false;
@@ -104,7 +112,15 @@ export class CanopyMap {
         }
       }
     }
-    for (let j = 0; j < n; j++) D.set(Array.from(H.subarray(j * n, j * n + n), CanopyMap.encode), (j0 + j) * S + i0);
+    // the stand's field is slow: where a chunk's corners and middle are all untouched, so
+    // is the rest of it
+    const au = (i, j) => autumn(chunk.x0 + (i + 0.5) * CANOPY_TEXEL, chunk.z0 + (j + 0.5) * CANOPY_TEXEL);
+    const turned = [[0, 0], [n - 1, 0], [0, n - 1], [n - 1, n - 1], [n >> 1, n >> 1]].some(([i, j]) => au(i, j) > 0);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const o = ((j0 + j) * S + i0 + i) * 2;
+      D[o] = CanopyMap.encode(H[j * n + i]);
+      D[o + 1] = turned ? Math.round(au(i, j) * 255) : 0;
+    }
     this.dirty = true;
   }
   update(dt) {
@@ -131,12 +147,21 @@ function treeMatrix(t, ox, oz, m4) {
   _e.set(t.lean, t.yaw, t.lean * 0.5);
   _q.setFromEuler(_e);
   _p.set(t.x - ox, t.h - 0.6, t.z - oz);
-  _s.set(t.ht * t.wd, t.ht, t.ht * t.wd);
+  _s.set(t.ht * t.wd * t.sq, t.ht, (t.ht * t.wd) / t.sq);
   return m4.compose(_p, _q, _s);
 }
+// A birch's leaves, by the tree: gold, deep gold, amber, rust (times its gold); and one
+// still turning, green in the gold, more of them toward a stand's edges
+const TURNED = [[1, 1, 1], [1.04, 0.9, 0.8], [1.02, 0.78, 0.72], [0.92, 0.6, 0.6]];
+const LATE = [0.82, 1.06, 1.15];
+
 function treeTint(t, k, c) {
   const v = 0.82 + (t.tint % 1) * 0.3;
   if (k === 2) return c.setRGB(v, v, v);
+  if (k >= BIRCH) {
+    const T = (t.r6 * 7.31) % 1 < (1 - smoothstep(0.15, 0.7, t.au)) * 0.6 ? LATE : TURNED[Math.floor(t.r6 * TURNED.length)];
+    return c.setRGB(T[0] * v, T[1] * v, T[2] * v);
+  }
   return c.setRGB(v * (0.95 + (t.yaw % 0.1)), v, v * (1.02 - (t.yaw % 0.08)));
 }
 
@@ -275,14 +300,22 @@ export class Chunk {
       const h = this.groundAt(x - this.x0, z - this.z0);
       const d = forestDensity(x, z, h);
       if (r1 > d) continue;
-      const kind = treeKind(x, z, r4);
+      let kind = treeKind(x, z, r4);
       // giants, rarely: dark spires over the canopy
       const giant = r4 > 0.9975;
-      let ht = kind === 0 ? 17 + r2 * 13 : kind === 1 ? 13 + r3 * 9 : 9 + r2 * 10;
+      // in a turned stand most trees are birches gone gold (some spruce and fir stand
+      // dark among them, the giants over them); toward its edges fewer
+      const au = autumn(x, z);
+      const r5 = au > 0.01 ? hash2(gx * 7 + 3, gz * 11 - 5) : 1;
+      if (kind !== 2 && !giant && r5 < au * 0.75) kind = BIRCH + Math.floor((r5 * 97.3 % 1) * BIRCH_SHAPES);
+      const birch = kind >= BIRCH;
+      let ht = kind === 0 ? 17 + r2 * 13 : kind === 1 ? 13 + r3 * 9 : birch ? 17 + r2 * 12 : 9 + r2 * 10;
       ht *= 0.85 + d * 0.3;
       if (giant) ht = 46 + r3 * 14;
-      const wd = kind === 1 ? 0.9 + r3 * 0.3 : 0.8 + r2 * 0.35;
-      list.push({ x, z, h, kind, giant, ht, wd, yaw: r3 * 6.283, tint: r1 / Math.max(d, 0.01), lean: (r4 - 0.5) * 0.06 });
+      const wd = kind === 1 ? 0.9 + r3 * 0.3 : birch ? 0.9 + r3 * 0.25 : 0.8 + r2 * 0.35;
+      // a birch's crown a little oval, each its own way
+      const r6 = birch ? hash2(gx - 13, gz * 3 + 29) : 0;
+      list.push({ x, z, h, kind, giant, ht, wd, sq: birch ? 0.84 + ((r6 * 31.7) % 1) * 0.34 : 1, yaw: r3 * 6.283, tint: r1 / Math.max(d, 0.01), lean: (r4 - 0.5) * (birch ? 0.12 : 0.06), au, r6 });
     }
     this.trees = list;
   }
@@ -301,7 +334,7 @@ export class Chunk {
       const arr = byKind[k];
       this.base[k] = null;
       if (!arr.length) continue;
-      if (k >= 3) { for (const t of arr) this.giants.push({ t, k }); continue; }
+      if (k === 3 || k === 4) { for (const t of arr) this.giants.push({ t, k }); continue; }
       const mesh = new THREE.InstancedMesh(geos[k][0], treeMaterial(0), arr.length);
       arr.forEach((t, i) => {
         mesh.setMatrixAt(i, treeMatrix(t, this.x0, this.z0, m4));

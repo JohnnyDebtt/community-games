@@ -37,6 +37,8 @@ function sample(e, out) {
   return out;
 }
 
+const _warm = new THREE.Color();
+
 export class Atmosphere {
   constructor() {
     this.time = 0.112;          // fraction of a day: the sun rises at 0.125
@@ -51,6 +53,7 @@ export class Atmosphere {
     this.fogBias = 0;           // settings: -1 thin .. +1 thick
     this.sunElev = 0;
     this.night = 0;
+    this.autumn = 0;            // how turned the stand about the eye is (the game sets it)
   }
 
   // the sun's height: a biased sine, so days are longer than nights
@@ -117,6 +120,13 @@ export class Atmosphere {
 
     U.uFogColor.value.copy(c.fog);
     FOG.uFogLow.value.copy(c.low);
+    // in a turned stand the steam takes a little of the gold (less by night)
+    const au = this.autumn * (1 - this.night * 0.6);
+    if (au > 0.001) {
+      _warm.setRGB(1 + 0.1 * au, 1 + 0.02 * au, 1 - 0.08 * au);
+      U.uFogColor.value.multiply(_warm);
+      FOG.uFogLow.value.multiply(_warm);
+    }
     FOG.uSkyTop.value.copy(c.top);
     FOG.uSkyHorizon.value.copy(c.hor);
     FOG.uSkyGlow.value.copy(c.glow);

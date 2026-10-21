@@ -77,6 +77,12 @@ to it and press E.
 
 ## How it plays
 
+- **The forest.** Spruce and fir over rolling hills, black lakes and frosted ridges, the
+  same for everyone. Now and then (about one part in twenty of it) a **turned stand**:
+  birches gone gold, amber and rust among the dark spruce, in any weather with banks of
+  mist drifting between the trunks under the crowns, the ground russet with fallen leaves
+  and the fog a little warmer; a few hundred meters to a kilometer across, its edges
+  turning over a couple of hundred.
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
   steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a
   pale blue-violet trail, and the ship climbs to about 58 m/s while the view widens. The
@@ -130,7 +136,9 @@ to it and press E.
   nose, quieter behind. You hear one before you see it.
 - **Scanning.** Bring it into the brackets and hold SPACE (SCAN on a touch screen, A on
   a gamepad) for a couple of seconds; it works through the windshield at the controls
-  too. With several out there, the scanner takes the one most nearly ahead, and the
+  too. Once a scan is under way it holds on as you fly close past (and wider still right
+  beside one), and if it slips for a moment the progress drains slowly rather than
+  vanishing. With several out there, the scanner takes the one most nearly ahead, and the
   bearing strip along the top marks every one. The visor photographs it (288 x 162,
   through the same fog), names it, and writes the Codex's notes.
 - **Alertness.** It runs down over about ten minutes. Tired, the edges close in, blinks
@@ -165,7 +173,11 @@ in over seconds and fade over more, some dissolving into breath at their pitch, 
 only as the hall's wash; now and then a far, soft tone; and every few minutes a rest. All
 of it through a wide chorus into a moving plate reverb (its tail swept like a chorus, its
 reflections turning). The hour, the fog, drowsiness, the cabin's walls and nearby
-artifacts steer it. **M** keeps what is playing (it comes back); **R** saves the last
+artifacts steer it. The effects carve it, as SeekerAudio's kick carves its layers: the
+music is multiplied by one minus an effect's own level, sample by sample (a ring-mod cut
+that leaves it through where the effect's wave crosses zero, so nothing pumps), and dips
+a little under the effect's envelope, so a scan, a seeker's murmur or an alert is never
+lost under a swell. **M** keeps what is playing (it comes back); **R** saves the last
 minute as a WAV file.
 
 ## The Codex computer
@@ -305,12 +317,17 @@ and this file are not needed at runtime.
 - `index.html`'s Content Security Policy carries the hash of its import map: change
   one, change both. A new RPC or relay must be added to its `connect-src` too.
 - `node tools/snapshot_moves.mjs 72` refreshes `assets/moves.json` (read only).
+- After changing `style.css`, run `node tools/stamp.mjs` before publishing: it stamps the
+  stylesheet with a hash of itself in `style.css`, `src/build.js` and `index.html`. A
+  browser that brings back an old tab can hand over an old stylesheet with new code; the
+  code checks the stamp and fetches the stylesheet that goes with it.
 
 ## Files
 
 ```
 index.html, style.css     the page and the interface
-src/main.js, src/game.js  start-up, the modes, the frame
+src/main.js, src/game.js  start-up (and the stylesheet check, src/build.js), the modes,
+                          the frame
 src/render/               the pipeline (opaque, fog and sky, glows, grade and dither),
                           materials, the geometry builder
 src/world/                terrain, trees, chunks with a floating origin, the canopy map
@@ -330,7 +347,7 @@ src/core/                 math, palette, input, storage, keccak, the score, the 
 src/ui/                   HUD, the Codex computer, menus, touch
 assets/                   fonts, SEEKER NET art atlas and metadata, shipped moves
 vendor/                   three.js r170, noble-secp256k1
-tools/                    local server, test relay, moves snapshot
+tools/                    local server, test relay, moves snapshot, the stylesheet stamp
 ```
 
 ## Credits and licenses

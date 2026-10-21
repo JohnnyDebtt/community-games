@@ -3,8 +3,9 @@ import { mixHex } from '../core/palette.js';
 
 // The forest's trees, each in three levels of detail, one unit tall (the instance scales
 // them). Spruces are tiers of star-shaped cones, their tips drooping under the rime;
-// firs are broader, darker and rounder; dead snags stand pale and bare. Colors from the
-// codex's tundra stone and moss ramps; the shader adds the rime and the shade at the foot.
+// firs are broader, darker and rounder; dead snags stand pale and bare; in the rare
+// turned stands, birches: pale trunks under round crowns of gold. Colors from the codex's
+// tundra stone and moss ramps; the shader adds the rime and the shade at the foot.
 
 const TRUNK = 0x2d2e33;
 const BARK = 0x353b44;
@@ -127,13 +128,91 @@ function snag(lod) {
   return G.build();
 }
 
+// A small seeded random, so each birch shape is the same for everyone and every session
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// The birch's bark is a true grey: the shader gives it the tint's brightness and not its
+// hue, so whatever color the leaves have turned, the trunks stay pale (with dark marks).
+const BIRCH_BARK = 0x989898, BIRCH_MARK = 0x3a3a3a;
+// its leaves from the top down: lit gold, gold, the shaded side, the underside
+const BIRCH_LEAF = [0xdcb44c, 0xc89a34, 0xa06e28, 0x5e3e18];
+const DEEP = 0xb8642a;     // patches gone deeper, toward amber
+const GREEN = 0x8a9a3c;    // a patch still green
+
+// A birch's crown: one rounded volume, broadest a little below its middle and narrowing
+// to the top, its outline pushed out and in by a few slow lobes (seeded, so each shape is
+// the same for everyone). Shaded light above and dark below, with a slow patch or two of
+// deeper color. spread: how broad; lean: which way the crown leans.
+function crown(G, seed, lod, spread, lean) {
+  const rand = seeded(seed);
+  const seg = lod === 0 ? 9 : lod === 1 ? 6 : 5;
+  const rings = lod === 0 ? 5 : lod === 1 ? 3 : 1;
+  const p1 = rand() * 6.28, p2 = rand() * 6.28, p3 = rand() * 6.28, lobes = 2 + Math.floor(rand() * 2);
+  const green = rand() < 0.4 ? rand() * 6.28 : null;
+  const y0 = 0.3, y1 = 1.0;
+  const pt = (t, i) => {
+    const a = (i / seg) * Math.PI * 2 + t * 0.6;
+    const prof = Math.pow(Math.sin(Math.PI * Math.pow(t, 0.8)), 0.75);
+    const bump = 1 + 0.16 * Math.sin(lobes * a + p1 + t * 3) + 0.1 * Math.sin((lobes + 1) * a + p2 - t * 2);
+    const r = 0.22 * spread * prof * bump;
+    return [Math.cos(a) * r + lean * t, y0 + (y1 - y0) * t + 0.02 * Math.sin(a * 2 + p2), Math.sin(a) * r];
+  };
+  const shade = (t, a) => {
+    const k = t * 3;
+    let c = mixHex(BIRCH_LEAF[3 - Math.min(2, Math.floor(k))], BIRCH_LEAF[2 - Math.min(2, Math.floor(k))], k % 1);
+    if (t > 0.99) c = BIRCH_LEAF[0];
+    c = mixHex(c, DEEP, 0.3 * Math.max(0, Math.sin(a + p3)));
+    if (green !== null) c = mixHex(c, GREEN, 0.4 * Math.max(0, Math.cos(a - green) * 2 - 1));
+    return c;
+  };
+  const ts = rings === 1 ? [0.45] : Array.from({ length: rings }, (_, k) => 0.12 + (k / (rings - 1)) * 0.74);
+  const ring = (t) => Array.from({ length: seg }, (_, i) => pt(t, i));
+  const R = ts.map(ring);
+  const top = [lean, y1 + 0.02, 0], foot = [lean * 0.05, y0 + 0.02, 0];
+  const mid = (i) => ((i + 0.5) / seg) * Math.PI * 2;
+  for (let i = 0; i < seg; i++) {
+    const j = (i + 1) % seg, a = mid(i);
+    G.tri(foot, R[0][i], R[0][j], shade(0, a));
+    for (let k = 0; k + 1 < R.length; k++) {
+      const c = shade((ts[k] + ts[k + 1]) / 2, a);
+      G.tri(R[k][i], R[k + 1][j], R[k][j], c);
+      G.tri(R[k][i], R[k + 1][i], R[k + 1][j], c);
+    }
+    G.tri(top, R[R.length - 1][j], R[R.length - 1][i], shade(1, a));
+  }
+}
+
+// Three birch shapes: a full oval, a tall narrow one, a broad one leaning
+const BIRCHES = [[11, 1.0, 0], [23, 0.8, 0.04], [37, 1.15, 0.1]];
+
+function birch(lod, shape) {
+  const G = new Geo();
+  const [seed, spread, lean] = BIRCHES[shape];
+  if (lod < 2) trunk(G, 0.022, 0.011, 0, 0.82, lod === 0 ? 5 : 4, BIRCH_BARK);
+  if (lod === 0) for (const y of [0.13, 0.27]) trunk(G, 0.023, 0.022, y, y + 0.025, 5, BIRCH_MARK);
+  crown(G, seed, lod, spread, lean);
+  return G.build();
+}
+
 let _geos = null;
-// [kind][lod] -> geometry (kinds: spruce, fir, snag, giant spruce, giant fir)
+// [kind][lod] -> geometry (kinds: spruce, fir, snag, giant spruce, giant fir, and from
+// BIRCH on the birches' shapes)
+export const BIRCH = 5;
+export const BIRCH_SHAPES = BIRCHES.length;
 export function treeGeometries() {
   if (!_geos) {
     const s = [spruce(0), spruce(1), spruce(2)], f = [fir(0), fir(1), fir(2)];
     // the giants stand over everything and are seen from far: always in full
     _geos = [s, f, [snag(0), snag(1), snag(1)], [s[0], s[0], s[0]], [f[0], f[0], f[0]]];
+    for (let i = 0; i < BIRCHES.length; i++) _geos.push([birch(0, i), birch(1, i), birch(2, i)]);
   }
   return _geos;
 }

@@ -221,7 +221,7 @@ export class Companion {
     const h = hash1(this.token);
     const scale = [0, 2, 3, 4].map((d) => d + Math.floor(h * 5));
     const d = scale[(line.charCodeAt(k) + k) % scale.length];
-    a.note(pitch(d, 2 + (h > 0.5 ? 1 : 0)), { wave: 'soft', attack: 0.008, release: 0.09, gain: 0.014, cutoff: 900, dest: a.sfx, verb: 0.12, pan: this._pan() });
+    a.note(pitch(d, 2 + (h > 0.5 ? 1 : 0)), { wave: 'soft', attack: 0.008, release: 0.1, gain: 0.024, cutoff: 1200, dest: a.sfx, verb: 0.12, pan: this._pan() });
   }
 
   _pan() {

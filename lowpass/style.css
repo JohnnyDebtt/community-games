@@ -8,6 +8,9 @@
 @font-face { font-family: 'Tektur Pixel 30'; src: url('assets/fonts/TekturPixel30.woff2') format('woff2'); font-display: block; }
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
+/* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
+:root { --build: "ebed9ad7"; }
+
 :root {
   --u: 3px;
   --panel: rgba(4, 6, 10, 0.92); --well: #12151d; --empty: #0b0d13; --line: #29303e;
@@ -367,7 +370,7 @@ html.touchmode .hud .tip .kc { background: rgba(4, 6, 10, 0.6); border: var(--u)
 @media (orientation: portrait) {
   html.touchmode .hud .signal { width: 52vw; top: calc(var(--u) * 32 + var(--st)); }
   html.touchmode .hud .notice { top: calc(var(--u) * 76 + var(--st)); max-width: calc(100vw - var(--u) * 16); }
-  html.touchmode .hud .bottom { bottom: calc(var(--u) * 56 + var(--sb)); max-width: calc(100vw - var(--u) * 16); }
+  html.touchmode .hud .bottom { bottom: calc(var(--u) * 82 + var(--sb)); max-width: calc(100vw - var(--u) * 16); }
   html.touchmode .title .trot { display: block; }
 }
 /* the Codex computer and the menu, for fingers */

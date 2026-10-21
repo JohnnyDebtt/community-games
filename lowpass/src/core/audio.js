@@ -45,6 +45,14 @@ function wav(l, r, rate) {
   return new Blob([buf], { type: 'audio/wav' });
 }
 
+// the effects carve the music (Audio._carve): the ring-mod cut per unit of an effect's
+// level, the dip per unit of its envelope, how much the artifacts' voices count, and the
+// most of the music ever taken
+const CARVE_RING = 27;
+const CARVE_DIP = 48;
+const CARVE_VOICES = 0.12;
+const DUCK_MAX = 0.75;
+
 export class Audio {
   constructor() {
     this.ctx = null;
@@ -88,11 +96,17 @@ export class Audio {
     this.tone = ctx.createBiquadFilter();
     this.tone.type = 'lowpass'; this.tone.frequency.value = 18000; this.tone.Q.value = 0.3;
     this.tone.connect(this.out);
-    this.music = ctx.createGain(); this.music.connect(this.tone);
+    // the music (and the hall) pass through a duck the effects carve (below)
+    this.musicDuck = ctx.createGain(); this.musicDuck.connect(this.tone);
+    this.music = ctx.createGain(); this.music.connect(this.musicDuck);
     this.amb = ctx.createGain(); this.amb.connect(this.tone);
     this.sfx = ctx.createGain(); this.sfx.connect(this.out);
     // the artifacts' voices: under the effects' volume, through the cabin's walls
     this.voiceBus = ctx.createGain(); this.voiceBus.connect(this.tone);
+    // the boost's roar: under the effects' volume, but it carves nothing (a long burn
+    // would hold the music down)
+    this.engineBus = ctx.createGain(); this.engineBus.connect(this.out);
+    this._carve();
 
     // the hall: a moving plate (plate-worklet.js) with chorus in its tail and spinning
     // reflections; until it loads, or where worklets are missing, a still convolution
@@ -100,7 +114,7 @@ export class Audio {
     this.verb.buffer = this._impulse(11, 1.7);
     this.verbIn = ctx.createGain(); this.verbIn.connect(this.verb);
     this.verbOut = ctx.createGain(); this.verbOut.gain.value = 1.0;
-    this.verb.connect(this.verbOut); this.verbOut.connect(this.tone);
+    this.verb.connect(this.verbOut); this.verbOut.connect(this.musicDuck);
     this._startPlate();
     this.echoIn = ctx.createGain();
     const mk = (time, pan) => {
@@ -301,6 +315,7 @@ export class Audio {
     this.sfx.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
     this.amb.gain.setTargetAtTime(this.vol.ambience, t, 0.2);
     this.voiceBus.gain.setTargetAtTime(this.vol.sfx, t, 0.2);
+    this.engineBus.gain.setTargetAtTime(this.vol.sfx, t, 0.2);
   }
 
   setVolumes(v) {
@@ -703,6 +718,40 @@ export class Audio {
     this.hum.gain.setTargetAtTime(0.008 + m.inside * 0.035, t, 0.5);
   }
 
+  // ---------------------------------------------------------------- the effects carve the music
+  // As SeekerAudio's kick carves its layers: the music's gain is one minus the effects'
+  // own instantaneous level, sample by sample (a ring-mod cut: it takes the music away
+  // exactly where an effect has level and lets it through where the effect's wave crosses
+  // zero, so the two never pile up and nothing pumps), and minus their envelope, a gentle
+  // dip under a sound that lasts. The artifacts' near-constant voices count for much less
+  // than a one-shot effect. Never more than DUCK_MAX of the music is taken.
+  _carve() {
+    const ctx = this.ctx;
+    const shaper = (f) => { const n = 2048, c = new Float32Array(n); for (let i = 0; i < n; i++) c[i] = f((i / (n - 1)) * 2 - 1); const w = ctx.createWaveShaper(); w.curve = c; return w; };
+    const trig = ctx.createGain();
+    this.sfx.connect(trig);
+    const fromVoices = ctx.createGain(); fromVoices.gain.value = CARVE_VOICES;
+    this.voiceBus.connect(fromVoices); fromVoices.connect(trig);
+    const rect = shaper((x) => Math.abs(x));
+    trig.connect(rect);
+    // the cut, at audio rate
+    const ring = ctx.createGain(); ring.gain.value = CARVE_RING;
+    rect.connect(ring);
+    // the dip: the envelope, smoothed
+    const e1 = ctx.createBiquadFilter(); e1.type = 'lowpass'; e1.frequency.value = 9; e1.Q.value = 0.5;
+    const e2 = ctx.createBiquadFilter(); e2.type = 'lowpass'; e2.frequency.value = 9; e2.Q.value = 0.5;
+    const env = ctx.createGain(); env.gain.value = CARVE_DIP;
+    rect.connect(e1); e1.connect(e2); e2.connect(env);
+    // both, held between nothing and DUCK_MAX, taken from the duck's gain of one
+    const sum = ctx.createGain();
+    ring.connect(sum); env.connect(sum);
+    const hold = shaper((x) => Math.max(0, Math.min(DUCK_MAX, x)));
+    const take = ctx.createGain(); take.gain.value = -1;
+    sum.connect(hold); hold.connect(take); take.connect(this.musicDuck.gain);
+    this.musicDuck.gain.value = 1;
+    this.carved = hold;     // how much of the music is being taken (for a look in development)
+  }
+
   // ---------------------------------------------------------------- the boost
   // While the core burns: plasma, not an engine. A high, airy hiss through a resonant band
   // that sweeps up with the burn and wanders; two soft tones a hair apart that climb
@@ -712,7 +761,7 @@ export class Audio {
     const ctx = this.ctx, t = ctx.currentTime;
     if (!this._eng) {
       const out = ctx.createGain(); out.gain.value = 0;
-      out.connect(this.sfx);
+      out.connect(this.engineBus);
       const send = ctx.createGain(); send.gain.value = 0.45; out.connect(send); send.connect(this.verbIn);
       // the hiss
       const src = ctx.createBufferSource(); src.buffer = this.pink; src.loop = true;

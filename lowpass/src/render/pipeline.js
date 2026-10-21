@@ -88,6 +88,7 @@ export const FOG = {
   uFogLights: { value: Array.from({ length: 4 }, () => new THREE.Vector4(0, -9999, 0, 0)) },
   uFogLightColor: { value: Array.from({ length: 4 }, () => new THREE.Color(0, 0, 0)) },
   uSteps: { value: 12 },
+  uMist: { value: 0 },             // 1 while a turned stand is near enough to have its mist
 };
 
 const FS_VERT = /* glsl */ `
@@ -109,7 +110,7 @@ uniform sampler2D tCanopy;
 uniform mat4 uProjInv, uViewInv;
 uniform vec3 uNoiseOff, uSkyTop, uSkyHorizon, uSkyGlow, uFogLow, uFogDrift, uCloudColor;
 uniform vec2 uCanopyOff;
-uniform float uFogNoise, uNight, uAurora, uAuroraPulse, uCloud, uSunVis, uCloudH, uCloudCover, uCloudShadow, uShafts, uSunPower;
+uniform float uFogNoise, uNight, uAurora, uAuroraPulse, uCloud, uSunVis, uCloudH, uCloudCover, uCloudShadow, uShafts, uSunPower, uMist;
 uniform vec4 uFogLights[4];
 uniform vec3 uFogLightColor[4];
 uniform int uSteps;
@@ -142,6 +143,41 @@ float cloudCover(vec2 xz) {
 
 float canopyAt(vec2 xz) {
   return texture(tCanopy, (xz + uCanopyOff) / 2048.0).r * 318.75 - 128.0;
+}
+
+// A turned stand's mist, whatever the weather: banks of it drifting between the trunks,
+// under the crowns (the canopy map's height), so their tops stand out of it. Only near the
+// eye: it is there to fly through, not to close the horizon. Taken along the stretch of
+// the ray that can hold it, at even steps (no jitter: a thin, thick layer would show the
+// dither), and laid over what is behind it. Returns how much of that shows through.
+float mistAt(vec3 p) {
+  vec2 c = texture(tCanopy, (p.xz + uCanopyOff) / 2048.0).rg;
+  if (c.g < 0.004) return 0.0;
+  float top = c.r * 318.75 - 128.0;
+  float band = smoothstep(top - 38.0, top - 24.0, p.y) * (1.0 - smoothstep(top - 12.0, top + 2.0, p.y));
+  if (band <= 0.0) return 0.0;
+  vec3 q = (p + uNoiseOff) * vec3(0.0031, 0.0055, 0.0031) + uFogDrift * uTime * 0.001;
+  float n = texture(tNoise, q * 1.6).r * 0.45 + texture(tNoise, q * 8.0 + 0.71).r * 0.55;
+  float far = length(p.xz - uCamPos.xz);
+  return 0.11 * smoothstep(0.0, 0.6, c.g) * band * smoothstep(0.42, 0.72, n + 0.05) * (1.0 - smoothstep(220.0, 420.0, far));
+}
+
+float mistThrough(vec3 dir, float dist) {
+  float reach = min(dist, 420.0 / max(length(dir.xz), 0.05));
+  vec3 e = uCamPos + dir * reach;
+  float top = canopyAt(e.xz);
+  // where the ray is between the mist's floor and its top (by the crowns at its end)
+  float lo = top - 40.0, hi = top + 4.0;
+  float ta = 0.0, tb = reach;
+  if (abs(dir.y) > 1e-4) {
+    float t1 = (lo - uCamPos.y) / dir.y, t2 = (hi - uCamPos.y) / dir.y;
+    ta = max(0.0, min(t1, t2));
+    tb = min(reach, max(t1, t2));
+  } else if (uCamPos.y < lo || uCamPos.y > hi) return 1.0;
+  if (tb <= ta) return 1.0;
+  float dt = (tb - ta) / 6.0, tau = 0.0;
+  for (int i = 0; i < 6; i++) tau += mistAt(uCamPos + dir * (ta + (float(i) + 0.5) * dt)) * dt;
+  return exp(-tau);
 }
 
 // how much sun reaches a point of the fog: past the crowns and ridges toward the sun,
@@ -247,6 +283,12 @@ void main() {
     // contrast follows how much direct sun there is: none under a closed sky
     float k = 0.45 * (1.0 - uCloudCover * 0.72) * uSunVis * min(uSunPower, 1.6) * (1.0 - smoothstep(1000.0, 1600.0, dist));
     col *= 1.0 - k * (1.0 - surfVis(wp));
+  }
+
+  // a turned stand's mist, over what stands in it
+  if (uMist > 0.5) {
+    float Tm = mistThrough(dir, dist);
+    col = mix(col, mix(mix(uFogLow, uFogColor, 0.65), col, Tm), mask);
   }
 
   // light the fog gives back: the sky's ambient, darker deep in the layer; and the sun,
