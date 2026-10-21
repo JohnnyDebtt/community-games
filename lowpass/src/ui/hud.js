@@ -1,8 +1,10 @@
 import { el, clear, key } from './dom.js';
 
 // The HUD: as little as the flight needs. A bearing to the signal along the top while it
-// is out in the fog; brackets around it once it is near, and the scan's hold beneath
-// them; the alertness meter; one notice at a time; the keys that work right now.
+// is out in the fog (and a smaller mark for each other one of a sweep); brackets around
+// it once it is near, and the scan's hold beneath them; the alertness meter; one notice
+// at a time; the keys that work right now. And, over everything, even the Codex: the
+// alert that seekers moved while you are inside, with the way out.
 
 export class Hud {
   constructor(root) {
@@ -10,6 +12,7 @@ export class Hud {
     this.signal = el('div', 'signal', this.root);
     this.sigMark = el('div', 'mark', this.signal);
     this.sigLabel = el('div', 'label', this.signal);
+    this.sigOthers = [];
     this.bracket = el('div', 'bracket', this.root);
     for (const c of ['tl', 'tr', 'bl', 'br']) el('i', c, this.bracket);
     this.brLabel = el('div', 'blabel', this.bracket);
@@ -33,6 +36,22 @@ export class Hud {
     this.prompt = el('div', 'prompt', this.root);
     this.cross = el('div', 'cross', this.root);
     this.marks = [];
+    // the alert: outside the HUD, so nothing that hides the HUD hides it
+    this.alarm = el('div', 'alarm', root);
+    el('i', 'amark', this.alarm);
+    this.alarmTitle = el('div', 'at', this.alarm);
+    this.alarmText = el('div', 'as muted', this.alarm);
+    const row = el('div', 'arow', this.alarm);
+    this.alarmBtn = el('button', 'btn', row, 'GO OUTSIDE');
+    this.alarmKey = el('span', 'muted', row);
+    key(this.alarmKey, 'V');
+    const later = el('button', 'chip', row, 'NOT NOW');
+    this.onAlarm = null;
+    this.alarmBtn.onclick = () => { if (this.onAlarm) this.onAlarm(); };
+    // waved off: quiet for these ones (the next seekers to move bring it back)
+    this._waved = new Set();
+    later.onclick = () => { for (const a of this._alarmList || []) this._waved.add(a); this.setAlarm(this._alarmList); };
+    this.alarmOn = false;
     this._noticeT = 0;
     this._cardT = 0;
     this._keysKey = '';
@@ -136,6 +155,22 @@ export class Hud {
     this.prompt.classList.add('on');
   }
 
+  // list: the witnessed artifacts still to scan while the player is away from the ship's
+  // view (null: none)
+  setAlarm(list) {
+    this._alarmList = list;
+    if (!list || !list.length) this._waved.clear();
+    const on = !!(list && list.length) && list.some((a) => !this._waved.has(a));
+    if (on) {
+      const n = list.length;
+      const t = n > 1 ? `${n} SEEKERS MOVED` : `SEEKER #${list[0].d.lead} MOVED`;
+      if (this.alarmTitle.textContent !== t) this.alarmTitle.textContent = t;
+      const s = n > 1 ? 'They are rising ahead of the ship, giant. Go out and scan them before they are behind you.' : 'It is rising ahead of the ship, giant. Go out and scan it before it is behind you.';
+      if (this.alarmText.textContent !== s) this.alarmText.textContent = s;
+    }
+    if (on !== this.alarmOn) { this.alarmOn = on; this.alarm.classList.toggle('on', on); }
+  }
+
   setStatus(text, cls) {
     if (this._status === text + cls) return;
     this._status = text + cls;
@@ -157,15 +192,26 @@ export class Hud {
     const sp = !!(t && t.special);
     this.signal.classList.toggle('special', sp);
     this.bracket.classList.toggle('special', sp);
-    // the bearing strip
-    if (t && flying && f.state === 'far') {
-      const w = 0.5 + Math.max(-1, Math.min(1, t.bearing / 1.2)) * 0.5;
+    // the bearing strip: to the one the scanner looks at, and a smaller mark for each
+    // other one still out there (a sweep's)
+    const open = flying ? f.open : [];
+    const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, b / 1.2)) * 0.5)) * 100}%`;
+    if (t && flying && (f.state === 'far' || open.length > 1)) {
       this.signal.classList.add('on');
-      this.sigMark.style.left = `${(1 - w) * 100}%`;
-      const off = Math.abs(t.bearing) > 1.2;
-      this.sigMark.classList.toggle('edge', off);
-      this.sigLabel.textContent = `${Math.round(t.dist / 10) * 10} m`;
+      this.sigMark.style.left = at(t.bearing);
+      this.sigMark.classList.toggle('edge', Math.abs(t.bearing) > 1.2);
+      const m = `${Math.round(t.dist / 10) * 10} m`;
+      this.sigLabel.textContent = open.length > 1 ? `${open.length} ${open.some((a) => a.special) ? 'WITNESSED' : 'SIGNALS'} · ${m}` : m;
     } else this.signal.classList.remove('on');
+    const others = this.signal.classList.contains('on') ? open.filter((a) => a !== t) : [];
+    while (this.sigOthers.length < others.length) this.sigOthers.push(el('div', 'mark other', this.signal));
+    this.sigOthers.forEach((mk, i) => {
+      const a = others[i];
+      mk.style.display = a ? '' : 'none';
+      if (!a) return;
+      mk.style.left = at(a.bearing);
+      mk.classList.toggle('edge', Math.abs(a.bearing) > 1.2);
+    });
     // brackets
     let shown = false;
     if (t && flying && (f.state === 'near' || f.state === 'lock')) {
@@ -182,7 +228,7 @@ export class Hud {
         this.bracket.classList.toggle('lock', f.state === 'lock');
         // low in the view (a short screen held sideways), the words go above it
         this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
-        this.brLabel.textContent = (sp ? 'WITNESSED · ' : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
+        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;
       }
     }

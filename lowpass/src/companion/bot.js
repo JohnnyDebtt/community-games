@@ -206,14 +206,18 @@ function buildGrid(token, px) {
 }
 
 export class SeekerModel {
-  constructor() {
+  // vox: meters per art pixel (the cabin's companion: VOX); outside: in the forest's
+  // daylight (a witnessed seeker, giant) rather than the cabin's, and seen through the
+  // fog more than stone is, as an apparition would be
+  constructor({ vox = VOX, outside = false } = {}) {
+    this.vox = vox;
     this.root = new THREE.Group();
     this.model = new THREE.Group();
     this.root.add(this.model);
     this.parts = {};
     this.token = 0;
-    this.material = worldMaterial({ unique: true, fogMask: 0, ambient: 0.75 });
-    this.glowMat = worldMaterial({ unique: true, fogMask: 0, ambient: 0.75 });
+    this.material = outside ? worldMaterial({ unique: true, fogMask: 0.55, ambient: 1.2 }) : worldMaterial({ unique: true, fogMask: 0, ambient: 0.75 });
+    this.glowMat = outside ? worldMaterial({ unique: true, fogMask: 0.35, emis: 1.6 }) : worldMaterial({ unique: true, fogMask: 0, ambient: 0.75 });
     this.activated = false;
     this.stage = 1;
     this._blink = 0;
@@ -235,7 +239,7 @@ export class SeekerModel {
     // centred on its middle, so it can hover and turn about itself
     const origin = [33, minY + 27, Z0 - depth / 2];
     const add = (name, filter, mat) => {
-      const geo = g.mesh(VOX, origin, filter);
+      const geo = g.mesh(this.vox, origin, filter);
       if (!geo.attributes.position.count) return;
       const m = new THREE.Mesh(geo, mat);
       this.parts[name] = m;
@@ -259,16 +263,17 @@ export class SeekerModel {
   update(dt, time, frame, lookSide = 0) {
     const P = this.parts;
     const beat = (frame + Math.floor(this._seed)) % 16;
-    if (P.object) P.object.position.y = [0, 1, 1, 1, 0, -1, -1, -1][Math.floor(frame / 5 + this._seed) % 8] * VOX * (this.activated ? 1 : 0.5);
+    const V = this.vox;
+    if (P.object) P.object.position.y = [0, 1, 1, 1, 0, -1, -1, -1][Math.floor(frame / 5 + this._seed) % 8] * V * (this.activated ? 1 : 0.5);
     if (P.head) P.head.rotation.z = this.activated ? (beat < 8 ? 0.03 : -0.03) : 0;
-    if (P.flank) P.flank.position.y = this.activated && beat % 8 < 2 ? VOX : 0;
+    if (P.flank) P.flank.position.y = this.activated && beat % 8 < 2 ? V : 0;
     if (P.glow) {
       // it blinks every few seconds; while it speaks its screen flickers on the syllables
       this._blink -= dt;
       if (this._blink < 0) this._blink = 2.5 + hash1(frame + this.token) * 3.5;
       const open = this._blink > 0.17;
       P.glow.scale.y = open ? 1 : 0.15;
-      P.glow.position.set(Math.round(Math.max(-1, Math.min(1, lookSide * 1.5))) * VOX, open ? 0 : VOX, 0);
+      P.glow.position.set(Math.round(Math.max(-1, Math.min(1, lookSide * 1.5))) * V, open ? 0 : V, 0);
       const talk = this.speaking > 0 && frame % 3 === 0 ? 1.5 : 1;
       this.glowMat.uniforms.uTint.value.setScalar((this.activated ? 1 : 0.7) * talk);
     }

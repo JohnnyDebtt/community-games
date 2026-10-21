@@ -1,5 +1,6 @@
 import { BLOCKS_PER_SECOND } from './chain.js';
 import { load, save } from '../core/store.js';
+import { sweepSeed } from '../artifacts/generate.js';
 
 // Watches SEEKER NET for moves while the game is open. A move made while you play is
 // witnessed: the next artifact to appear for you is that move's, seeded by its
@@ -7,6 +8,10 @@ import { load, save } from '../core/store.js';
 // made while you were away are not replayed: the forest between them is yours alone
 // (field.js grows a unique artifact for each player then). Witnessed moves wait for their
 // artifact through a reload, but not for long.
+//
+// Every seeker that moved has its own: a transaction that moved several (a sweep) gives
+// one for each, and moves that wait together come together, up to a wave's worth; the
+// rest come in the next wave.
 //
 // The block clock is read here too: the head on start, and every poll.
 
@@ -36,7 +41,7 @@ export class MoveWatcher {
 
   _enqueue(m) {
     if (this.seen.has(m.tx) || this.queue.some((q) => q.tx === m.tx)) return false;
-    this.queue.push({ tx: m.tx, block: m.block, tokens: m.tokens, charge: m.charge, recipients: m.recipients, pool: m.pool, time: m.time, seenAt: Date.now(), live: true });
+    this.queue.push({ tx: m.tx, block: m.block, tokens: m.tokens, total: m.tokens.length, charge: m.charge, recipients: m.recipients, pool: m.pool, time: m.time, seenAt: Date.now(), live: true });
     return true;
   }
 
@@ -93,18 +98,31 @@ export class MoveWatcher {
     setTimeout(() => this._poll(), POLL_MS);
   }
 
-  // The next witnessed move to manifest, oldest first, or null.
-  take() {
+  // The witnessed artifacts to manifest now, oldest move first: one for each seeker that
+  // moved, up to max. Each is the move narrowed to its one seeker; one of a sweep has its
+  // own seed and key (the transaction and its token), the same for everyone.
+  takeWave(max = 12) {
     const cut = Date.now() - KEEP_MS;
     this.queue = this.queue.filter((m) => (m.seenAt || 0) > cut);
-    const m = this.queue.shift();
-    if (!m) return null;
-    this.seen.add(m.tx);
-    this._persist();
-    return m;
+    const out = [];
+    while (this.queue.length && out.length < max) {
+      const m = this.queue[0];
+      const total = m.total || m.tokens.length;
+      const take = m.tokens.slice(0, max - out.length);
+      for (const t of take) {
+        const one = { ...m, tokens: [t], total };
+        if (total > 1) { one.seed = sweepSeed(m.tx, t); one.key = `${m.tx}:${t}`; }
+        out.push(one);
+      }
+      m.tokens = m.tokens.slice(take.length);
+      if (!m.tokens.length) { this.queue.shift(); this.seen.add(m.tx); }
+    }
+    if (out.length) this._persist();
+    return out;
   }
 
-  get waiting() { return this.queue.length; }
+  // seekers still waiting for theirs
+  get waiting() { return this.queue.reduce((n, m) => n + m.tokens.length, 0); }
 
   movesToday() {
     return this.recent.length;

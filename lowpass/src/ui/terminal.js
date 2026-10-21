@@ -1,20 +1,24 @@
 import { el, clear, ago, dateStr, short, key } from './dom.js';
 import { Board, hasLink } from '../net/board.js';
+import { Ranks } from '../net/ranks.js';
+import { load, save } from '../core/store.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
 import { formatInt, formatNum, clamp } from '../core/math.js';
 
-// The Codex computer. Three tabs:
+// The Codex computer. Four tabs:
 //   LOG      what you have recorded: each photograph, its name, where it came from, the
 //            Codex's notes; share it to the board.
 //   BOARD    the seekers' board on Nostr: scans and words from holders, readable by all.
 //   SEEKERS  your SEEKER NET devices: charge, stage, Discharge, Uplink, shares, traits,
 //            and when each should activate; and the wallet link that lets you post.
+//   LEADERS  the holders who submitted their scans, witnessed ones first (ranks.js), each
+//            with a gallery of what they recorded; and your own submission.
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
-const TABS = ['log', 'board', 'seekers'];
-const NAMES = { log: 'LOG', board: 'BOARD', seekers: 'SEEKERS' };
+const TABS = ['log', 'board', 'seekers', 'ranks'];
+const NAMES = { log: 'LOG', board: 'BOARD', seekers: 'SEEKERS', ranks: 'LEADERS' };
 const DAY = 86400000;
 const EXPLORER = 'https://robinhoodchain.blockscout.com/tx/';
 
@@ -25,6 +29,9 @@ export class Terminal {
     this.tab = 'log';
     this.sel = 0;
     this.boardFilter = 'all';
+    this.smallPhotos = load('board.small', false);
+    this.gallery = null;         // the holder whose gallery is open on the LEADERS page
+    this.gsel = 0;
     this.root = el('div', 'term', game.uiRoot);
     this.win = el('div', 'win', this.root);
     const head = el('div', 'thead', this.win);
@@ -53,7 +60,12 @@ export class Terminal {
       const q = new URLSearchParams(location.search);
       const relay = q.has('dev') && /^ws:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(q.get('relay') || '') ? q.get('relay') : null;
       this.board = new Board(g, relay ? [relay] : undefined);
-      this.board.onChange = () => { if (this.open && this.tab === 'board') this._renderBoardList(); if (this.open && this.tab === 'seekers') this._renderWalletLine(); };
+      this.board.onChange = () => {
+        if (!this.open) return;
+        if (this.tab === 'board') { this._renderBoardList(); save('board.seen', Date.now()); }
+        if (this.tab === 'seekers') this._renderWalletLine();
+        this._dots();
+      };
       const l = this.board.link;
       this.seekers.address = l ? l.address : connected();
     }
@@ -76,19 +88,41 @@ export class Terminal {
   }
 
   setTab(t) {
+    if (t !== 'seekers') this._linkFrom = null;
     this.tab = t;
     this.sel = 0;
     this.game.audio.play('ui', { h: 20 });
     this.render();
   }
 
+  // to the wallet, from a page that needs it: linked, it comes back there
+  _toLink() {
+    const from = this.tab;
+    this.setTab('seekers');
+    this._linkFrom = from;
+  }
+
+  // quiet marks on the tabs: new words on the board since it was last read; scans not
+  // yet submitted to the leaderboard (for a linked holder)
+  _dots() {
+    const b = this.board, g = this.game;
+    if (!b) return;
+    const seen = load('board.seen', 0);
+    const newest = b.posts.length ? b.posts[0].at : 0;
+    this.tabBtns.board.classList.toggle('dot', this.tab !== 'board' && newest > seen);
+    const sent = new Set(b.ranks ? b.ranks.sent.keys : load('ranks.sent', { keys: [] }).keys);
+    this.tabBtns.ranks.classList.toggle('dot', !!b.link && this.tab !== 'ranks' && g.codex.some((e) => !sent.has(e.tx)));
+  }
+
   keys(input) {
     if (input.uiCapture) return;
+    if (this.tab === 'ranks' && this.gallery && input.hit('Escape', 'Pad1')) { this._closeGallery(); return; }
     if (input.hit('Escape', 'KeyX', 'KeyK', 'Pad1')) { this.hide(); return; }
     if (input.hit('Tab', 'Pad5')) {
       this.setTab(TABS[(TABS.indexOf(this.tab) + 1) % TABS.length]);
       return;
     }
+    if (this.tab === 'ranks') { this._rankKeys(input); return; }
     const n = this.tab === 'log' ? this.game.codex.length : this.tab === 'seekers' ? (this.seekers.ids || []).length : 0;
     if (!n) return;
     const cols = this._cols || 3;
@@ -120,14 +154,19 @@ export class Terminal {
     clear(this.body);
     clear(this.foot);
     this._chargeEl = null;
+    if (this.tab === 'board') save('board.seen', Date.now());
     if (this.tab === 'log') this._log();
     else if (this.tab === 'board') this._board();
+    else if (this.tab === 'ranks') this._ranks();
     else this._seekersTab();
     const f = this.foot;
     const k = (cap, what) => { const s = el('span', 'kr', f); key(s, cap); el('span', '', s, what); };
     k('TAB', 'tab');
-    if (this.tab !== 'board') k('←→', 'choose');
-    k('ESC', 'close');
+    if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
+    else if (this.tab !== 'board') k('←→', 'choose');
+    if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
+    k('ESC', this.tab === 'ranks' && this.gallery ? 'back' : 'close');
+    this._dots();
   }
 
   // ---------------------------------------------------------------- LOG
@@ -137,7 +176,7 @@ export class Terminal {
     if (!list.length) {
       const e = el('div', 'empty', this.body);
       el('div', 'big', e, 'NOTHING RECORDED YET');
-      el('div', 'muted', e, `Lights in the fog are artifacts. Most grow for you alone: nobody else will ever find the same one. But when a SEEKER NET seeker moves on chain while you fly, the next one is witnessed: the same for every ship flying then. Steer toward a light, and hold ${g.input.touchMode ? 'SCAN' : 'SPACE'} while it is in your sights.`);
+      el('div', 'muted', e, `Lights in the fog are artifacts. Most grow for you alone: nobody else will ever find the same one. But when a SEEKER NET seeker moves on chain while you fly, that seeker itself rises out of the fog, giant: witnessed, the same for every ship flying then. Steer toward a light, and hold ${g.input.touchMode ? 'SCAN' : 'SPACE'} while it is in your sights.`);
       if (g.moves.waiting) el('div', 'muted', e, `${g.moves.waiting} witnessed move${g.moves.waiting === 1 ? '' : 's'} waiting in the fog.`);
       return;
     }
@@ -171,8 +210,9 @@ export class Terminal {
       if (e.time) row('MOVED', `${dateStr(e.time)} · ${ago(e.time)}`);
       if (e.block) row('BLOCK', formatInt(e.block));
       const tx = row('TX', '');
-      const a = el('a', 'tx', tx, `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`);
-      a.href = EXPLORER + e.tx;
+      const h = e.hash || e.tx;
+      const a = el('a', 'tx', tx, `${h.slice(0, 10)}…${h.slice(-6)}`);
+      a.href = EXPLORER + h;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
     }
@@ -210,7 +250,7 @@ export class Terminal {
       this._countdown(b, 'SHARE TO BOARD', 'SHARE IN', () => this.board.sendWait);
     } else {
       const b = el('button', 'btn ghost', share, 'LINK A WALLET TO SHARE');
-      b.onclick = () => this.setTab('seekers');
+      b.onclick = () => this._toLink();
     }
   }
 
@@ -260,6 +300,9 @@ export class Terminal {
       const x = el('button', 'chip' + (this.boardFilter === f ? ' sel' : ''), filters, label);
       x.onclick = () => { this.boardFilter = f; this.render(); };
     }
+    // scans' photographs as small thumbnails, so the words are easier to follow
+    const sm = el('button', 'chip' + (this.smallPhotos ? ' sel' : ''), filters, 'SMALL PHOTOS');
+    sm.onclick = () => { this.smallPhotos = !this.smallPhotos; save('board.small', this.smallPhotos); sm.classList.toggle('sel', this.smallPhotos); this._renderBoardList(); };
     this._boardList = el('div', 'posts', this.body);
     // a conversation: oldest at the top, newest at the bottom, opened at the newest;
     // it follows new posts while you are at the bottom, and stays put while you read up
@@ -330,7 +373,7 @@ export class Terminal {
     } else {
       el('div', 'muted', comp, 'Read only. To post, link a wallet that holds a SEEKER NET seeker.');
       const l = el('button', 'btn ghost', comp, 'LINK WALLET');
-      l.onclick = () => this.setTab('seekers');
+      l.onclick = () => this._toLink();
     }
     this._renderBoardList();
   }
@@ -344,6 +387,7 @@ export class Terminal {
     const keep = list.scrollTop, pinned = this._boardPinned;
     const toEnd = () => { if (this._boardPinned) list.scrollTop = list.scrollHeight; };
     clear(list);
+    list.classList.toggle('small', this.smallPhotos);
     const posts = b.posts.filter((p) => this.boardFilter === 'all' || p.type === this.boardFilter);
     if (!posts.length) {
       if (b.loaded) el('div', 'muted empty', list, 'Nothing here yet. The first scan shared will be the first thing here.');
@@ -371,12 +415,19 @@ export class Terminal {
       }
       if (p.type === 'scan' && p.scan) {
         const row = el('div', 'pscan', card);
-        if (p.photo) { const img = el('img', '', row); img.onload = toEnd; img.src = p.photo; img.alt = p.scan.name; }
+        if (p.photo) {
+          const img = el('img', '', row);
+          img.onload = toEnd;
+          img.src = p.photo;
+          img.alt = p.scan.name;
+          // small, a photograph opens (and closes) where it is
+          img.onclick = () => { if (this.smallPhotos) row.classList.toggle('open'); };
+        }
         const t = el('div', 'ptext', row);
         el('div', 'name', t, p.scan.name || 'An artifact');
         el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? ' · WILD, FOUND BY ONE SHIP' : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
         if (p.note) el('div', '', t, p.note);
-        const known = this.game.codex.find((e) => e.tx === p.scan.tx);
+        const known = this.game.codex.find((e) => (e.hash || e.tx) === p.scan.tx && (e.kind === 'wild' || !p.scan.tokens.length || e.lead === p.scan.tokens[0]));
         if (known) el('div', 'pos', t, 'You recorded this one too.');
       } else {
         el('div', 'ptext', card, p.text);
@@ -384,6 +435,188 @@ export class Terminal {
     }
     if (pinned) { list.scrollTop = list.scrollHeight; requestAnimationFrame(toEnd); }
     else list.scrollTop = keep;
+  }
+
+  // ---------------------------------------------------------------- LEADERS
+  _ranks() {
+    const b = this.board;
+    if (!b.ranks) b.ranks = new Ranks(b);
+    const R = b.ranks;
+    R.onChange = () => { if (this.open && this.tab === 'ranks') { this._renderRanks(); this._renderSubmit(); } };
+    R.onPhoto = () => { if (this.open && this.tab === 'ranks' && this.gallery) this._renderRanks(); };
+    R.start();
+    const top = el('div', 'boardtop', this.body);
+    this._rankStatus = el('div', 'muted', top);
+    this._rankArea = el('div', 'ranks', this.body);
+    this._rankFoot = el('div', 'rsubmit', this.body);
+    this._renderRanks();
+    this._renderSubmit();
+  }
+
+  _renderRanks() {
+    const area = this._rankArea;
+    if (!area || !area.isConnected) return;
+    const R = this.board.ranks;
+    const rows = R.rows();
+    const pending = rows.reduce((n, r) => n + r.pending, 0);
+    this._rankStatus.textContent = `${rows.length} holder${rows.length === 1 ? '' : 's'} · witnessed scans count first, then wild${pending ? ` · checking ${pending} witnessed on the chain` : ''}${R.loaded ? '' : ' · reading…'}`;
+    const keep = area.scrollTop;
+    clear(area);
+    if (this.gallery) { this._renderGallery(rows); return; }
+    if (!rows.length) {
+      if (!R.loaded) loader(area, 'Listening to the relays');
+      else if (R.checking) loader(area, 'Checking who holds a seeker, on Robinhood Chain');
+      else el('div', 'muted empty', area, 'No holder has submitted their scans yet. Yours could be the first.');
+      return;
+    }
+    const head = el('div', 'rrow rhead muted', area);
+    for (const t of ['#', 'HOLDER', 'WITNESSED', 'WILD', '']) el('span', '', head, t);
+    this.rsel = clamp(this.rsel || 0, 0, rows.length - 1);
+    rows.forEach((r, i) => {
+      const row = el('div', 'rrow' + (r.you ? ' you' : '') + (i === this.rsel ? ' sel' : ''), area);
+      row.onclick = () => this._openGallery(r.address, i);
+      el('span', 'rk', row, String(i + 1));
+      const who = el('span', 'rwho', row);
+      if (r.label.named) el('i', `pmark c${r.label.color}`, who);
+      el('span', 'who', who, r.label.name);
+      if (r.label.tag) el('span', 'muted', who, ` ·${r.label.tag}`);
+      if (r.you) el('span', 'pos', who, ' · YOU');
+      el('span', 'rs gold', row, String(r.special));
+      el('span', 'rw', row, String(r.regular));
+      const g = el('button', 'rgal', row);
+      g.title = 'Their scans';
+      g.setAttribute('aria-label', `${r.label.name}: their scans`);
+      for (let k = 0; k < 4; k++) el('i', '', g);
+      g.onclick = (e) => { e.stopPropagation(); this._openGallery(r.address, i); };
+    });
+    area.scrollTop = keep;
+  }
+
+  // one holder's scans: their photographs (fetched as the gallery opens), the witnessed
+  // ones marked, and the one chosen, large
+  _renderGallery(rows) {
+    const R = this.board.ranks, area = this._rankArea, g = this.game;
+    const r = rows.find((x) => x.address === this.gallery);
+    const head = el('div', 'ghead', area);
+    const back = el('button', 'chip', head, '‹ BACK');
+    back.onclick = () => this._closeGallery();
+    if (!r) { el('div', 'muted empty', area, 'Their scans are not counted here now.'); return; }
+    if (r.label.named) el('i', `pmark c${r.label.color}`, head);
+    el('span', 'who', head, r.label.name);
+    el('span', 'muted', head, ` · ${r.special} witnessed · ${r.regular} wild`);
+    const local = new Map(r.you ? g.codex.map((e) => [e.tx, e.photo]) : []);
+    const photoOf = (s) => R.photos.get(s.key) || local.get(s.key) || null;
+    const cols = el('div', 'cols', area);
+    const grid = el('div', 'grid photos', cols);
+    this.gsel = clamp(this.gsel, 0, r.scans.length - 1);
+    r.scans.forEach((s, i) => {
+      const w = el('button', 'well' + (i === this.gsel ? ' sel' : '') + (s.kind === 's' && s.counted ? ' witnessed' : '') + (s.counted ? '' : ' uncounted'), grid);
+      const ph = photoOf(s);
+      if (ph) { const img = el('img', '', w); img.src = ph; img.alt = s.name; }
+      else el('span', 'wcode muted', w, s.code || '…');
+      if (s.kind === 's' && s.counted) el('span', 'wtag', w, s.token ? `#${s.token}` : 'WITNESSED');
+      w.onclick = () => { this.gsel = i; this.game.audio.play('ui', { h: 24 }); this._renderRanks(); };
+    });
+    const s = r.scans[this.gsel];
+    const d = el('div', 'detail', cols);
+    const ph = photoOf(s);
+    if (ph) { const img = el('img', 'bigphoto', d); img.src = ph; img.alt = s.name; }
+    else el('div', 'bigphoto gwait muted', d, 'The photograph is on its way, or was not sent.');
+    el('div', 'name', d, s.name || 'An artifact');
+    const what = s.kind === 's' ? (s.counted ? `WITNESSED · SEEKER #${s.token}` : 'WITNESSED · NOT CONFIRMED ON THE CHAIN') : s.kind === 'w' ? 'WILD · FOUND BY ONE SHIP' : 'RECORDED';
+    el('div', s.kind === 's' && s.counted ? 'gold' : 'muted', d, `${s.code}${s.code ? ' · ' : ''}${what}`);
+    el('div', 'muted', d, `Scanned ${dateStr(s.at * 1000)} · ${ago(s.at * 1000)}${s.counted ? '' : ' · not counted'}`);
+  }
+
+  _openGallery(address, i = 0) {
+    this.rsel = i;
+    this.gallery = address;
+    this.gsel = 0;
+    this.board.ranks.openGallery(address);
+    this.game.audio.play('ui', { h: 24 });
+    this.render();
+  }
+
+  _closeGallery() {
+    this.gallery = null;
+    this.board.ranks.closeGallery();
+    this.game.audio.play('ui', { h: 20 });
+    this.render();
+  }
+
+  // the leaderboard by keys: up and down choose a holder, ENTER opens their scans; in a
+  // gallery the arrows move through them
+  _rankKeys(input) {
+    const R = this.board.ranks;
+    if (!R) return;
+    const rows = R.rows();
+    if (this.gallery) {
+      const r = rows.find((x) => x.address === this.gallery);
+      const n = r ? r.scans.length : 0;
+      let d = 0;
+      if (input.hit('ArrowRight', 'KeyD')) d = 1;
+      if (input.hit('ArrowLeft', 'KeyA')) d = -1;
+      if (input.hit('ArrowDown', 'KeyS')) d = 3;
+      if (input.hit('ArrowUp', 'KeyW')) d = -3;
+      if (d && n) { this.gsel = clamp(this.gsel + d, 0, n - 1); this.game.audio.play('ui', { h: 24 }); this._renderRanks(); }
+      return;
+    }
+    if (!rows.length) return;
+    let d = 0;
+    if (input.hit('ArrowDown', 'KeyS')) d = 1;
+    if (input.hit('ArrowUp', 'KeyW')) d = -1;
+    if (d) {
+      this.rsel = clamp((this.rsel || 0) + d, 0, rows.length - 1);
+      this.game.audio.play('ui', { h: 24 });
+      this._renderRanks();
+      const el_ = this._rankArea && this._rankArea.querySelector('.rrow.sel');
+      if (el_ && el_.scrollIntoView) el_.scrollIntoView({ block: 'nearest' });
+    }
+    if (input.hit('Enter', 'Space', 'Pad0')) { const r = rows[clamp(this.rsel || 0, 0, rows.length - 1)]; if (r) this._openGallery(r.address, this.rsel); }
+  }
+
+  _renderSubmit() {
+    const f = this._rankFoot;
+    if (!f || !f.isConnected) return;
+    clear(f);
+    const b = this.board, R = b.ranks, g = this.game;
+    // a gallery has the whole page
+    f.style.display = this.gallery ? 'none' : '';
+    if (this.gallery) return;
+    if (!b.link) {
+      el('div', 'muted', f, 'Holders put their own scans here: link a wallet that holds a SEEKER NET seeker (one free signature, not a transaction).');
+      const l = el('button', 'btn ghost', f, 'LINK WALLET');
+      l.onclick = () => this._toLink();
+      return;
+    }
+    const n = R.unsent, all = g.codex.length;
+    el('div', 'muted', f, !all ? 'Scan something first: what you record can be submitted here.' : n ? `${n} of your ${all} scan${all === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} not on the leaderboard yet.` : `All ${all} of your scans are on the leaderboard.`);
+    const label = `SUBMIT ${n} SCAN${n === 1 ? '' : 'S'}`;
+    const btn = el('button', 'btn', f, label);
+    if (!n) btn.style.display = 'none';
+    const msg = el('div', 'msg muted', f);
+    const r = R.lastResult;
+    if (r) {
+      msg.className = 'msg pos';
+      msg.textContent = `Submitted ${r.scans} scan${r.scans === 1 ? '' : 's'} to ${r.ok} of ${r.of} relays.${R.photoJob ? ` Sending their photographs: ${R.photoJob.done} of ${R.photoJob.of}.` : ''}`;
+    }
+    if (!all) btn.disabled = true;
+    else this._countdown(btn, label, 'SUBMIT IN', () => R.submitWait);
+    btn.onclick = async () => {
+      btn.disabled = true;
+      msg.className = 'msg muted';
+      msg.textContent = 'Signing and sending…';
+      try {
+        await R.submit(() => { if (this.open && this.tab === 'ranks') this._renderSubmit(); });
+        this.game.audio.play('send');
+        this._renderSubmit();
+      } catch (err) {
+        msg.className = 'msg neg';
+        msg.textContent = err.message;
+        this.game.audio.play('error');
+        this._countdown(btn, label, 'SUBMIT IN', () => R.submitWait);
+      }
+    };
   }
 
   // ---------------------------------------------------------------- SEEKERS
@@ -444,26 +677,30 @@ export class Terminal {
       S.address = link.address;
       S.ids = null;
       this.game.audio.play('send');
-      this.render();
+      // back to the page that asked for it
+      const back = this._linkFrom;
+      this._linkFrom = null;
+      if (back && back !== 'seekers') this.setTab(back);
+      else this.render();
     };
     const plain = connected();
     if (b && b.link) {
       el('div', '', top, `LINKED ${short(b.link.address)}`);
-      el('div', 'muted', top, 'This browser can post on the board for this address while it holds a seeker, and its seekers can come aboard.');
+      el('div', 'muted', top, 'This browser can post on the board and submit its scans to the leaderboard for this address while it holds a seeker, and its seekers can come aboard.');
       const u = el('button', 'chip', top, 'UNLINK');
       u.onclick = () => { b.unlink(); disconnect(); this.render(); };
     } else if (plain) {
       el('div', '', top, `CONNECTED ${short(plain)}`);
-      el('div', 'muted', top, 'Its seekers can come aboard. To post on the board as well, sign once: free, and not a transaction.');
+      el('div', 'muted', top, 'Its seekers can come aboard. To post on the board and put your scans on the leaderboard as well, sign once: free, and not a transaction.');
       const row = el('div', 'wrow', top);
-      const sb = el('button', 'btn', row, 'SIGN TO POST');
+      const sb = el('button', 'btn', row, 'SIGN ONCE');
       const dc = el('button', 'chip', row, 'DISCONNECT');
       const msg = msgRow();
       sb.onclick = () => withWallet(row, msg, sign);
       dc.onclick = () => { disconnect(); if (S.address === plain) { S.address = null; S.ids = null; } this.render(); };
     } else {
       el('div', '', top, 'CONNECT A WALLET');
-      el('div', 'muted', top, 'CONNECT shares your address only, so your seekers can come aboard. CONNECT AND SIGN also lets you post on the board: one free signature, not a transaction. Nothing is ever sent, approved or moved.');
+      el('div', 'muted', top, 'CONNECT shares your address only, so your seekers can come aboard. CONNECT AND SIGN also lets you post on the board and put your scans on the leaderboard: one free signature, not a transaction. Nothing is ever sent, approved or moved.');
       const row = el('div', 'wrow', top);
       const c = el('button', 'btn', row, 'CONNECT');
       const l = el('button', 'btn ghost', row, 'CONNECT AND SIGN');

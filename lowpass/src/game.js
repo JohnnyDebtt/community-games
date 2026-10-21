@@ -37,6 +37,8 @@ import { Boot } from './ui/boot.js';
 
 const DECAY = 1 / 600;          // alertness lost a second: full to empty in ten minutes
 const WILD_GAP = [60, 110];      // seconds between artifacts, after the last is behind
+const WAVE = 12;                 // a sweep's artifacts at once, at most (the rest come next)
+const VOICES = 4;                // artifacts heard at once, the nearest
 const WALK = 2.0, RUN = 3.3;
 const EYE = 1.58;
 
@@ -75,6 +77,7 @@ export class Game {
     this.boot = new Boot(this.uiRoot);
     this.boot.step(0.05, '');
     this.hud = new Hud(this.uiRoot);
+    this.hud.onAlarm = () => this.goOutside();
     this.tips = new Tips(this);
     this.terminal = new Terminal(this);
     this.menu = new Menu(this);
@@ -103,8 +106,10 @@ export class Game {
     art.loadMeta().then(() => { this.artReady = true; }).catch(() => {});
     this.field = new Field(this);
     this.field.onAppear = (a) => this._appear(a);
+    this.field.onWave = (list) => this._appear(list[0], list);
     this.field.onScanned = (a) => this._scanned(a);
-    this.field.onMissed = () => this.hud.say('LOST IN THE FOG', 'It stays where it stood, behind you', 4);
+    // one missed alone is said; a sweep's, quietly (there were more than one could scan)
+    this.field.onMissed = (a) => { if (!a.wave) this.hud.say('LOST IN THE FOG', 'It has gone back into the fog', 4); };
     this.field.onGate = (a, n) => { for (let i = 0; i < n; i++) this.audio.play('gate', { i: a.pass + i }); };
     // a seeker moved while you fly: the next artifact is its witnessed one; a wild one
     // still out of sight gives way to it at once
@@ -214,6 +219,15 @@ export class Game {
     this.tips.learn('outside');
   }
 
+  // out to the ship's view from wherever one is: the Codex, the menu, the coffee, the
+  // cabin (the alert's button, or V while it is up)
+  goOutside() {
+    if (this.menu.open) this.menu.hide();
+    if (this.terminal.open) this.terminal.hide();
+    if (this.mode === 'coffee') this.coffee.finish();
+    if (this.mode === 'walk') this.exitCabin();
+  }
+
   startCoffee() {
     this.mode = 'coffee';
     this.input.unlock();
@@ -280,13 +294,21 @@ export class Game {
   }
 
   // ---------------------------------------------------------------- artifacts
-  _appear(a) {
+  // a: the one that appeared (or the first of a sweep's: list)
+  _appear(a, list = [a]) {
     if (a.special) {
-      const who = a.d.tokens.length > 1 ? `SEEKERS ${a.d.tokens.slice(0, 4).map((t) => '#' + t).join(' ')}${a.d.tokens.length > 4 ? '…' : ''}` : `SEEKER #${a.d.lead}`;
-      this.hud.say('A SEEKER MOVED · WITNESSED', `${who} moved ${a.move.time ? agoShort(a.move.time) : 'just now'}; every ship flying now sees this one`, 7);
+      const ids = list.map((x) => x.d.lead);
+      const who = ids.length > 1 ? `SEEKERS ${ids.slice(0, 5).map((t) => '#' + t).join(' ')}${ids.length > 5 ? ` and ${ids.length - 5} more` : ''}` : `SEEKER #${a.d.lead}`;
+      const title = ids.length > 1 ? `${ids.length} SEEKERS MOVED · WITNESSED` : 'A SEEKER MOVED · WITNESSED';
       this.audio.play('witness', { pan: clamp(-(a.bearing || 0), -1, 1) });
-      this.atmo.networkPulse(1);
+      this.atmo.networkPulse(ids.length > 1 ? 1.4 : 1);
       this._witnessedAt = this.time;
+      // inside the ship, at the Codex or over coffee: the alert says it, where it cannot
+      // be missed (the HUD's alarm), and the cabin calls
+      if (this.mode !== 'fly' && this.mode !== 'seat' || this.terminal.open || this.menu.open) {
+        this.audio.play('alarm');
+        this.buzz([30, 90, 30, 90, 60]);
+      } else this.hud.say(title, `${who} moved ${a.move.time ? agoShort(a.move.time) : 'just now'}; every ship flying now sees ${ids.length > 1 ? 'them' : 'it'}`, 8);
     } else {
       // said the first times only; after that the low swell is enough
       this._wilds = (this._wilds || 0) + 1;
@@ -300,8 +322,11 @@ export class Game {
     const photo = takePhoto(this, a);
     POST.uFlash.value = 0.9;
     const d = a.d;
+    // kept by its key: the transaction (or seed), or for one of a sweep's seekers the
+    // transaction and its token; hash: the transaction itself, when that differs
     const entry = {
-      tx: d.tx, v: GENERATOR_VERSION, kind: d.kind, special: !!d.special, name: d.name, code: d.code, cls: d.cls, family: d.family, notes: d.notes,
+      tx: d.key, ...(d.key !== d.tx ? { hash: d.tx, total: d.total } : {}), grand: !!d.grand,
+      v: GENERATOR_VERSION, kind: d.kind, special: !!d.special, name: d.name, code: d.code, cls: d.cls, family: d.family, notes: d.notes,
       accent: d.accent, tokens: d.tokens, lead: d.lead, charge: d.charge, recipients: d.recipients, pool: d.pool,
       block: d.block, time: a.move.time || null, scannedAt: Date.now(), clock: this.atmo.clockString(), photo,
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
@@ -361,6 +386,12 @@ export class Game {
     U.uAnim.value = Math.floor(this.time * 12) / 12;
     U.uBeat.value = this.beat;
 
+    // seekers moved while away from the ship's view: V goes out to them from anywhere
+    if (this.hud.alarmOn && !input.uiCapture && input.hit('KeyV', 'Pad2') && (this.mode === 'coffee' || overlay)) {
+      this.goOutside();
+      input.pressed.delete('KeyV');
+      input.pressed.delete('Pad2');
+    }
     // keys that work everywhere
     if (this.mode === 'title') {
       if (input.pressed.size || input.mouseDown) this.start();
@@ -397,14 +428,16 @@ export class Game {
     this.ship.sync(this.world.origin, this.beat);
     this.stats_.distance += this.ship.speed * dt;
 
-    // artifacts: one at a time, when the last is behind: a witnessed move's if one is
-    // waiting, else a wild one, every minute or two
+    // artifacts, when the last are behind: the witnessed ones of the seekers that moved
+    // (a sweep's together) if any are waiting, else a wild one, every minute or two.
+    // Inside the ship they rise farther off, to give time to come out to them.
     if (!overlay || !this.field.pending) this.field.next -= dt;
     if (this.mode !== 'title' && this.field.next <= 0 && !this.field.pending && !this._spawning) {
-      const m = this.moves.take();
+      const wave = this.moves.takeWave(WAVE);
+      const away = this.mode !== 'fly' && this.mode !== 'seat' || overlay;
       this._spawning = true;
-      (m ? this.field.spawn(m) : this.field.spawnWild()).finally(() => { this._spawning = false; });
-      this.field.next = WILD_GAP[0] + Math.random() * (WILD_GAP[1] - WILD_GAP[0]);
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild()).finally(() => { this._spawning = false; });
+      this.field.next = this.moves.waiting ? 6 : WILD_GAP[0] + Math.random() * (WILD_GAP[1] - WILD_GAP[0]);
     }
     const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
     const prevState = this.field.state;
@@ -452,7 +485,8 @@ export class Game {
     m.warm = this.mode === 'coffee' ? 1 : Math.max(0, this.warm / 90);
     const t = this.field.target;
     m.near = t ? clamp(1 - t.dist / 600, 0, 1) : 0;
-    this.audio.artifacts = this.field.active.filter((a) => !a.building && a.model).map((a) => ({ key: a.d.tx, d: a.d, dist: a.dist, bearing: a.bearing || 0, reveal: a.revealed ? a.reveal : 0 }));
+    this.audio.artifacts = this.field.active.filter((a) => !a.building && a.model).sort((p, q) => p.dist - q.dist).slice(0, VOICES)
+      .map((a) => ({ key: a.d.key, d: a.d, dist: a.dist, bearing: a.bearing || 0, reveal: a.revealed ? a.reveal : 0 }));
 
     POST.uFlash.value = Math.max(0, POST.uFlash.value - dt * 2.5);
     this.px.render(this.scene, this.cams.cam);
@@ -532,7 +566,10 @@ export class Game {
       fp.walked += moved;
       fp.bob = damp(fp.bob, moved > 0.001 ? 1 : 0, 6, dt);
       if (fp.walked > 0.62) { fp.walked = 0; this.audio.play('step', { gain: 0.8 }); }
-      // the nearest thing to use
+      // the nearest thing to use: in reach and roughly ahead, the more roughly the closer
+      // one stands (right beside it, any way one faces); the one already offered stays
+      // offered until one has clearly turned or stepped away
+      const was = this._spot;
       this._spot = null;
       let best = Infinity;
       for (const s of I.spots) {
@@ -540,7 +577,10 @@ export class Game {
         const ang = Math.atan2(s.at.x - fp.x, s.at.z - fp.z);
         let da = ang - fp.yaw;
         da = Math.atan2(Math.sin(da), Math.cos(da));
-        if (d < s.r && Math.abs(da) < 0.9 && d < best) { best = d; this._spot = s; }
+        const keep = s === was ? 1.15 : 1;
+        const reach = s.r * keep;
+        const cone = (d < 0.9 ? Math.PI : 0.9 + (1 - d / reach) * 1.3) + (keep > 1 ? 0.35 : 0);
+        if (d < reach && Math.abs(da) < cone && d < best) { best = d; this._spot = s; }
       }
       if (this.companion.talking && input.hit('KeyE', 'Enter', 'Pad0')) this.companion.advance();
       else if (this._spot && input.hit('KeyE', 'Enter', 'Pad0')) this._use(this._spot);
@@ -586,6 +626,8 @@ export class Game {
     h.root.classList.toggle('away', this.mode === 'title' || this.mode === 'coffee' || overlay);
     h.update(dt, this);
     const st = this.moves.status;
+    const away = this.mode === 'walk' || this.mode === 'coffee' || overlay;
+    h.setAlarm(away && this.mode !== 'title' ? this.field.open.filter((a) => a.special) : null);
     h.setStatus(st === 'live' ? 'SEEKER NET LIVE' : st === 'offline' ? 'SEEKER NET OFFLINE · ARCHIVE' : st === 'retrying' ? 'SEEKER NET RETRYING' : 'SEEKER NET …', st === 'live' ? 'live' : st === 'offline' ? 'off' : '');
     let keys = [];
     if (this.input.touchMode) keys = [];     // the buttons on screen say it
@@ -648,6 +690,16 @@ export class Game {
       witness: (token = 1 + Math.floor(Math.random() * 2222)) => {
         const tx = '0x' + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
         const m = { tx, block: 1, tokens: [token], charge: 1200, recipients: 2200, pool: 'dormant', time: Date.now() };
+        this.moves._enqueue(m);
+        if (this.moves.onMove) this.moves.onMove(m);
+        return tx;
+      },
+      // as if n seekers moved in one transaction this moment (a sweep)
+      sweep: (n = 7) => {
+        const tx = '0x' + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
+        const tokens = [];
+        while (tokens.length < n) { const t = 1 + Math.floor(Math.random() * 2222); if (!tokens.includes(t)) tokens.push(t); }
+        const m = { tx, block: 1, tokens, charge: 3000, recipients: 2200, pool: 'dormant', time: Date.now() };
         this.moves._enqueue(m);
         if (this.moves.onMove) this.moves.onMove(m);
         return tx;

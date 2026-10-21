@@ -1,75 +1,17 @@
 import * as THREE from 'three';
 import { Builder, mat, roughen } from '../render/build.js';
-import { worldMaterial, glowMaterial, halo, pointsMaterial } from '../render/materials.js';
+import { worldMaterial, glowMaterial, halo } from '../render/materials.js';
 import { LAYER_FX } from '../render/pipeline.js';
 import { rng, TAU, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
 import { SEQ } from './generate.js';
+import { STONE, RIM, PULSE, Y, beam, flatSeg, slab, motes, driftMotes } from './parts.js';
+import { NEWER } from './families.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
 // build(d, ground) -> { group, update(t, beat, ctx), light: Vector3 (local), focus,
 // clear (radius of the clearing), height, onPass?(shipLocal) }
-
-const STONE = [0x181c20, 0x20242a, 0x262b32, 0x313c43];
-const EDGE = 0x4f5d73;
-const RIM = 0x94a6b1;
-const PULSE = 2.2;           // emissive above 1.5 follows the artifact's pulse
-const Y = new THREE.Vector3(0, 1, 0);
-
-function beam(b, a, c, w, color, em = 0) {
-  const d = new THREE.Vector3().subVectors(c, a);
-  const len = d.length();
-  if (len < 1e-4) return;
-  const q = new THREE.Quaternion().setFromUnitVectors(Y, d.clone().normalize());
-  const m = new THREE.Matrix4().compose(new THREE.Vector3().addVectors(a, c).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1));
-  b.box(w, len + w * 0.4, w, m, color, em);
-}
-
-function flatSeg(b, p0, p1, w, color, em) {
-  const dx = p1.x - p0.x, dy = p1.y - p0.y, dz = p1.z - p0.z;
-  const hl = Math.hypot(dx, dz);
-  const len = Math.hypot(hl, dy);
-  if (len < 1e-3) return;
-  b.box(w, 0.16, len + w * 0.6, mat((p0.x + p1.x) / 2, (p0.y + p1.y) / 2 + 0.1, (p0.z + p1.z) / 2, -Math.atan2(dy, hl), Math.atan2(dx, dz), 0), color, em);
-}
-
-// a tapered slab of stone
-function slab(b, x, z, y0, w, h, dpt, yaw, lean, color, top = 0.7) {
-  const g = new THREE.CylinderGeometry(top * 0.707, 0.707, 1, 4, 3);
-  g.rotateY(Math.PI / 4);
-  roughen(g, 0.06, Math.floor(x * 13 + z * 7));
-  b.add(g, mat(x, y0 + h / 2, z, lean, yaw, 0, w, h, dpt), (px, py) => (py > 0.36 ? mixHex(color, RIM, 0.18) : color), 0, { flat: true });
-}
-
-function motes(color, n, radius, height, seed, size = 0.5) {
-  const R = rng(seed);
-  const pos = [], sz = [], al = [];
-  for (let i = 0; i < n; i++) {
-    const a = R() * TAU, r = Math.sqrt(R()) * radius;
-    pos.push(Math.cos(a) * r, R() * height, Math.sin(a) * r);
-    sz.push(0.5 + R());
-    al.push(0.4 + R() * 0.6);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('aSize', new THREE.Float32BufferAttribute(sz, 1));
-  g.setAttribute('aAlpha', new THREE.Float32BufferAttribute(al, 1));
-  const p = new THREE.Points(g, pointsMaterial({ color, size, additive: true, opacity: 1.2 }));
-  p.layers.set(LAYER_FX);
-  p.frustumCulled = false;
-  p.userData.base = pos.slice();
-  return p;
-}
-
-function driftMotes(p, t) {
-  const a = p.geometry.attributes.position, base = p.userData.base;
-  for (let i = 0; i < a.count; i++) {
-    const ph = i * 1.7;
-    a.setXYZ(i, base[i * 3] + Math.sin(t * 0.21 + ph) * 1.4, base[i * 3 + 1] + ((t * 0.6 + ph * 3) % 8) - 4, base[i * 3 + 2] + Math.cos(t * 0.17 + ph) * 1.4);
-  }
-  a.needsUpdate = true;
-}
 
 // ------------------------------------------------------------------ families
 
@@ -713,56 +655,51 @@ function chimes(d, A, mats) {
   };
 }
 
-// The moved seeker's likeness, from its own 54 x 54 picture: each pixel a block,
-// the screen lit, moss on what faces up, half sunk in the forest floor.
+// A witnessed artifact: the seeker that moved, itself, as a giant (its voxel model from
+// its own collection art, built by the field before this: ctx.seeker), hovering over a
+// figure of light on the forest floor, breathing up and down and turning, slowly, to
+// watch the ship.
 function echo(d, A, mats, ctx) {
   const P = d.params;
   const group = new THREE.Group();
-  const s = P.scale;
-  const px = ctx.seekerPixels;   // [{ color: [r,g,b], part, screen }|null] * 54*54
-  const b = new Builder(), gl = new Builder();
-  let ymin = 54;
-  if (px) {
-    for (let y = 0; y < 54; y++) {
-      let x = 0;
-      while (x < 54) {
-        const q = px[y * 54 + x];
-        if (!q) { x++; continue; }
-        // merge runs of the same color
-        let x1 = x + 1;
-        const key = q.color.join(',') + (q.part === 5 ? 'e' : '');
-        while (x1 < 54 && px[y * 54 + x1] && px[y * 54 + x1].color.join(',') + (px[y * 54 + x1].part === 5 ? 'e' : '') === key) x1++;
-        const w = (x1 - x) * s;
-        const cx = ((x + x1) / 2 - 27) * s, cy = (54 - y - 0.5) * s;
-        const hexc = (q.color[0] << 16) | (q.color[1] << 8) | q.color[2];
-        const isEye = q.part === 5;
-        const depth = isEye ? 1.2 : q.part === 0 ? 2.5 : 4;
-        const above = y > 0 ? px[(y - 1) * 54 + x] : null;
-        const mossy = !above && !isEye && ((x * 7 + y * 3) % 10) / 10 < P.moss;
-        (isEye ? gl : b).box(w, s, depth * s, mat(cx, cy, isEye ? 1.6 * s : 0), mossy ? 0x49573d : hexc, isEye ? PULSE : 0);
-        if (y < ymin) ymin = y;
-        x = x1;
+  const floor = glyph({ ...d, params: P.glyph }, A, mats, ctx);
+  group.add(floor.group);
+  const m = ctx.seeker;
+  const H = 54 * P.scale;
+  const mid = P.hover + H * 0.55;
+  let facing = 0, last = 0;
+  const look = new THREE.Vector3();
+  const out = {
+    group, light: new THREE.Vector3(0, mid, H * 0.2), axis: new THREE.Vector3(0, 0, 0), focus: new THREE.Vector3(0, mid, 0), span: H * 0.62,
+    clear: Math.max(H * 0.45, P.glyph.radius * 0.7) + 8, height: P.hover + H, mats: [],
+    update(t, beat, c) {
+      if (!m) return;
+      const dt = Math.min(0.1, Math.max(0, t - last));
+      last = t;
+      m.root.position.y = mid + Math.sin(t * 0.45) * H * 0.025;
+      if (c && c.shipLocal) {
+        look.copy(c.shipLocal);
+        const want = Math.atan2(look.x, look.z);
+        let da = want - facing;
+        da = Math.atan2(Math.sin(da), Math.cos(da));
+        facing += da * Math.min(1, dt * 0.35);
       }
-    }
-  } else {
-    b.box(54 * s * 0.6, 54 * s * 0.6, 6, mat(0, 54 * s * 0.3, 0), STONE[1]);
-  }
-  const holder = new THREE.Group();
-  holder.add(new THREE.Mesh(b.build(), mats.body));
-  if (!gl.empty) holder.add(new THREE.Mesh(gl.build(), mats.glow));
-  const H = 54 * s;
-  holder.position.y = -H * P.sunk;
-  holder.rotation.z = P.lean;
-  group.add(holder);
-  return {
-    group, light: new THREE.Vector3(0, H * 0.5, 4), focus: new THREE.Vector3(0, H * 0.45, 0), span: H * 0.6, clear: H * 0.5 + 8, height: H,
-    update() {},
+      // turned on the 12 fps grid, as the companion turns in the cabin
+      m.root.rotation.y = Math.round(facing / 0.03) * 0.03;
+      m.update(dt, t, Math.floor(t * 12), 0);
+    },
   };
+  if (m) {
+    m.root.position.y = mid;
+    group.add(m.root);
+    out.mats.push(m.material, m.glowMat);
+  }
+  return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER };
 
-// ctx: { ground(lx, lz) -> local y, ringY, seekerPixels }
+// ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {
   const mats = { body: worldMaterial({ unique: true }), glow: worldMaterial({ unique: true }) };
   const A = d.accent;
@@ -775,66 +712,98 @@ export function buildArtifact(d, ctx) {
     const up = out.update;
     out.update = (t, beat, c) => { up(t, beat, c); driftMotes(m, t); };
   }
-  const h = halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : 1), 0.55 * d.strength);
+  const h = halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
   h.position.copy(out.light);
   h.layers.set(LAYER_FX);
   out.group.add(h);
   out.halo = h;
-  if (d.special) witness(out, d);
+  if (d.special) aura(out, d, true);
+  else if (d.grand) aura(out, d, false);
   return out;
 }
 
-// A witnessed artifact (a seeker moved while everyone flew): a pale column of its light
-// rising through the fog, a ring of light going out across the ground on its rhythm, and
-// motes climbing the column, so it reads from far off as the network's moment.
-function witness(out, d) {
-  const A = d.accent, pale = mixHex(A, 0xffffff, 0.45);
-  const fade = (geo, f) => {
+// A column of light rising through the fog from its heart, a ring going out across the
+// ground on its rhythm, and motes climbing the column: a grand wild artifact's, in its
+// own light. A witnessed artifact (a seeker moved while everyone flew) has it in the
+// network's gold, and a crown of light turning high over the seeker's head, so it reads
+// from far off as the network's moment.
+const GOLD = 0xe8d6a0;
+
+function aura(out, d, gold) {
+  const A = d.accent, pale = gold ? mixHex(GOLD, A, 0.22) : mixHex(A, 0xffffff, 0.45);
+  const ax = out.axis || out.light;     // where the column stands
+  const fade = (geo, f, color = pale) => {
     const p = geo.attributes.position, n = p.count;
     const col = new Float32Array(n * 3), em = new Float32Array(n);
-    const c = new THREE.Color(pale);
+    const c = new THREE.Color(color);
     for (let i = 0; i < n; i++) { col.set([c.r, c.g, c.b], i * 3); em[i] = Math.max(0.0001, f(p.getX(i), p.getY(i), p.getZ(i))); }
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.setAttribute('emissive', new THREE.BufferAttribute(em, 1));
     return geo;
   };
-  const H = 260, r0 = Math.max(1.6, out.span * 0.08);
-  const colGeo = new THREE.CylinderGeometry(r0 * 1.6, r0, H, 14, 8, true);
+  const H = 300, r0 = Math.max(1.8, out.span * 0.09);
+  const colGeo = new THREE.CylinderGeometry(r0 * 1.7, r0, H, 14, 8, true);
   colGeo.translate(0, H / 2, 0);
-  fade(colGeo, (x, y) => Math.pow(1 - y / H, 1.6) * (0.35 + 0.65 * Math.min(1, y / 12)));
-  const colMat = glowMaterial({ opacity: 0.32, fog: 0.55, fresnel: 0.85, side: THREE.DoubleSide });
+  fade(colGeo, (x, y) => Math.pow(1 - y / H, 1.5) * (0.35 + 0.65 * Math.min(1, y / 12)));
+  const colMat = glowMaterial({ opacity: 0.36, fog: 0.5, fresnel: 0.85, side: THREE.DoubleSide });
   const column = new THREE.Mesh(colGeo, colMat);
-  column.position.set(out.light.x, 0, out.light.z);
+  column.position.set(ax.x, 0, ax.z);
   column.layers.set(LAYER_FX);
   column.frustumCulled = false;
   out.group.add(column);
   // the ring on the ground
-  const R = Math.max(14, out.span * 1.1);
+  const R = Math.max(18, out.span * 1.3);
   const ringGeo = new THREE.RingGeometry(0.9, 1, 64, 1);
   ringGeo.rotateX(-Math.PI / 2);
   fade(ringGeo, () => 1);
   const ringMat = glowMaterial({ opacity: 0.5, fog: 0.8, side: THREE.DoubleSide });
   const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-  ringMesh.position.set(out.light.x, 0.6, out.light.z);
+  ringMesh.position.set(ax.x, 0.6, ax.z);
   ringMesh.layers.set(LAYER_FX);
   ringMesh.frustumCulled = false;
   out.group.add(ringMesh);
+  // the crown: two rings of gold segments over its head, turning against each other
+  const crownY = out.height + 9;
+  const crown = new THREE.Group();
+  crown.position.set(ax.x, crownY, ax.z);
+  const rings = [];
+  for (const [rad, n, w, sp] of gold ? [[Math.max(9, out.span * 0.42), 12, 1.1, 0.12], [Math.max(6, out.span * 0.3), 7, 0.7, -0.2]] : []) {
+    const cb = new Builder();
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * TAU, a1 = a0 + (TAU / n) * 0.62;
+      const am = (a0 + a1) / 2, len = 2 * rad * Math.sin((a1 - a0) / 2);
+      cb.box(len, w, w, mat(Math.cos(am) * rad, 0, Math.sin(am) * rad, 0, -am + Math.PI / 2, 0), GOLD, 1);
+      cb.box(w * 0.9, w * 2.6, w * 0.9, mat(Math.cos(a0) * rad, w * 1.3, Math.sin(a0) * rad), mixHex(GOLD, 0xffffff, 0.3), 1);
+    }
+    const geo = cb.build();
+    const m = new THREE.Mesh(geo, glowMaterial({ opacity: 0.9, fog: 0.55 }));
+    m.layers.set(LAYER_FX);
+    m.frustumCulled = false;
+    crown.add(m);
+    rings.push({ m, sp });
+  }
+  if (gold) out.group.add(crown);
   // motes climbing the column
-  const m = motes(pale, 60, r0 * 2.5, H * 0.5, d.seed[6], 0.55);
-  m.position.set(out.light.x, 0, out.light.z);
+  const m = motes(pale, 70, r0 * 2.6, H * 0.5, d.seed[6], 0.6);
+  m.position.set(ax.x, 0, ax.z);
   out.group.add(m);
   const base = m.userData.base;
-  out.mats.push(colMat, ringMat);
+  out.mats.push(colMat, ringMat, ...rings.map((r) => r.m.material));
   const up = out.update;
   out.update = (t, beat, c) => {
     up(t, beat, c);
-    const pulse = c.pulse ?? 1;
-    colMat.uniforms.uOpacity.value = (0.2 + pulse * 0.18) * (c.reveal ?? 1);
+    const pulse = c.pulse ?? 1, rv = c.reveal ?? 1;
+    colMat.uniforms.uOpacity.value = (0.22 + pulse * 0.2) * rv;
     // one ring every four beats, out to R and gone
     const k = (beat / 4) % 1;
     const rr = 2 + k * R;
     ringMesh.scale.set(rr, 1, rr);
-    ringMat.uniforms.uOpacity.value = 0.55 * (1 - k) * (c.reveal ?? 1);
+    ringMat.uniforms.uOpacity.value = 0.55 * (1 - k) * rv;
+    for (const r of rings) {
+      r.m.rotation.y = t * r.sp;
+      r.m.material.uniforms.uOpacity.value = (0.55 + pulse * 0.35) * rv;
+    }
+    crown.position.y = crownY + Math.sin(t * 0.45) * 0.8;
     const a = m.geometry.attributes.position;
     for (let i = 0; i < a.count; i++) {
       const ph = i * 2.31;

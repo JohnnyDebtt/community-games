@@ -72,19 +72,34 @@ computer: walk to it and press E.
 
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
   only steer.
-- **Artifacts.** One at a time, every minute or two. Most are **wild**: grown from a
-  seed your own browser draws, so no one else will ever meet the same one. But when a
-  SEEKER NET seeker moves on Robinhood Chain while you fly, the next artifact is
-  **witnessed**: seeded by that move's transaction hash, the same for every ship flying
-  at that moment, grander, with a pale column of light rising through the fog and a ring
-  going out across the ground, its marks in gold. (Moves made while you were away are not
-  replayed.) The moved seeker shapes a witnessed artifact: its Floating Object picks the
-  family (thirteen: standing stones, monoliths, ringed orbs, cellular-automaton arrays,
-  shells, crystal blooms, tethers, luminous groves, gates to fly through, nested
-  polyhedra, geoglyphs, harmonic chimes, and, for an activated seeker's move, its own
-  likeness), its Colorway the light, the charge it released the size. An artifact
-  appears just past what the fog lets you see, nearly dead ahead, and keeps ahead of you
-  until you have seen it.
+- **Artifacts.** Every minute or two, a **wild** one: grown from a seed your own
+  browser draws, so no one else will ever meet the same one. Twenty-five families:
+  standing stones, monoliths, ringed orbs, cellular-automaton arrays, shells, crystal
+  blooms, tethers, luminous groves, gates to fly through, nested polyhedra, geoglyphs,
+  harmonic chimes, lighthouses whose beams turn through the fog, orreries that keep
+  Kepler's law, helices whose lit rungs spell a number, the shadows of four-dimensional
+  solids, derelict hulls, stairs to a door that opens on fog, pale elder trees, level
+  pools under a hanging stone, cloaked sentinels whose eyes follow the ship, swarms on a
+  torus knot, cradles of bone round a cracked egg, lanterns hung on nothing, and
+  listening dishes that turn to track you. About one in seven is **grand**: larger, with
+  a column of its own light over it. A lone artifact appears just past what the fog lets
+  you see, nearly dead ahead, and keeps ahead of you until you have seen it. Once you
+  have come near one and lost it from sight (or left one far behind), it dissolves back
+  into the fog: there is no turning back for it.
+- **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
+  fly, that seeker itself rises out of the fog, giant: its voxel model built from its own
+  collection art as it is on the chain now (dormant ones dark by their stage, their
+  battery for an eye; activated ones bright; 30 to 60 meters tall, by the charge the move
+  released), hovering over a
+  figure drawn in light on the forest floor, turning to watch the ship, under a gold
+  column of light and a crown. It is seeded by the move's transaction, the same for every
+  ship flying at that moment, and its marks are gold. When several seekers move together
+  (a sweep, one transaction or many at once), each rises, all at once, spread across a
+  broad front ahead: more than one ship can scan before it has flown past, so you choose.
+  (Twelve at a time; a larger sweep comes in waves.) Moves made while you were away are
+  not replayed. Inside the ship, at the Codex or over coffee, an alert says so over
+  everything, with the way out (GO OUTSIDE, or V), and they rise farther off to give you
+  time.
 - **Their voices.** Every artifact has a voice of its own, from its seed and family
   (src/core/voices.js): breath through drifting resonances, slowly beating glass, an
   inharmonic warble, a voice that glides between notes, soft ticks on its own rhythm (in
@@ -141,10 +156,31 @@ minute as a WAV file.
   address on all their posts, old ones too, for everyone; same names are told apart by a
   small colored mark), and **delete** their own posts (gone for every player, and from
   the relays that honor deletions).
+  SMALL PHOTOS shrinks scans' photographs to thumbnails (one opens where it is when
+  touched), so the words are easier to follow.
 - **SEEKERS**: the seekers an address holds (connect or link your wallet, or type any
   address to view), and, for your own, BRING ABOARD / SEND BACK: live charge, stage, status, Discharge, Uplink, shares received since the last
   move, when it last moved, the date it should activate at +50 a day and with the last
   day's shares, its traits, and the network's totals.
+- **LEADERS**: the leaderboard. Holders submit their own scans (one button, after the
+  same one-time wallet link as the board); holders are ranked by witnessed scans, then
+  by the rest, then by name, and a holder with none does not appear. Names follow the
+  board's. Each holder's scans open in a gallery. A quiet mark on a tab says there is
+  something new there: words on the board, or scans not yet submitted.
+
+### The leaderboard: how scans are checked
+
+A submission is the browser's ledger: every scan in its Codex, listed without the
+photographs, signed with the board's key and carrying the same wallet proof as a post
+(Nostr kind 30078, app data, replaceable, so the newest ledger from a key stands; long
+ledgers go in pages). The photographs follow, one small event each, and are fetched only
+when someone opens that holder's gallery. Every reader counts a ledger only if its
+signatures and proof are right and the address holds a seeker now; a witnessed scan only
+if that seeker moved in that transaction in that block (read from Robinhood Chain) and it
+was scanned within a few hours of the move; the rest only no closer than 40 seconds
+apart (no artifact comes sooner); and each artifact once per address. A determined holder
+could still fake wild scans, as with any game's leaderboard; witnessed ones are tied to
+the chain.
 
 ### Posting: how holders are checked, with no server
 
@@ -251,7 +287,7 @@ src/companion/            a seeker aboard: its voxel model (after Soundings), it
                           its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the
                           seekers' art
-src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board
+src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the leaderboard
 src/core/                 math, palette, input, storage, keccak, the score, the artifacts'
                           voices, the foley
 src/ui/                   HUD, the Codex computer, menus, touch

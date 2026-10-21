@@ -84,7 +84,8 @@ export class Board {
     this.pool.onEvent = (ev) => this._event(ev);
     // each time a relay has answered (at start, or back after an outage), pass on to it
     // what it is missing
-    this.pool.onEose = () => {
+    this.pool.onEose = (sub) => {
+      if (sub === 'lp-ranks' || sub === 'lp-gallery') { if (this.ranks) this.ranks.ended(sub); return; }
       this.loaded = true;
       this._changed();
       clearTimeout(this._healT);
@@ -101,6 +102,7 @@ export class Board {
     this.myName = load('board.name', '');
     this.healed = 0;
     this.devHolders = null;     // development only: addresses treated as holders
+    this.ranks = null;          // the leaderboard (ranks.js), once its page has been opened
   }
 
   async start() {
@@ -256,6 +258,7 @@ export class Board {
   }
 
   async _event(ev) {
+    if (ev && ev.kind === 30078) return this.ranks ? this.ranks.event(ev) : undefined;
     if (ev && ev.kind === 0) return this._nameEvent(ev);
     if (ev && ev.kind === 5) return this._deleteEvent(ev);
     if (!ev || ev.kind !== 1 || typeof ev.content !== 'string' || ev.content.length > 1200) return;
@@ -358,7 +361,7 @@ export class Board {
     if (entry) {
       if (entry.photo.length > MAX_PHOTO) throw new Error('The photograph is too large');
       const kind = entry.kind || 'move';
-      tags.push(['lp-scan', entry.tx, String(entry.block || ''), entry.tokens.join(','), entry.name, entry.code, entry.family, kind]);
+      tags.push(['lp-scan', entry.hash || entry.tx, String(entry.block || ''), entry.tokens.join(','), entry.name, entry.code, entry.family, kind]);
       tags.push(['lp-photo', entry.photo]);
       const origin = kind === 'wild' ? 'A wild one: no other ship will find it.' : kind === 'witnessed' ? `Witnessed: it rose when SEEKER #${entry.lead} moved, for every ship flying then.` : `It appeared when SEEKER #${entry.lead} moved.`;
       content = `${entry.name} (${entry.code}), scanned over the Fog Belt in Low Pass. ${origin}${text ? `\n\n${text}` : ''}`;

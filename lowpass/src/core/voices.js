@@ -22,6 +22,9 @@ const FAMILY = {
   ring: ['breath', 'glass'], obelisk: ['fm', 'breath'], orb: ['glass', 'whale'], lattice: ['grains', 'breath'],
   shell: ['whale', 'breath'], crystal: ['glass', 'grains'], tether: ['fm', 'grains'], fungi: ['breath', 'whale'],
   gate: ['glass', 'fm'], solids: ['fm', 'glass'], glyph: ['grains', 'fm'], chimes: ['glass', 'grains'], echo: ['whale', 'fm'],
+  beacon: ['fm', 'glass'], orrery: ['glass', 'grains'], helix: ['grains', 'whale'], tesseract: ['fm', 'glass'], wreck: ['breath', 'fm'],
+  stair: ['whale', 'glass'], arbor: ['breath', 'whale'], pool: ['glass', 'breath'], sentinel: ['fm', 'breath'], swarm: ['grains', 'glass'],
+  cradle: ['whale', 'breath'], lanterns: ['glass', 'grains'], dish: ['grains', 'fm'],
 };
 
 export class ArtifactVoices {

@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { describe, wildSeed } from './generate.js';
 import { buildArtifact } from './models.js';
+import { SeekerModel } from '../companion/bot.js';
+import { lookOf } from '../companion/companion.js';
+import * as art from '../chain/art.js';
 import { U } from '../render/materials.js';
 import { FOG } from '../render/pipeline.js';
 import { WATER, canopyTop } from '../world/terrain.js';
@@ -10,20 +13,29 @@ import { angleDelta, clamp, TAU, damp } from '../core/math.js';
 // the fog and on the trees, its pulse, the scanner's lock and hold, and when it is left
 // behind for good.
 //
-// One at a time: a wild one (unique to this player) every minute or two, or, when a
-// seeker has moved while you fly, that move's witnessed artifact (the same for everyone
-// flying then; generate.js).
+// A wild one (unique to this player) every minute or two, or, when seekers have moved
+// while you fly, their witnessed artifacts (the same for everyone flying then;
+// generate.js): one for each seeker that moved, all at once, so a sweep fills the fog
+// ahead with them, spread out, more than one ship can scan before it has flown past.
 //
-// An artifact appears just beyond what the fog lets you see, close and nearly dead
+// A lone artifact appears just beyond what the fog lets you see, close and nearly dead
 // ahead, so it always comes out of the fog in front of you. Until you have seen it, it
-// keeps ahead of the nose wherever you turn; once seen, it stays where it stands. It
-// materializes in the ordered dither, so it never pops into view.
+// keeps ahead of the nose wherever you turn; once seen, it stays where it stands. Those
+// of a sweep stand where they rose from the first. Everything materializes in the
+// ordered dither, so nothing pops into view. The scanner looks at whichever of them is
+// most nearly ahead. Once you have come near one and lost it from sight (or left one far
+// behind), it goes back into the fog, dissolving the way it came: no turning back for it.
+// A witnessed seeker looks as it is on the chain now: dormant ones dark by their stage,
+// their battery for an eye; activated ones bright.
 
 const SCAN_RANGE = 340;
 const SCAN_CONE = 0.52;       // radians either side of the nose
 const SCAN_TIME = 2.4;        // seconds of holding
 const FIRST_DELAY = 30;
 const REVEAL_SECS = 2.6;
+const SPACING = 95;           // meters at least between the artifacts of a sweep
+const NEAR = 450;             // within this, an artifact has been come near
+const FADE_SECS = 2.4;        // going back into the fog
 
 export class Field {
   constructor(game) {
@@ -42,6 +54,11 @@ export class Field {
 
   get pending() {
     return this.active.find((a) => !a.scanned && !a.passed) || null;
+  }
+
+  // those still to scan: built, not scanned, not left behind
+  get open() {
+    return this.active.filter((a) => !a.scanned && !a.passed && !a.building && a.model);
   }
 
   // How far one can see from the ship through the fog now (where it thins to ~9%).
@@ -63,21 +80,75 @@ export class Field {
     return this.spawn({ tx: wildSeed(), wild: true }, opts);
   }
 
-  // Bring one move (or a wild seed) into the forest now.
+  // Bring one move (or a wild seed) into the forest now. opts: ahead/lateral (meters,
+  // from the nose: placed and seen at once), at ({ x, z }: where it stands, for good),
+  // far (meters: no nearer than this), family (development), quiet (no onAppear).
   async spawn(move, opts = {}) {
     const g = this.game;
+    // a witnessed one is its seeker: the collection's art must be at hand
+    if (!move.wild) { try { await art.loadMeta(); g.artReady = true; } catch { /* drawn from what there is */ } }
     const d = describe(move, (t) => g.seekerInfo(t), opts.family || null);
+    const key = move.seed || move.tx;
     const a = {
-      d, move, special: !!d.special, scanned: false, passed: false, dist: Infinity, near: 0, clearings: [], pass: 0,
-      revealed: !!opts.ahead, reveal: 0, born: g.time, movedAt: g.time,
-      spawnDist: opts.ahead ?? this.spawnDistance(),
-      latK: d.family === 'gate' ? 0 : ((parseInt(move.tx.slice(10, 14), 16) / 65535) * 2 - 1) * 0.16,
+      d, move, special: !!d.special, scanned: false, passed: false, fading: false, closest: Infinity, wave: !!opts.wave,
+      look: opts.look || null, dist: Infinity, near: 0, clearings: [], pass: 0,
+      revealed: !!opts.ahead || !!opts.at, reveal: 0, born: g.time, movedAt: g.time,
+      spawnDist: opts.ahead ?? Math.max(this.spawnDistance(), opts.far || 0), at: opts.at || null,
+      latK: d.family === 'gate' ? 0 : ((parseInt(key.slice(10, 14), 16) / 65535) * 2 - 1) * 0.16,
     };
     if (opts.lateral !== undefined) a.latK = opts.lateral / a.spawnDist;
+    if (a.at) a.spawnDist = Math.hypot(a.at.x - g.ship.x, a.at.z - g.ship.z);
+    if (d.family === 'echo' && !a.look && d.lead) a.look = (await this._looks([d.lead])).get(d.lead) || null;
     await this._build(a);
     this.active.push(a);
-    if (this.onAppear) this.onAppear(a);
+    if (this.onAppear && !opts.quiet) this.onAppear(a);
     return a;
+  }
+
+  // A sweep's artifacts, one for each seeker, all at once: spread over the fog ahead, no
+  // two closer than SPACING, the nearest just past what can be seen. (A lone move is
+  // spawned the usual way.) opts.far: the nearest no nearer than this.
+  async spawnWave(moves, opts = {}) {
+    if (moves.length === 1) { const a = await this.spawn(moves[0], { far: opts.far }); return [a]; }
+    const g = this.game, ship = g.ship;
+    const [fx, fz] = ship.forward();
+    const near = Math.max(this.spawnDistance(), opts.far || 0);
+    // a broad front, wider than the scanner can sweep in one pass: a choice of sides
+    const deep = SPACING * (1.5 + moves.length * 0.5), wide = Math.min(380, 130 + moves.length * 30);
+    const spots = [];
+    for (let i = 0; i < moves.length; i++) {
+      let best = null;
+      for (let tries = 0; tries < 40; tries++) {
+        const ahead = near + Math.random() * deep, lat = (Math.random() * 2 - 1) * wide;
+        const gap = Math.min(...spots.map((p) => Math.hypot(p.ahead - ahead, p.lat - lat)), Infinity);
+        if (!best || gap > best.gap) best = { ahead, lat, gap };
+        if (gap >= SPACING) break;
+      }
+      spots.push(best);
+    }
+    spots.sort((p, q) => p.ahead - q.ahead);
+    const x0 = ship.x, z0 = ship.z;
+    // how each seeker is now, in one read for all of them
+    const looks = await this._looks(moves.map((m) => m.tokens[0]));
+    const out = [];
+    for (let i = 0; i < moves.length; i++) {
+      const { ahead, lat } = spots[i];
+      const at = { x: x0 + fx * ahead + fz * lat, z: z0 + fz * ahead - fx * lat };
+      out.push(await this.spawn(moves[i], { at, quiet: true, wave: true, look: looks.get(moves[i].tokens[0]) || null }));
+      // one a frame or so, so building them never stops the flight
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    if (this.onWave) this.onWave(out);
+    return out;
+  }
+
+  // How seekers are on the chain now (token -> look), in one read; a few seconds at most,
+  // else they are seen bright (as activated).
+  async _looks(ids) {
+    try {
+      const st = await Promise.race([this.game.chain.tokens(ids), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 5000))]);
+      return new Map(st.map((x) => [x.token, lookOf(x)]));
+    } catch { return new Map(); }
   }
 
   // (Re)build an artifact ahead of the ship's nose, at its distance.
@@ -87,14 +158,21 @@ export class Field {
     if (a.model) this._dispose(a);
     const [fx, fz] = ship.forward();
     const dist = a.spawnDist, lat = a.latK * dist;
-    const x = ship.x + fx * dist + fz * lat, z = ship.z + fz * dist - fx * lat;
+    const x = a.at ? a.at.x : ship.x + fx * dist + fz * lat, z = a.at ? a.at.z : ship.z + fz * dist - fx * lat;
     const ground = Math.max(g.world.groundAt(x, z), WATER);
     const yaw = d.family === 'gate' ? ship.heading : (d.seed[2] / 4294967296) * TAU;
     const c = Math.cos(yaw), s = Math.sin(yaw);
+    // a witnessed one: its seeker, giant, built from its art as it is now
+    let seeker = null;
+    if (d.family === 'echo' && d.lead) {
+      seeker = new SeekerModel({ vox: d.params.scale, outside: true });
+      const look = a.look && !a.look.activated ? { activated: false, stage: a.look.stage } : { activated: true };
+      try { if (!(await seeker.build(d.lead, look))) seeker = null; } catch { seeker = null; }
+    }
     const ctx = {
       ground: (lx, lz) => Math.max(g.world.groundAt(x + lx * c + lz * s, z - lx * s + lz * c), WATER) - ground,
       ringY: canopyTop(x, z) + 17 - ground,
-      seekerPixels: d.family === 'echo' ? (a.pixels || (a.pixels = await g.seekerPixels(d.lead))) : null,
+      seeker,
     };
     const model = buildArtifact(d, ctx);
     Object.assign(a, { model, x, z, y: ground, yaw, prevLocal: null });
@@ -167,7 +245,18 @@ export class Field {
           continue;
         }
       }
-      a.reveal = Math.min(1, a.reveal + dt / REVEAL_SECS);
+      // come near and then lost from sight, or left far behind: back into the fog
+      a.closest = Math.min(a.closest, a.dist);
+      const lost = Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
+      if (lost && !a.passed && !a.scanned) {
+        a.passed = true;
+        if (this.onMissed) this.onMissed(a);
+      }
+      if (lost && !a.fading) a.fading = true;
+      if (a.fading) {
+        a.reveal -= dt / FADE_SECS;
+        if (a.reveal <= 0) { this.remove(a); continue; }
+      } else a.reveal = Math.min(1, a.reveal + dt / REVEAL_SECS);
       const pulse = this.pulseAt(a, beat);
       a.pulse = pulse;
       for (const m of a.model.mats) {
@@ -186,13 +275,8 @@ export class Field {
         a.prevLocal = local;
       }
       if (a.model.halo) a.model.halo.material.uniforms.uOpacity.value = (0.35 + pulse * 0.4) * a.d.strength * a.reveal;
-      // left behind: well behind the ship and far, or very far
-      const behind = Math.abs(a.bearing) > 1.9;
-      if (!a.passed && (behind && a.dist > 260)) {
-        a.passed = true;
-        if (!a.scanned && this.onMissed) this.onMissed(a);
-      }
-      if ((behind && a.dist > 1100) || a.dist > 1900) this.remove(a);
+      // and whatever is very far off goes at once
+      if (a.dist > Math.max(1900, a.spawnDist + 500)) this.remove(a);
     }
     // lights: the nearest three
     const lit = [...this.active].sort((p, q) => p.dist - q.dist).slice(0, 3);
@@ -208,8 +292,15 @@ export class Field {
       F.set(lp.x, lp.y, lp.z, 60 * k * (0.7 + a.pulse * 0.4));
       FC.setHex(a.d.accent);
     }
-    // the scanner
-    const t = this.pending;
+    // the scanner, on whichever is most nearly ahead (a radian off the nose counts as
+    // 600 m); it keeps the one it holds while that one stays in its sights
+    const open = this.open;
+    const score = (a) => Math.abs(a.bearing) * 600 + a.dist;
+    let t = null;
+    for (const a of open) if (!t || score(a) < score(t)) t = a;
+    const held = this.target && open.includes(this.target) && this.state === 'lock' && Math.abs(this.target.bearing) < SCAN_CONE && this.target.dist < SCAN_RANGE + this.target.model.span * 0.5;
+    if (held && t !== this.target && score(t) > score(this.target) - 150) t = this.target;
+    if (t !== this.target) this.scan = 0;
     this.target = t;
     if (!t) {
       this.state = 'idle';

@@ -124,6 +124,10 @@ export class Pool {
     this.subs.set(id, filters);
     for (const r of this.relays) r.send(['REQ', id, ...filters]);
   }
+  unsubscribe(id) {
+    if (!this.subs.delete(id)) return;
+    for (const r of this.relays) r.send(['CLOSE', id]);
+  }
   async publish(ev) {
     const results = await Promise.all(this.relays.map((r) => r.publish(ev)));
     for (let i = 0; i < results.length; i++) if (results[i].ok) this._has(ev.id, this.relays[i].url);

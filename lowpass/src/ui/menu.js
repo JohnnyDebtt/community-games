@@ -97,14 +97,14 @@ export class Menu {
         ['M', 'keep the music playing now: it will come back'], ['R', 'save the last minute of sound as a WAV file'],
         ['H', 'hide the interface'], ['ESC', 'pause'],
       ]) { const r = el('div', 'krow', t); el('span', 'kk', r, k); el('span', 'muted', r, v); }
-      el('div', 'muted', t, 'Gamepad: left stick steers and walks, A scans and uses, Y switches inside and outside. Touch: hold the left or right of the screen to steer; CABIN and USE do the rest.');
+      el('div', 'muted', t, 'Gamepad: left stick steers and walks, A scans and uses, Y switches inside and outside. Touch: hold the left or right of the screen to steer; the buttons on screen do the rest.');
     } else if (this.page === 'about') {
       const t = el('div', 'mtext', p);
       for (const line of [
         'Low Pass is set in the universe of The Seeker, an open-source sci-fi brand. It is not an official release of The Seeker.',
-        'Most artifacts grow for you alone, from a seed your browser draws: no one else will ever find the same one. When a SEEKER NET seeker moves on Robinhood Chain while you fly, the next one is witnessed: seeded by the move’s transaction, the same for every ship flying then. The hour is kept by the chain’s blocks: everyone flies under the same sky. The chain is only read.',
+        'Most artifacts grow for you alone, from a seed your browser draws: no one else will ever find the same one, and a few are grand. When a SEEKER NET seeker moves on Robinhood Chain while you fly, that seeker itself rises out of the fog, giant: witnessed, seeded by the move’s transaction, the same for every ship flying then. When many move at once, they all rise at once, more than one ship can scan before it has flown past. The hour is kept by the chain’s blocks: everyone flies under the same sky. The chain is only read.',
         'Holders can bring one of their own seekers aboard from the Codex computer (connecting a wallet shares its address; nothing is signed). It hovers in the cabin and talks: every SEEKER NET trait has its own lines.',
-        'The Codex board lives on public Nostr relays. Anyone can read it; holders post after one free signature that links a posting key to their address.',
+        'The Codex board lives on public Nostr relays. Anyone can read it; holders post after one free signature that links a posting key to their address. Holders can also submit their scans to the Codex leaderboard: witnessed scans count first, checked by every reader against the chain.',
         'Includes or adapts assets from The Seeker by The Seeker contributors, licensed CC BY 4.0 (creativecommons.org/licenses/by/4.0). Original project: github.com/TheSeekerGame/the-seeker. Changes were made where applicable.',
         'SEEKER NET art and data from TheSeekerGame/collections, MIT OR Apache-2.0. Code adapted from Soundings and SeekerCraft (community-games), MIT OR Apache-2.0. three.js and noble-secp256k1, MIT. Tektur and The Seeker’s pixel font, SIL OFL 1.1.',
         'The collectibles are art and membership, not investments. Nothing here is financial advice.',

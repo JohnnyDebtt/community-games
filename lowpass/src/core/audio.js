@@ -708,6 +708,10 @@ export class Audio {
         [[0, 0, -0.6], [3, 0.5, 0.6], [5, 1.0, -0.2], [8, 1.6, 0.3]].forEach(([d, dt, pan]) => this.note(pitch(d, 1), { wave: 'choir', when: t + dt, attack: 3.2, hold: 2.5, release: 12, gain: 0.03, linear: true, cutoff: 800, pan: pan + (o.pan || 0) * 0.3, verb: 1.3 }));
         this.hiss({ type: 'bandpass', freq: 300, q: 0.8, to: 700, attack: 2.4, hold: 1, release: 4, gain: 0.05, pink: true, verb: 0.8 });
         break;
+      case 'alarm':
+        // inside the ship, seekers moved: the cabin's own call, twice, soft and rising
+        [0, 1.5].forEach((t0) => [10, 12, 14].forEach((d, i) => this.note(pitch(d), { wave: 'soft', when: t + t0 + i * 0.17, attack: 0.02, release: 1.1, gain: 0.032, cutoff: 1300, dest: S, verb: 0.6 })));
+        break;
       case 'lock':
         this.note(pitch(8), { wave: 'soft', attack: 0.04, release: 0.7, gain: 0.026, cutoff: 600, dest: S });
         break;
