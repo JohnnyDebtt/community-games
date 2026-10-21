@@ -51,7 +51,9 @@ export class TouchControls {
     show(this.cam, m === 'fly');
     show(this.stand, m === 'seat');
     text(this.view, m === 'fly' ? 'CABIN' : 'OUTSIDE');
-    const act = m === 'walk' ? (g.companion.talking ? 'NEXT' : g._spot ? ACT[g._spot.id] || g._spot.label.toUpperCase() : '') : '';
+    // what one faces comes first; else the seeker aboard's NEXT
+    const station = g._spot && g._spot.id !== 'companion';
+    const act = m !== 'walk' ? '' : station ? ACT[g._spot.id] || g._spot.label.toUpperCase() : g.companion.talking ? 'NEXT' : g._spot ? ACT[g._spot.id] : '';
     show(this.act, !!act);
     if (act) text(this.act, act);
     // the scan button sleeps until something is in the sights, then fills as it records

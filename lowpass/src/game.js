@@ -303,18 +303,31 @@ export class Game {
       this.audio.play('witness', { pan: clamp(-(a.bearing || 0), -1, 1) });
       this.atmo.networkPulse(ids.length > 1 ? 1.4 : 1);
       this._witnessedAt = this.time;
-      // inside the ship, at the Codex or over coffee: the alert says it, where it cannot
-      // be missed (the HUD's alarm), and the cabin calls
-      if (this.mode !== 'fly' && this.mode !== 'seat' || this.terminal.open || this.menu.open) {
-        this.audio.play('alarm');
-        this.buzz([30, 90, 30, 90, 60]);
-      } else this.hud.say(title, `${who} moved ${a.move.time ? agoShort(a.move.time) : 'just now'}; every ship flying now sees ${ids.length > 1 ? 'them' : 'it'}`, 8);
+      // anywhere aboard the cabin calls; away from the ship's view (on foot, at the Codex,
+      // over coffee) the alert says it too, where it cannot be missed (the HUD's alarm)
+      if (this._aboard()) this.audio.play('alarm');
+      if (this.mode !== 'fly' && this.mode !== 'seat' || this.terminal.open || this.menu.open) this.buzz([30, 90, 30, 90, 60]);
+      else this.hud.say(title, `${who} moved ${a.move.time ? agoShort(a.move.time) : 'just now'}; every ship flying now sees ${ids.length > 1 ? 'them' : 'it'}`, 8);
     } else {
-      // said the first times only; after that the low swell is enough
-      this._wilds = (this._wilds || 0) + 1;
-      if (this._wilds <= 2) this.hud.say('SIGNAL IN THE FOG', 'Unrecorded · only this ship can find it', 4.5);
       this.audio.play('signal', { pan: clamp(-(a.bearing || 0), -1, 1) });
+      // aboard, the cabin calls softly; at the controls the HUD says so, and away from the
+      // ship's view (on foot, at the Codex, over coffee) a small note over everything,
+      // that goes by itself
+      if (this._aboard()) {
+        this.audio.play('chime');
+        if (this.mode === 'seat' && !this.menu.open) this.hud.say('WILD ARTIFACT AHEAD', 'Rising out of the fog ahead of the ship', 4);
+        else this.hud.toast('WILD ARTIFACT NEARBY', 'Rising out of the fog ahead of the ship. Only this ship will ever find it.');
+      } else {
+        // said the first times only; after that the low swell is enough
+        this._wilds = (this._wilds || 0) + 1;
+        if (this._wilds <= 2) this.hud.say('SIGNAL IN THE FOG', 'Unrecorded · only this ship can find it', 4.5);
+      }
     }
+  }
+
+  // inside the ship: on foot (at the Codex too), at the controls, over coffee
+  _aboard() {
+    return this.mode === 'walk' || this.mode === 'seat' || this.mode === 'coffee';
   }
 
   async _scanned(a) {
@@ -386,8 +399,9 @@ export class Game {
     U.uAnim.value = Math.floor(this.time * 12) / 12;
     U.uBeat.value = this.beat;
 
-    // seekers moved while away from the ship's view: V goes out to them from anywhere
-    if (this.hud.alarmOn && !input.uiCapture && input.hit('KeyV', 'Pad2') && (this.mode === 'coffee' || overlay)) {
+    // seekers moved (or a wild one rose) while away from the ship's view: V goes out to
+    // them from anywhere
+    if ((this.hud.alarmOn || this.hud.toastOn) && !input.uiCapture && input.hit('KeyV', 'Pad2') && (this.mode === 'coffee' || overlay)) {
       this.goOutside();
       input.pressed.delete('KeyV');
       input.pressed.delete('Pad2');
@@ -582,7 +596,11 @@ export class Game {
         const cone = (d < 0.9 ? Math.PI : 0.9 + (1 - d / reach) * 1.3) + (keep > 1 ? 0.35 : 0);
         if (d < reach && Math.abs(da) < cone && d < best) { best = d; this._spot = s; }
       }
-      if (this.companion.talking && input.hit('KeyE', 'Enter', 'Pad0')) this.companion.advance();
+      // what one faces comes first (the Codex computer, the coffee machine, the controls);
+      // else E hears the seeker aboard out, or asks it to talk
+      const station = this._spot && this._spot.id !== 'companion';
+      if (station && input.hit('KeyE', 'Enter', 'Pad0')) this._use(this._spot);
+      else if (this.companion.talking && input.hit('KeyE', 'Enter', 'Pad0')) this.companion.advance();
       else if (this._spot && input.hit('KeyE', 'Enter', 'Pad0')) this._use(this._spot);
       else if (input.hit('KeyV', 'Pad2')) this.exitCabin();
     }
@@ -642,6 +660,7 @@ export class Game {
     h.cross.classList.toggle('on', this.mode === 'walk' && !overlay);
     // (on a touch screen the button that appears says it)
     if (this.input.touchMode) h.setPrompt(null);
+    else if (this.mode === 'walk' && this._spot && this._spot.id !== 'companion' && !overlay) h.setPrompt(this._spot.label, 'E');
     else if (this.mode === 'walk' && this.companion.talking && !overlay) h.setPrompt('Next', 'E');
     else if (this.mode === 'walk' && this._spot && !overlay) h.setPrompt(this._spot.label, 'E');
     else h.setPrompt(null);

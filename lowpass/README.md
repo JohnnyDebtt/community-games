@@ -6,12 +6,13 @@ the warmth under the ice keeps a forest alive and the steam it breathes never li
 
 You fly low over the canopy and steer left and right; the ship keeps its own height.
 Now and then a light shows in the fog: an artifact, grown for you alone. But when a
-SEEKER NET seeker moves on chain while you fly, the next one is witnessed: the same for
-every ship in the fog at that moment. Steer to it and hold the scanner on it, and the
-visor photographs it into your Codex. Inside the ship there is room to walk, a coffee
-machine (you will need it: alertness runs down), the Codex computer, where your records
-are, where holders share scans on a public board and see their seekers' charge, live,
-and room for one of your own seekers to come aboard and talk.
+SEEKER NET seeker moves on chain while you fly, that seeker itself rises out of the fog,
+giant: witnessed, the same for every ship in the fog at that moment. Steer to it and
+hold the scanner on it, and the visor photographs it into your Codex. Inside the ship
+there is room to walk, a coffee machine (you will need it: alertness runs down), the
+Codex computer, where your records are, where holders share scans on a public board,
+rank on a leaderboard and see their seekers' charge, live, and room for one of your own
+seekers to come aboard and talk.
 
 **Play it at <https://theseekergame.github.io/community-games/lowpass/>.**
 
@@ -39,23 +40,26 @@ Safari). Keyboard and mouse, gamepad, or touch.
 | --- | --- |
 | A D, or the arrows | steer (outside, and at the controls) |
 | SPACE (hold) | scan what is in your sights |
-| V | go inside the ship, or back out |
+| V | go inside the ship, or back out (and, when an alert is up, out from the Codex or the coffee) |
 | C | camera: chase, far, low, cinematic (it goes cinematic by itself after a minute idle) |
-| W A S D, mouse | walk and look inside (click to capture the mouse) |
-| E | use what is in front of you: the coffee machine, the Codex computer (on the cabin's right wall), the controls, a seeker aboard (E again: its next line) |
+| W A S D, mouse | walk and look inside (click to capture the mouse); SHIFT runs |
+| E | use what is in front of you: the coffee machine, the Codex computer (on the cabin's right wall), the controls, a seeker aboard (E again, facing nothing else: its next line); at the controls, stand up |
+| K | where the Codex computer is |
 | M | keep the music playing now: that section will come back, as it is |
 | R | save the last minute of sound as a WAV file |
 | H | hide the interface |
 | ESC | pause: volumes, pixel size, light shafts, controls, credits |
 
-Gamepad: left stick steers and walks, A scans and uses, Y goes in and out.
+Gamepad: left stick steers and walks, right stick looks, A scans and uses, B stands up
+(and closes the Codex), X goes in and out, Y changes the camera, Start pauses.
 
 On a phone or tablet: hold the left or right side of the screen to steer (a mark at that
 edge shows which way), and hold SCAN while something is in your sights; it lights up when
 there is, and fills as it records. Inside, drag on the left to walk (a ring follows your
 thumb) and on the right to look. Buttons appear only for what you can do right then, named
 for what they do: CABIN or OUTSIDE, CAMERA, STAND UP, and, when you walk up to something,
-MAKE COFFEE, OPEN THE CODEX, TAKE THE CONTROLS or LISTEN. A tap skips the coffee scene,
+MAKE COFFEE, OPEN THE CODEX, TAKE THE CONTROLS or LISTEN (NEXT while a seeker talks); the
+alerts have GO OUTSIDE. A tap skips the coffee scene,
 and a tap on a seeker's words brings its next line. There are no key hints on a touch
 screen; the hints follow whichever you used last, touch or keys. The first tap asks for
 the full screen where the browser allows it (the pause menu turns it off), and the
@@ -63,10 +67,11 @@ interface is sized for fingers, the same whichever way the phone is held.
 
 The game teaches itself, one thing at a time: a line above the keys says what to press
 next until it has been done once (remembered in the browser), and inside, marks hang over
-the coffee machine and the Codex computer until each has been used. The keys that work
-right now show along the bottom for a while after each change of place, and again
-whenever a key that does nothing there is pressed. The Codex lives on the cabin's
-computer: walk to it and press E.
+the coffee machine, the Codex computer and a seeker aboard until each has been used (over
+the coffee machine again whenever you are tired). The keys that work right now show along
+the bottom for a while after each change of place (always, on foot), and again whenever
+a key that does nothing there is pressed. The Codex lives on the cabin's computer: walk
+to it and press E.
 
 ## How it plays
 
@@ -81,7 +86,7 @@ computer: walk to it and press E.
   solids, derelict hulls, stairs to a door that opens on fog, pale elder trees, level
   pools under a hanging stone, cloaked sentinels whose eyes follow the ship, swarms on a
   torus knot, cradles of bone round a cracked egg, lanterns hung on nothing, and
-  listening dishes that turn to track you. About one in seven is **grand**: larger, with
+  listening dishes, most of which turn to track you. About one in seven is **grand**: larger, with
   a column of its own light over it. A lone artifact appears just past what the fog lets
   you see, nearly dead ahead, and keeps ahead of you until you have seen it. Once you
   have come near one and lost it from sight (or left one far behind), it dissolves back
@@ -89,26 +94,35 @@ computer: walk to it and press E.
 - **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
   fly, that seeker itself rises out of the fog, giant: its voxel model built from its own
   collection art as it is on the chain now (dormant ones dark by their stage, their
-  battery for an eye; activated ones bright; 30 to 60 meters tall, by the charge the move
-  released), hovering over a
-  figure drawn in light on the forest floor, turning to watch the ship, under a gold
-  column of light and a crown. It is seeded by the move's transaction, the same for every
-  ship flying at that moment, and its marks are gold. When several seekers move together
+  battery for an eye; activated ones bright; 30 to 60 meters tall, larger for more charge
+  released), hovering over a figure drawn in light on the forest floor, turning to watch
+  the ship, under a gold column of light and a crown. It is seeded by the move's
+  transaction (one of a sweep's, by the transaction and its token), the same for every
+  ship flying at that moment, and its marks are gold, its number on the brackets. When
+  several seekers move together
   (a sweep, one transaction or many at once), each rises, all at once, spread across a
   broad front ahead: more than one ship can scan before it has flown past, so you choose.
   (Twelve at a time; a larger sweep comes in waves.) Moves made while you were away are
   not replayed. Inside the ship, at the Codex or over coffee, an alert says so over
-  everything, with the way out (GO OUTSIDE, or V), and they rise farther off to give you
-  time.
+  everything, with the way out (GO OUTSIDE, or V; NOT NOW waves it off until the next
+  move), and they rise farther off to give you time.
+- **The cabin's call.** Anywhere aboard (walking, at the controls, over coffee, at the
+  Codex) the ship calls when something rises ahead: two soft notes for a wild artifact,
+  and for witnessed seekers a golden rising call, twice, over a low swell. Away from the
+  ship's view, a wild one also gets a small note over everything (WILD ARTIFACT NEARBY,
+  with the way out) that goes by itself.
 - **Their voices.** Every artifact has a voice of its own, from its seed and family
   (src/core/voices.js): breath through drifting resonances, slowly beating glass, an
   inharmonic warble, a voice that glides between notes, soft ticks on its own rhythm (in
   time with its light), and under a witnessed one a slow chord. All quiet and low, in the
-  game's tuning; heard from the ship: nearer is louder and brighter, farther is darker
-  and wetter, panned by where it lies from the nose, quieter behind, never loud. You
-  hear one before you see it.
-- **Scanning.** Bring it into the brackets and hold SPACE. The visor photographs it
-  (288 x 162, through the same fog), names it, and writes the Codex's notes.
+  game's tuning; heard from the ship (the nearest four at a time): nearer is louder and
+  brighter, farther is darker and wetter, panned by where it lies from the nose, quieter
+  behind, never loud. You hear one before you see it.
+- **Scanning.** Bring it into the brackets and hold SPACE (SCAN on a touch screen, A on
+  a gamepad) for a couple of seconds; it works through the windshield at the controls
+  too. With several out there, the scanner takes the one most nearly ahead, and the
+  bearing strip along the top marks every one. The visor photographs it (288 x 162,
+  through the same fog), names it, and writes the Codex's notes.
 - **Alertness.** It runs down over about ten minutes. Tired, the edges close in, blinks
   grow long, and at the end come short sleeps in which the ship wanders and nothing can
   be scanned. Coffee fills it again.
@@ -155,18 +169,23 @@ minute as a WAV file.
   post scans and words (text only, no links), take a **name** (shown instead of their
   address on all their posts, old ones too, for everyone; same names are told apart by a
   small colored mark), and **delete** their own posts (gone for every player, and from
-  the relays that honor deletions).
-  SMALL PHOTOS shrinks scans' photographs to thumbnails (one opens where it is when
-  touched), so the words are easier to follow.
+  the relays that honor deletions). One post every 20 seconds (the button counts down).
+  It reads like a conversation, newest at the bottom; ALL, SCANS and WORDS filter it. A
+  scan's photograph shows as a thumbnail beside its words; a click or touch anywhere on
+  the message opens it where it is, and again closes it.
 - **SEEKERS**: the seekers an address holds (connect or link your wallet, or type any
-  address to view), and, for your own, BRING ABOARD / SEND BACK: live charge, stage, status, Discharge, Uplink, shares received since the last
-  move, when it last moved, the date it should activate at +50 a day and with the last
-  day's shares, its traits, and the network's totals.
+  address to view), and, for your own, BRING ABOARD / SEND BACK: live charge, stage,
+  status, Discharge, Uplink, shares received since the last move, when it last moved, the
+  date it should activate at +50 a day and with the last day's shares, its traits, and the
+  network's totals.
 - **LEADERS**: the leaderboard. Holders submit their own scans (one button, after the
   same one-time wallet link as the board); holders are ranked by witnessed scans, then
   by the rest, then by name, and a holder with none does not appear. Names follow the
-  board's. Each holder's scans open in a gallery. A quiet mark on a tab says there is
-  something new there: words on the board, or scans not yet submitted.
+  board's. Each holder's scans open in a gallery (a click on their row, or ENTER).
+
+Linking a wallet from LOG, BOARD or LEADERS brings you back where you were. A quiet mark
+on a tab says there is something new there: words on the board, or scans not yet
+submitted. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
 
 ### The leaderboard: how scans are checked
 
@@ -213,10 +232,12 @@ one else will ever meet it.
 
 Bringing a seeker aboard needs only your address: CONNECT asks the wallet for it
 (`eth_requestAccounts`) and signs nothing; the game checks with `ownerOf`, read only, that
-the address still holds it each time it starts. To post, the game asks your browser
-wallet (MetaMask, Rabby, any EIP-6963 wallet) for that one signature. Signing is free and is not a transaction: it sends nothing, approves
-nothing and cannot move anything you own. The game never asks for a transaction, an
-approval, a permit or a seed phrase. The posting key lives in this browser only.
+the address still holds it each time it starts. To post or to submit scans, the game asks
+your browser wallet (MetaMask, Rabby, any EIP-6963 wallet) for that one signature, once.
+Signing is free and is not a transaction: it sends nothing, approves nothing and cannot
+move anything you own. The game never asks for a transaction, an approval, a permit or a
+seed phrase. The posting key lives in this browser only. On a phone, whose browser has
+no wallet, the game says so and offers to open it in MetaMask's own browser.
 
 ### Wallet safety
 
@@ -224,10 +245,11 @@ The game can ask a wallet for exactly two things, both in `src/net/wallet.js`, a
 when you press a button:
 
 - `eth_requestAccounts` (CONNECT): the wallet shares your address. Nothing is signed.
-- `personal_sign` (CONNECT AND SIGN): one signature on a plain-language message that
-  says what it is for, names your address and the board key, and says it is not a
-  transaction. It cannot authorize a transfer, an approval or a permit, and the message
-  is useless anywhere else: it only ties a posting key to your address for the board.
+- `personal_sign` (CONNECT AND SIGN, or SIGN ONCE once connected): one signature on a
+  plain-language message that says what it is for, names your address and the board key,
+  and says it is not a transaction. It cannot authorize a transfer, an approval or a
+  permit, and the message is useless anywhere else: it only ties a posting key to your
+  address for the board and the leaderboard.
 
 The code contains no `eth_sendTransaction`, no typed-data signing (`eth_signTypedData`,
 permits), no raw `eth_sign`, no `approve` or `setApprovalForAll`, and no network
@@ -244,9 +266,11 @@ byte-identical to their releases (three.js r170 `build/three.module.min.js`,
 Everything comes from public RPCs (`https://rpc.mainnet.chain.robinhood.com`, then
 `https://robinhood.drpc.org`): `eth_call`, `eth_getLogs`, block reads. Moves are polled
 every 30 seconds; only moves made while the game is open are witnessed (they wait up to
-an hour, across a reload, for their artifact). Offline, every artifact is wild, and the
-sky's clock starts from the block in `assets/moves.json` until the chain answers. The collectibles are art and membership, not investments; nothing here is
-financial advice.
+an hour, across a reload, for their artifact). A witnessed seeker's look is read when it
+rises (its charge and status); the leaderboard reads the block of each witnessed scan to
+confirm it, and `balanceOf` for each holder. Offline, every artifact is wild, and the
+sky's clock starts from the block in `assets/moves.json` until the chain answers. The
+collectibles are art and membership, not investments; nothing here is financial advice.
 
 ## Host it
 
@@ -258,10 +282,12 @@ and this file are not needed at runtime.
 
 - `?dev` adds `window.__lp`: `look('orb')` to orbit a fresh artifact of a family,
   `fake('orb', 300, witness)` one ahead, `witness(token)` as if a seeker moved this
-  moment, `coffeeAt(seconds)` the coffee scene frozen at a moment, `freeze()`,
-  `spawn(i)` one of the shipped moves, `time(0.15)` a sunrise, `run(seconds)` to step
-  without the browser's frames, `mockWallet(testKeyHex)` a stand-in wallet with a
-  throwaway key. `?stats` shows frame numbers (F3 toggles them).
+  moment, `sweep(7)` as if seven moved in one transaction, `clear()` to take them all
+  away, `coffeeAt(seconds)` the coffee scene frozen at a moment, `freeze()`, `spawn(i)`
+  one of the shipped moves, `time(0.15)` a sunrise, `run(seconds)` to step without the
+  browser's frames, `mockWallet(testKeyHex)` a stand-in wallet with a throwaway key.
+  `?stats` shows frame numbers (F3 toggles them). `?play` skips the title, `?t=0.3`
+  starts at an hour of the day, `?x=&z=` at a place.
 - `?offline` skips the chain: every artifact is wild.
 - `node tools/relay.mjs 7777` runs a tiny Nostr relay in memory; open the game with
   `?dev&relay=ws://localhost:7777` to try the board without writing to public relays
@@ -281,10 +307,11 @@ src/world/                terrain, trees, chunks with a floating origin, the can
                           for light shafts, day, night and fog
 src/ship/                 the ship and its flight, cameras, the cabin, the Seeker, the
                           coffee scene
-src/artifacts/            from a seed or a move to an artifact: generation, models, the
-                          field, the scanner's photograph
-src/companion/            a seeker aboard: its voxel model (after Soundings), its lines,
-                          its hovering and talking
+src/artifacts/            from a seed or a move to an artifact: generation, models (the
+                          first families, the witnessed seeker, the auras), the newer
+                          families, their shared parts, the field, the photograph
+src/companion/            a seeker aboard: its voxel model (after Soundings, also the
+                          witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the
                           seekers' art
 src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the leaderboard

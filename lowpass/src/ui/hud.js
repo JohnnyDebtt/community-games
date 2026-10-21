@@ -52,6 +52,16 @@ export class Hud {
     this._waved = new Set();
     later.onclick = () => { for (const a of this._alarmList || []) this._waved.add(a); this.setAlarm(this._alarmList); };
     this.alarmOn = false;
+    // its lighter kin for a wild artifact, which goes by itself after a while
+    this.toastEl = el('div', 'alarm toast', root);
+    el('i', 'amark', this.toastEl);
+    this.toastTitle = el('div', 'at', this.toastEl);
+    this.toastText = el('div', 'as muted', this.toastEl);
+    const trow = el('div', 'arow', this.toastEl);
+    const tgo = el('button', 'btn', trow, 'GO OUTSIDE');
+    key(el('span', 'muted', trow), 'V');
+    tgo.onclick = () => { this.hideToast(); if (this.onAlarm) this.onAlarm(); };
+    this._toastT = 0;
     this._noticeT = 0;
     this._cardT = 0;
     this._keysKey = '';
@@ -171,6 +181,17 @@ export class Hud {
     if (on !== this.alarmOn) { this.alarmOn = on; this.alarm.classList.toggle('on', on); }
   }
 
+  // over everything, for a few seconds (unless the alert is up)
+  toast(title, text, secs = 7) {
+    if (this.alarmOn) return;
+    this.toastTitle.textContent = title;
+    this.toastText.textContent = text;
+    this.toastEl.classList.add('on');
+    this._toastT = secs;
+  }
+  hideToast() { this._toastT = 0; this.toastEl.classList.remove('on'); }
+  get toastOn() { return this._toastT > 0; }
+
   setStatus(text, cls) {
     if (this._status === text + cls) return;
     this._status = text + cls;
@@ -185,6 +206,11 @@ export class Hud {
     if (this._noticeT <= 0) this.notice.classList.remove('on');
     this._cardT -= dt;
     if (this._cardT <= 0) this.card.classList.remove('on');
+    if (this._toastT > 0) {
+      this._toastT -= dt;
+      // gone by itself, or once one is where it can be seen from
+      if (this._toastT <= 0 || this.alarmOn || ((g.mode === 'fly' || g.mode === 'seat') && !g.terminal.open && !g.menu.open)) this.hideToast();
+    }
 
     const f = g.field, t = f.target;
     const flying = g.mode === 'fly' || g.mode === 'seat';

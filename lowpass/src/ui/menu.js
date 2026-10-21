@@ -97,7 +97,7 @@ export class Menu {
         ['M', 'keep the music playing now: it will come back'], ['R', 'save the last minute of sound as a WAV file'],
         ['H', 'hide the interface'], ['ESC', 'pause'],
       ]) { const r = el('div', 'krow', t); el('span', 'kk', r, k); el('span', 'muted', r, v); }
-      el('div', 'muted', t, 'Gamepad: left stick steers and walks, A scans and uses, Y switches inside and outside. Touch: hold the left or right of the screen to steer; the buttons on screen do the rest.');
+      el('div', 'muted', t, 'Gamepad: left stick steers and walks, right stick looks, A scans and uses, B stands up, X switches inside and outside, Y changes the camera, Start pauses. Touch: hold the left or right of the screen to steer; the buttons on screen do the rest.');
     } else if (this.page === 'about') {
       const t = el('div', 'mtext', p);
       for (const line of [

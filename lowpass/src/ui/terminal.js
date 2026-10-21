@@ -29,7 +29,7 @@ export class Terminal {
     this.tab = 'log';
     this.sel = 0;
     this.boardFilter = 'all';
-    this.smallPhotos = load('board.small', false);
+    this._openPhotos = new Set();  // board posts whose photograph has been opened
     this.gallery = null;         // the holder whose gallery is open on the LEADERS page
     this.gsel = 0;
     this.root = el('div', 'term', game.uiRoot);
@@ -300,9 +300,6 @@ export class Terminal {
       const x = el('button', 'chip' + (this.boardFilter === f ? ' sel' : ''), filters, label);
       x.onclick = () => { this.boardFilter = f; this.render(); };
     }
-    // scans' photographs as small thumbnails, so the words are easier to follow
-    const sm = el('button', 'chip' + (this.smallPhotos ? ' sel' : ''), filters, 'SMALL PHOTOS');
-    sm.onclick = () => { this.smallPhotos = !this.smallPhotos; save('board.small', this.smallPhotos); sm.classList.toggle('sel', this.smallPhotos); this._renderBoardList(); };
     this._boardList = el('div', 'posts', this.body);
     // a conversation: oldest at the top, newest at the bottom, opened at the newest;
     // it follows new posts while you are at the bottom, and stays put while you read up
@@ -387,7 +384,6 @@ export class Terminal {
     const keep = list.scrollTop, pinned = this._boardPinned;
     const toEnd = () => { if (this._boardPinned) list.scrollTop = list.scrollHeight; };
     clear(list);
-    list.classList.toggle('small', this.smallPhotos);
     const posts = b.posts.filter((p) => this.boardFilter === 'all' || p.type === this.boardFilter);
     if (!posts.length) {
       if (b.loaded) el('div', 'muted empty', list, 'Nothing here yet. The first scan shared will be the first thing here.');
@@ -414,14 +410,22 @@ export class Terminal {
         };
       }
       if (p.type === 'scan' && p.scan) {
-        const row = el('div', 'pscan', card);
+        // a scan's photograph is a thumbnail beside its words, so the conversation reads
+        // easily; a touch anywhere on the message opens it where it is (and closes it)
+        const row = el('div', 'pscan' + (this._openPhotos.has(p.id) ? ' open' : ''), card);
         if (p.photo) {
           const img = el('img', '', row);
           img.onload = toEnd;
           img.src = p.photo;
           img.alt = p.scan.name;
-          // small, a photograph opens (and closes) where it is
-          img.onclick = () => { if (this.smallPhotos) row.classList.toggle('open'); };
+          card.classList.add('opens');
+          card.onclick = (e) => {
+            if (e.target.closest('button')) return;
+            if (String(window.getSelection && window.getSelection()) !== '') return;   // selecting words
+            const open = row.classList.toggle('open');
+            if (open) this._openPhotos.add(p.id); else this._openPhotos.delete(p.id);
+            requestAnimationFrame(toEnd);
+          };
         }
         const t = el('div', 'ptext', row);
         el('div', 'name', t, p.scan.name || 'An artifact');

@@ -29,45 +29,52 @@ day. Something glowing far ahead that was not there before.
 1. **Fly.** The ship flies on by itself at canopy height; you only steer. Nothing hurries
    you and nothing hurts you.
 2. **A light in the fog.** Every minute or two something appears in the forest, grown for
-   you alone. When a SEEKER NET seeker moves on chain while you fly, the next one is
-   witnessed: the same for every ship in the fog at that moment. You hear each one
-   before you see it.
+   you alone. When a SEEKER NET seeker moves on chain while you fly, that seeker itself
+   rises out of the fog, giant: witnessed, the same for every ship in the fog at that
+   moment. You hear each one before you see it, and aboard, the ship calls.
 3. **Scan.** Steer it into the brackets and hold. The visor photographs it into the Codex,
    names it, notes it.
 4. **Stay awake.** Alertness runs down; the view closes in, blinks grow long, short sleeps
    come. Go inside and make coffee.
-5. **Share.** At the Codex computer, holders put their scans on the board, and everyone
-   reads what the others found.
+5. **Share.** At the Codex computer, holders put their scans on the board and on the
+   leaderboard, and everyone sees what the others found.
 
 ## Artifacts: yours alone, and the network's moments
 
 Two kinds. **Wild** artifacts come on a steady cadence, one at a time, a minute or two
 after the last is behind you, each from a seed your own browser draws: nobody else will
-ever meet the same one, so the forest between moves is yours. **Witnessed** artifacts are
-the network's moments. When a seeker moves on chain while you are flying, your next
-artifact is that move's (an unseen wild one still out in the fog gives way to it at
-once): its transaction hash is the seed, so every player who was flying then meets the
-same thing, and anyone can trace it to the chain from its Codex entry. Moves made while
-you were away are not replayed; a witnessed move waits an hour at most, across a reload.
-Moves come a few dozen times a day, so a witnessed artifact is an event: it stands larger,
-a pale column of its light rises through the fog over it, a ring of light goes out across
-the ground on its rhythm, its marks and its Codex entry are gold, and the forest answers
-with a slow chord.
+ever meet the same one, so the forest between moves is yours. Twenty-five families, from
+standing stones and monoliths to lighthouses, orreries, the shadows of four-dimensional
+solids, derelict hulls, sentinels and lanterns; about one in seven is grand, larger, with
+a column of its own light over it.
 
-What moved shapes a witnessed artifact, legibly: the Floating Object chooses the family
-(most of the time), the Colorway its light, the released charge its size, an activated
-seeker's move its own likeness. The rest, for both kinds, comes from the seed: counts
-from the primes and the Fibonacci numbers, a cellular automaton's rule, a spiral's growth
-ratio, the golden angle, a star polygon. Mathematics to look at, not to read about.
+**Witnessed** artifacts are the network's moments, and they are the seekers themselves.
+When a seeker moves on chain while you are flying, it rises out of the fog, giant: its
+voxel model built from its own art as it is on the chain now (dormant and dark by stage,
+or activated and bright), hovering over a figure drawn in light, turning to watch the
+ship, under a gold column and a crown. You see exactly which seeker moved. Its
+transaction (and, in a sweep, its token) is the seed, so every player who was flying then
+meets the same thing, and anyone can trace it to the chain from its Codex entry. When many
+move at once, they all rise at once, across a broad front, more than one ship can scan
+before it has flown past: a sweep fills the fog, and each player chooses. Moves made while
+you were away are not replayed; a witnessed move waits an hour at most, across a reload.
+Moves come a few dozen times a day, so a witnessed seeker is an event: its marks and its
+Codex entry are gold, the forest answers with a slow chord, and aboard, an alert reaches
+you wherever you are, with the way out.
+
+The rest comes from the seed: counts from the primes and the Fibonacci numbers, a
+cellular automaton's rule, a spiral's growth ratio, Kepler's law, the golden angle, a
+star polygon, a number spelled in binary. Mathematics to look at, not to read about.
 
 Each has a voice: two or three quiet layers chosen by its family and seed (breath through
 drifting resonances, beating glass, an inharmonic warble, a gliding voice, soft ticks on
 its own light's rhythm, and a chord under a witnessed one), in the 42 Hz tuning, heard
 from the ship by distance and bearing, darker and wetter far off, never loud.
 
-An artifact appears just past what the fog lets you see, nearly dead ahead, and keeps
+A lone artifact appears just past what the fog lets you see, nearly dead ahead, and keeps
 ahead of you until you have seen it: you can turn as you like and still meet it. It
-materializes in the ordered dither.
+materializes in the ordered dither, and once you have come near it and lost it from
+sight, it dissolves the same way: there is no turning back for it.
 
 ## The look
 
