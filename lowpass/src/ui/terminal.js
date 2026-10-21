@@ -2,7 +2,7 @@ import { el, clear, ago, dateStr, short, key } from './dom.js';
 import { Board, hasLink } from '../net/board.js';
 import { Ranks } from '../net/ranks.js';
 import { load, save, codexPut } from '../core/store.js';
-import { valueOf } from '../core/progress.js';
+import { valueOf, MAX } from '../core/progress.js';
 import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
@@ -16,8 +16,8 @@ import { formatInt, formatNum, clamp } from '../core/math.js';
 //            and when each should activate; and the wallet link that lets you post.
 //   LEADERS  the holders who submitted their scans, witnessed ones first (ranks.js), each
 //            with a gallery of what they recorded; and your own submission.
-//   SHOP     DATA: transmit your scans for it (they stay in the Codex), and spend it to
-//            tune the scanner deeper (progress.js).
+//   SHOP     DATA: transmit your scans for it (they stay in the Codex), and spend it on
+//            the scanner's depth, the plasma tank and the signal gain (progress.js).
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
@@ -118,7 +118,7 @@ export class Terminal {
     this.tabBtns.board.classList.toggle('dot', this.tab !== 'board' && newest > seen);
     const sent = new Set(b.ranks ? b.ranks.sent.keys : load('ranks.sent', { keys: [] }).keys);
     this.tabBtns.ranks.classList.toggle('dot', !!b.link && this.tab !== 'ranks' && g.codex.some((e) => !sent.has(e.tx)));
-    this.tabBtns.shop.classList.toggle('dot', this.tab !== 'shop' && (g.codex.some((e) => !e.sent) || g.progress.canBuy));
+    this.tabBtns.shop.classList.toggle('dot', this.tab !== 'shop' && (g.codex.some((e) => !e.sent) || g.progress.anyCan));
   }
 
   keys(input) {
@@ -130,10 +130,7 @@ export class Terminal {
       return;
     }
     if (this.tab === 'ranks') { this._rankKeys(input); return; }
-    if (this.tab === 'shop') {
-      if (input.hit('Enter', 'Space', 'Pad0')) { if (this.game.codex.some((e) => !e.sent)) this._transmit(); else this._buy(); }
-      return;
-    }
+    if (this.tab === 'shop') { this._shopKeys(input); return; }
     const n = this.tab === 'log' ? this.game.codex.length : this.tab === 'seekers' ? (this.seekers.ids || []).length : 0;
     if (!n) return;
     const cols = this._cols || 3;
@@ -177,7 +174,7 @@ export class Terminal {
     if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
     else if (this.tab !== 'board' && this.tab !== 'shop') k('←→', 'choose');
     if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
-    if (this.tab === 'shop' && (this.game.codex.some((e) => !e.sent) || this.game.progress.canBuy)) k('ENTER', this.game.codex.some((e) => !e.sent) ? 'transmit' : 'tune deeper');
+    if (this.tab === 'shop') { k('↑↓', 'choose'); k('ENTER', 'select'); }
     k('ESC', this.tab === 'ranks' && this.gallery ? 'back' : 'close');
     this._dots();
   }
@@ -307,9 +304,19 @@ export class Terminal {
   }
 
   // ---------------------------------------------------------------- SHOP
-  // As few words as it can: DATA and the scans to send; the scanner's depth, and the next.
+  // As few words as it can: DATA and the scans to send, then the three upgrades: how deep
+  // the scanner reaches (its stratum's name; no last one), the plasma tank and the signal
+  // gain (a pip for each level, five of each), each with what its next step costs.
+  _shopItems() {
+    const g = this.game;
+    return [...(g.codex.some((e) => !e.sent) ? ['send'] : []), 'depth', 'tank', 'gain'];
+  }
+
   _shop() {
     const g = this.game, pr = g.progress;
+    const items = this._shopItems();
+    this.shopSel = clamp(this.shopSel || 0, 0, items.length - 1);
+    const sel = items[this.shopSel];
     const wrap = el('div', 'shop', this.body);
     const top = el('div', 'shoptop', wrap);
     const bal = el('div', 'bal', top);
@@ -318,23 +325,46 @@ export class Terminal {
     const un = pr.unsent(g.codex);
     if (un.list.length) {
       const sendBox = el('div', 'sendbox', top);
-      const b = el('button', 'btn', sendBox, `TRANSMIT ${un.list.length} · +${formatInt(un.value)}`);
+      const b = el('button', 'btn' + (sel === 'send' ? ' sel' : ''), sendBox, `TRANSMIT ${un.list.length} · +${formatInt(un.value)}`);
       b.onclick = () => this._transmit();
       el('span', 'fine', sendBox, 'scans stay in your log');
     }
-    const card = el('div', 'upg', wrap);
-    const head = el('div', 'uhead', card);
-    el('div', 'uname', head, 'SCANNER DEPTH');
-    const cur = el('div', 'ucur', head, pr.depth ? `${stratum(pr.depth).numeral} · ${stratum(pr.depth).name.toUpperCase()}` : 'SURFACE');
-    cur.style.color = depthColor(pr.depth);
-    const cost = pr.next;
-    const buyRow = el('div', 'ubuy', card);
-    const bar = el('div', 'ubar', buyRow);
-    el('i', '', bar).style.width = `${Math.min(100, (pr.data / cost) * 100)}%`;
-    const buy = el('button', 'btn', buyRow, `TUNE DEEPER · ${formatInt(cost)}`);
-    buy.disabled = !pr.canBuy;
-    buy.onclick = () => this._buy();
-    if (this._shopMsg) { const m = el('div', 'msg', card, this._shopMsg); m.style.color = depthColor(pr.depth); this._shopMsg = null; }
+    const card = (kind, name, verb) => {
+      const c = el('div', 'upg' + (sel === kind ? ' sel' : ''), wrap);
+      const head = el('div', 'uhead', c);
+      el('div', 'uname', head, name);
+      if (kind === 'depth') {
+        const cur = el('div', 'ucur', head, pr.depth ? `${stratum(pr.depth).numeral} · ${stratum(pr.depth).name.toUpperCase()}` : 'SURFACE');
+        cur.style.color = depthColor(pr.depth);
+      } else {
+        const pips = el('div', 'pips', head);
+        for (let i = 0; i < MAX[kind]; i++) el('i', i < pr[kind] ? 'on' : '', pips);
+      }
+      const cost = pr.cost(kind);
+      const row = el('div', 'ubuy', c);
+      const bar = el('div', 'ubar', row);
+      el('i', '', bar).style.width = cost === null ? '100%' : `${Math.min(100, (pr.data / cost) * 100)}%`;
+      const b = el('button', 'btn', row, cost === null ? 'MAX' : `${verb} · ${formatInt(cost)}`);
+      b.disabled = !pr.can(kind);
+      b.onclick = () => this._buy(kind);
+      if (this._shopMsg && this._shopMsg.kind === kind) { const m = el('div', 'msg', c, this._shopMsg.text); m.style.color = kind === 'depth' ? depthColor(pr.depth) : 'var(--acc)'; this._shopMsg = null; }
+    };
+    card('depth', 'SCANNER DEPTH', 'TUNE DEEPER');
+    card('tank', 'PLASMA TANK', 'UPGRADE');
+    card('gain', 'SIGNAL GAIN', 'UPGRADE');
+  }
+
+  // up and down choose, ENTER does it
+  _shopKeys(input) {
+    const items = this._shopItems();
+    let d = 0;
+    if (input.hit('ArrowDown', 'KeyS')) d = 1;
+    if (input.hit('ArrowUp', 'KeyW')) d = -1;
+    if (d) { this.shopSel = clamp((this.shopSel || 0) + d, 0, items.length - 1); this.game.audio.play('ui', { h: 24 }); this.render(); }
+    if (input.hit('Enter', 'Space', 'Pad0')) {
+      const it = items[clamp(this.shopSel || 0, 0, items.length - 1)];
+      if (it === 'send') this._transmit(); else this._buy(it);
+    }
   }
 
   _transmit() {
@@ -357,11 +387,12 @@ export class Terminal {
     tick();
   }
 
-  _buy() {
+  _buy(kind) {
     const g = this.game, pr = g.progress;
-    if (!pr.buy()) { g.audio.play('error'); return; }
-    g.audio.play('buy', { harm: harmonicOf(pr.depth) });
-    this._shopMsg = `Depth ${stratum(pr.depth).numeral} reached.`;
+    if (!pr.buy(kind)) { g.audio.play('error'); return; }
+    g.audio.play('buy', kind === 'depth' ? { harm: harmonicOf(pr.depth) } : {});
+    const text = kind === 'depth' ? `Depth ${stratum(pr.depth).numeral} reached.` : kind === 'tank' ? (pr.tank >= MAX.tank ? 'The tank is as large as it gets.' : 'A larger tank.') : (pr.gain >= MAX.gain ? 'The gain is as high as it goes.' : 'More signals in the fog.');
+    this._shopMsg = { kind, text };
     this.render();
   }
 

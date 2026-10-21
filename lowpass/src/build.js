@@ -1,3 +1,3 @@
 // The stylesheet this code was written with (a hash of it; tools/stamp.mjs keeps it,
 // style.css's --build and index.html's link in step)
-export const BUILD = 'f4b2e7ef';
+export const BUILD = '178d053b';

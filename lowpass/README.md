@@ -86,23 +86,24 @@ to it and press E.
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
   steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a
   pale blue-violet trail, and the ship climbs to about 58 m/s while the view widens. The
-  **PLASMA** meter, over the alertness, runs out after about twelve seconds of burning
-  and gathers back slowly (about fifty seconds from empty); spent, the boost waits until
-  some has gathered again.
-- **Artifacts.** Every minute or two, a **wild** one: grown from a seed your own
-  browser draws, so no one else will ever meet the same one. Twenty-five families:
-  standing stones, monoliths, ringed orbs, cellular-automaton arrays, shells, crystal
-  blooms, tethers, luminous groves, gates to fly through, nested polyhedra, geoglyphs,
-  harmonic chimes, lighthouses whose beams turn through the fog, orreries that keep
-  Kepler's law, helices whose lit rungs spell a number, the shadows of four-dimensional
-  solids, derelict hulls, stairs to a door that opens on fog, pale elder trees, level
-  pools under a hanging stone, cloaked sentinels whose eyes follow the ship, swarms on a
-  torus knot, cradles of bone round a cracked egg, lanterns hung on nothing, and
-  listening dishes, most of which turn to track you. About one in seven is **grand**: larger, with
-  a column of its own light over it. A lone artifact appears just past what the fog lets
-  you see, nearly dead ahead, and keeps ahead of you until you have seen it. Once you
-  have come near one and lost it from sight (or left one far behind), it dissolves back
-  into the fog: there is no turning back for it.
+  **PLASMA** meter, over the alertness, runs out after five seconds of burning at first
+  (up to fifteen, with a larger tank from the SHOP) and gathers back slowly; spent, the
+  boost waits until some has gathered again.
+- **Artifacts.** Every two minutes or so (sooner, with SIGNAL GAIN from the SHOP), a
+  **wild** one: grown from a seed your own browser draws, so no one else will ever meet
+  the same one. Twenty-five families: standing stones, monoliths, ringed orbs,
+  cellular-automaton arrays, shells, crystal blooms, tethers, luminous groves, gates to
+  fly through, nested polyhedra, geoglyphs, harmonic chimes, lighthouses whose beams
+  turn through the fog, orreries that keep Kepler's law, helices whose lit rungs spell a
+  number, the shadows of four-dimensional solids, derelict hulls, stairs to a door that
+  opens on fog, pale elder trees, level pools under a hanging stone, cloaked sentinels
+  whose eyes follow the ship, swarms on a torus knot, cradles of bone round a cracked
+  egg, lanterns hung on nothing, and listening dishes, most of which turn to track you.
+  About one in seven is **grand**: larger, with a column of its own light over it. A
+  lone artifact appears just past what the fog lets you see, nearly dead ahead, and
+  keeps ahead of you until you have seen it. Once you have come near one and lost it
+  from sight (or left one far behind), it dissolves back into the fog: there is no
+  turning back for it.
 - **The deep.** A wild artifact may come from below the surface, from a **depth**: the
   deeper the scanner is tuned (in the Codex's SHOP), the more of them do. Each starts at
   the surface and goes one depth deeper three times in four, as far as the scanner
@@ -237,12 +238,19 @@ minute as a WAV file.
   same one-time wallet link as the board); holders are ranked by witnessed scans, then
   by the rest, then by name, and a holder with none does not appear. Names follow the
   board's. Each holder's scans open in a gallery (a click on their row, or ENTER).
-- **SHOP**: **DATA**, and the scanner's depth. TRANSMIT sends every scan not yet sent
-  for DATA (they stay in the LOG and on the leaderboard; each counts once): a wild scan
-  is worth 10, and 10 more for every depth it came from; a witnessed one 40. TUNE
-  DEEPER spends it: the first depth costs 120 (twelve plain scans), each next one twice
-  the last, without end; what a scan is worth grows only by its depth, so every depth
-  is harder to reach than the last. Saved in this browser.
+- **SHOP**: **DATA**, and what it buys. TRANSMIT sends every scan not yet sent for DATA
+  (they stay in the LOG and on the leaderboard; each counts once): a wild scan is worth
+  10, and 10 more for every depth it came from; a witnessed one 40. Three upgrades:
+  - **SCANNER DEPTH**, without end: the first depth costs 120 (twelve plain scans), each
+    next one twice the last; what a scan is worth grows only by its depth, so every
+    depth is harder to reach than the last.
+  - **PLASMA TANK**, five levels (40, 80, 130, 200, 300): seconds of a full boost, from
+    5 to 15 (7, 9, 11, 13 between). The core gathers back about a quarter of a second's
+    burn every second, so a small tank fills sooner; the PLASMA meter is as long as the
+    tank is large.
+  - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how soon the next wild
+    artifact comes once the last is behind, from 100 to 170 seconds down to 52 to 92.
+  Up and down choose, ENTER selects. Saved in this browser.
 
 Linking a wallet from LOG, BOARD or LEADERS brings you back where you were. A quiet mark
 on a tab says there is something new there: words on the board, scans not yet

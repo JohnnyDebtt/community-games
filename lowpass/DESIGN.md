@@ -81,7 +81,15 @@ after is a thinner slice at the top (75%, 56%, 42%, 32%...): the deepest thing a
 finds is always its rarest. Costs double (120, 240, 480...) while a scan's worth grows
 only by its depth (10 more a depth), so each depth takes longer than the last, without a
 ceiling. Transmitting never takes a scan away: the Codex is a collection, and the
-leaderboard counts it either way. Witnessed seekers are the network's, and stay exactly
+leaderboard counts it either way.
+
+Two smaller upgrades have an end. The plasma tank starts at five seconds of boost (well
+under the twelve it once had) and grows to fifteen; the signal gain starts with wild
+artifacts rarer than they once were (100 to 170 seconds apart) and ends a little more
+often (52 to 92). Starting below and ending above is the point: the first purchases are
+felt at once, and the ceiling is a little better than the game ever was. Five levels
+each, priced so that one or two come early, before the first depth, and the last ones
+after a few depths. Witnessed seekers are the network's, and stay exactly
 as they are.
 
 What grows below is built to be worth the climb. A depth is a stratum: three colors, a

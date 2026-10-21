@@ -14,7 +14,7 @@ import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp } from './core/math.js';
-import { Progress, rollDepth } from './core/progress.js';
+import { Progress, rollDepth, REFILL } from './core/progress.js';
 import { stratum } from './artifacts/strata.js';
 import { Chain } from './chain/chain.js';
 import { MoveWatcher } from './chain/moves.js';
@@ -40,10 +40,9 @@ import { Boot } from './ui/boot.js';
 // The Codex computer (terminal) and the pause menu lie over whichever mode is current.
 
 const DECAY = 1 / 600;          // alertness lost a second: full to empty in ten minutes
-const BURN = 1 / 12;             // plasma a full boost spends a second: twelve seconds of it
-const GATHER = 1 / 50;           // plasma the core gathers back a second, not burning
+// (how long the tank's plasma lasts, how fast it comes back, and how long between wild
+// artifacts are bought in the SHOP: progress.js)
 const RELIGHT = 0.15;            // once spent, the boost lights again at this much
-const WILD_GAP = [60, 110];      // seconds between artifacts, after the last is behind
 const WAVE = 12;                 // a sweep's artifacts at once, at most (the rest come next)
 const VOICES = 4;                // artifacts heard at once, the nearest
 const WALK = 2.0, RUN = 3.3;
@@ -493,8 +492,9 @@ export class Game {
     if (boosting) { this._boosted = (this._boosted || 0) + dt; if (this._boosted > 1) this.tips.learn('boost'); }
     this._alertness(dt);
     this.ship.update(dt, steer, boosting);
-    if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - dt * BURN * this.ship.boost);
-    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + dt * GATHER);
+    const tank = this.progress.tankSecs;
+    if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - (dt * this.ship.boost) / tank);
+    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * REFILL) / tank);
     const [fx, fz] = this.ship.forward();
     const cp = this.cams.cam.position;
     this.world.update(this.ship.x, this.ship.z, fx, fz, 2, cp.x + this.world.origin.x, cp.z + this.world.origin.z, dt);
@@ -517,7 +517,8 @@ export class Game {
       // a wild one comes from as deep as the scanner's reach decides (progress.js)
       const depth = rollDepth(this.progress.depth);
       (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth })).finally(() => { this._spawning = false; });
-      this.field.next = this.moves.waiting ? 6 : WILD_GAP[0] + Math.random() * (WILD_GAP[1] - WILD_GAP[0]);
+      const [g0, g1] = this.progress.gap;
+      this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
     }
     const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
     const prevState = this.field.state;

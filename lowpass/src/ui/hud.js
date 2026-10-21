@@ -1,5 +1,6 @@
 import { el, clear, key } from './dom.js';
 import { stratum } from '../artifacts/strata.js';
+import { TANK } from '../core/progress.js';
 
 const hexCss = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 
@@ -285,7 +286,9 @@ export class Hud {
     this.alert.classList.toggle('low', a < 0.3);
     this.alert.classList.toggle('crit', a < 0.12);
     this.alertText.textContent = a < 0.3 ? 'TIRED · COFFEE IN THE CABIN' : 'ALERT';
-    // plasma
+    // plasma: the meter as long as the tank is large
+    const tk = g.progress.tankSecs;
+    if (tk !== this._tank) { this._tank = tk; this.fuelBar.style.width = `calc(var(--u) * ${Math.round((52 * tk) / TANK[TANK.length - 1])})`; }
     const p = g.plasmaLeft ?? 1, burning = g.ship.boost > 0.05 && !g._spent;
     this.fuelFill.style.width = `${Math.round(p * 40) * 2.5}%`;
     this.fuel.classList.toggle('burn', burning);

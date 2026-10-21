@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "f4b2e7ef"; }
+:root { --build: "178d053b"; }
 
 :root {
   --u: 3px;
@@ -287,6 +287,10 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 .term .upg { display: flex; flex-direction: column; gap: calc(var(--u) * 3); border: var(--u) solid var(--line); padding: calc(var(--u) * 4) calc(var(--u) * 5); clip-path: var(--cut1); background: rgba(18, 21, 29, 0.6); }
 .term .uhead { display: flex; justify-content: space-between; align-items: baseline; gap: calc(var(--u) * 2) calc(var(--u) * 6); flex-wrap: wrap; }
 .term .uname { color: var(--acc); letter-spacing: var(--u); }
+.term .upg.sel, #ui .term .shoptop .btn.sel { border-color: var(--acc); }
+.term .pips { display: flex; gap: calc(var(--u) * 2); }
+.term .pips i { width: calc(var(--u) * 4); height: calc(var(--u) * 4); border: var(--u) solid var(--line); }
+.term .pips i.on { background: var(--acc); border-color: var(--acc); }
 .term .sendbox { display: flex; align-items: center; gap: calc(var(--u) * 4); flex-wrap: wrap; }
 .term .ubuy { display: flex; align-items: center; gap: calc(var(--u) * 3) calc(var(--u) * 5); flex-wrap: wrap; }
 .term .ubar { flex: 1 1 calc(var(--u) * 60); height: calc(var(--u) * 4); background: rgba(11, 13, 19, 0.75); border: var(--u) solid var(--line); position: relative; clip-path: var(--cut1); }
