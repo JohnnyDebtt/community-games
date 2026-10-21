@@ -77,9 +77,10 @@ export class Field {
     return clamp(this.visibility() + 60, 210, 960);
   }
 
-  // A wild artifact, from a seed nobody else will draw.
+  // A wild artifact, from a seed nobody else will draw; from below the surface if
+  // opts.depth (opts.glimpse: deeper than the scanner reaches).
   spawnWild(opts = {}) {
-    return this.spawn({ tx: wildSeed(), wild: true }, opts);
+    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form }, opts);
   }
 
   // Bring one move (or a wild seed) into the forest now. opts: ahead/lateral (meters,
@@ -333,6 +334,21 @@ export class Field {
       this.scan = Math.max(0, this.scan - dt * 0.25);
     }
     ship.scanGlow = damp(ship.scanGlow, this.state === 'lock' && scanHeld ? 1 : 0, 8, dt);
+  }
+
+  // How high the ship must be over (x, z) to clear what stands there: a deep artifact's
+  // mass, if it reaches down into the band the ship flies in (cruise: where the ship would
+  // fly without it); one floating higher than that is flown under.
+  topAt(x, z, cruise) {
+    let top = -Infinity;
+    for (const a of this.active) {
+      const s = a.model && !a.building && !a.fading && a.model.solid;
+      if (!s || !s.r) continue;
+      if (Math.hypot(x - a.x, z - a.z) > s.r + 14) continue;
+      if (a.y + s.low > cruise + 12) continue;
+      top = Math.max(top, a.y + s.top);
+    }
+    return top;
   }
 
   // The world's origin moved: positions are recomputed every frame, nothing to do.

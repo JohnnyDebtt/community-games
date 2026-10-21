@@ -1,6 +1,7 @@
 import { rng, seedsFromHex, clamp, formatInt, formatNum } from '../core/math.js';
 import { pitch } from '../core/tuning.js';
 import { keccak256, toHex } from '../core/keccak.js';
+import { describeDeep } from './deep.js';
 
 // What grows in the forest, from a 256-bit seed.
 //
@@ -20,10 +21,13 @@ import { keccak256, toHex } from '../core/keccak.js';
 // Inside a family the seed decides the rest: counts, sequences, rules, proportions, the
 // rhythm its light pulses to, the chord it hums (in the game's tuning, on 42 Hz), its name
 // and the Codex's notes.
+// A wild one may come from below the surface (move.depth, one or more: the scanner's
+// reach decides how often, progress.js): then it is a deep one, a form of its depth's
+// stratum (deep.js), larger and stranger the deeper it is.
 //
 // Raise GENERATOR_VERSION when the output for a seed changes.
 
-export const GENERATOR_VERSION = 4;
+export const GENERATOR_VERSION = 5;
 
 // (echo, the witnessed seeker, stays last: a wild one is never drawn from it)
 export const FAMILIES = ['ring', 'obelisk', 'orb', 'lattice', 'shell', 'crystal', 'tether', 'fungi', 'gate', 'solids', 'glyph', 'chimes',
@@ -164,15 +168,17 @@ export function describe(move, seekerInfo, force = null) {
   const size = wild ? (0.8 + R0() * 0.35) * (grand ? 1.45 : 1) : (0.85 + 0.55 * clamp(Math.log10(1 + charge) / 3.3, 0, 1)) * 1.2;
   const count = tokens.length;
 
+  const depth = wild ? Math.max(0, Math.floor(move.depth || 0)) : 0;
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse,
   };
   const P = d.params;
   let structure = '';
+  if (depth >= 1) describeDeep(d, move, R1, R3);
 
-  switch (family) {
+  if (depth < 1) switch (family) {
     case 'ring': {
       P.n = R1.pick([3, 5, 7, 8, 11, 13]);
       P.seq = R1.pick(['primes', 'Fibonacci numbers', 'harmonic series', 'odd numbers']);
@@ -451,6 +457,11 @@ export function describe(move, seekerInfo, force = null) {
     timbre: R2.pick(['hum', 'hum', 'choir', 'hum']),
   };
   const hz = Math.round(pitch(d.song.degrees[0], d.song.octave));
+  d.fund = hz;
+  if (depth >= 1) {
+    d.notes = [d.structure, `Its light pulses ${k} of every ${n} steps; it sings a chord of ${d.params.voice.chord.length}, near ${hz} Hz.`, d.flavor, d.origin];
+    return d;
+  }
 
   // name and notes
   const noun = R3.pick(NOUNS[family]);

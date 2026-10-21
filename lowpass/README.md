@@ -103,6 +103,25 @@ to it and press E.
   you see, nearly dead ahead, and keeps ahead of you until you have seen it. Once you
   have come near one and lost it from sight (or left one far behind), it dissolves back
   into the fog: there is no turning back for it.
+- **The deep.** A wild artifact may come from below the surface, from a **depth**: the
+  deeper the scanner is tuned (in the Codex's SHOP), the more of them do. Each starts at
+  the surface and goes one depth deeper three times in four, as far as the scanner
+  reaches, so right after a depth is bought most finds come from it, and with every
+  depth after, the deepest grow rarer; one in twenty-five comes from beyond the
+  scanner's reach (a depth or two deeper), as a glimpse. Each depth is a **stratum** of
+  its own colors (Gilt, Nacre, Ember, Aurora, Ultraviolet, Solar, Abyssal, Prism, then
+  others without end), and what grows there is larger the deeper it is (a depth-six
+  spire stands two hundred meters and more; the ship climbs over what is in its way and
+  flies under what floats high), drawn from fourteen forms the strata open one by one:
+  corollas that open as the ship nears, spines of turning crowns, nested solids,
+  armillaries, choirs of monoliths, geodes, corals that flower at their tips, knots and
+  linked rings, nautilus shells, horns and galaxies, floating archipelagos with falls of
+  light, strange attractors traced by thousands of motes, medusae trailing arms of light,
+  star engines with plates on their orbits, eyes that follow the ship. Deeper, one form
+  crowns another, a court of small ones stands about it, and ornaments gather: rings,
+  sigils on the ground, beams, pillars, rain of light, aurora veils, its double hanging
+  upside down in the sky, its echoes a moment behind it. Each sings (below). Witnessed
+  seekers are never touched by any of it.
 - **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
   fly, that seeker itself rises out of the fog, giant: its voxel model built from its own
   collection art as it is on the chain now (dormant ones dark by their stage, their
@@ -122,7 +141,8 @@ to it and press E.
   Codex) the ship calls when something rises ahead: two soft notes for a wild artifact,
   and for witnessed seekers a golden rising call, twice, over a low swell. Away from the
   ship's view, a wild one also gets a small note over everything (WILD ARTIFACT NEARBY,
-  with the way out) that goes by itself.
+  with the way out) that goes by itself; a deep one names its depth and stratum (DEPTH
+  III · EMBER, or FROM BEYOND YOUR REACH), and its marks on the HUD are in its light.
 - **Their voices.** Every artifact has a voice of its own, from its seed and family
   (src/core/voices.js), and unlike the music: where the score holds long notes, an
   artifact pulses in time with its own light. A soft bed (breath through drifting
@@ -133,7 +153,16 @@ to it and press E.
   Quiet, in the game's tuning; heard from the ship (the nearest four at a time, under
   the EFFECTS volume, nearly dry, so it sits where it is): nearer is louder and
   brighter, farther is darker and a little wetter, panned by where it lies from the
-  nose, quieter behind. You hear one before you see it.
+  nose, quieter behind. You hear one before you see it. One from the deep sings instead,
+  on a chord of the root's harmonics: the palette's own, and one more for every depth
+  down to its own (a pure third, then the eleventh, the thirteenth, the seventeenth...),
+  so the deeper, the stranger its intervals; in layers its depth opens, more of them the
+  deeper (struck bells, a slow chord, high twinkling, a figure on its steps, a resonator
+  struck by noise, overtone song, a second rhythm against the first, swells that stop, a
+  voice moving from vowel to vowel, a drifting cluster, falling cascades). It arrives
+  with a call of its own, its chord struck upward like bells. Every artifact's voice
+  passes a guard that leaves it untouched at its own levels and holds anything past
+  them under a ceiling.
 - **Scanning.** Bring it into the brackets and hold SPACE (SCAN on a touch screen, A on
   a gamepad) for a couple of seconds; it works through the windshield at the controls
   too. Once a scan is under way it holds on as you fly close past (and wider still right
@@ -200,14 +229,24 @@ minute as a WAV file.
   status, Discharge, Uplink, shares received since the last move, when it last moved, the
   date it should activate at +50 a day and with the last day's shares, its traits, and the
   network's totals.
+  A seeker of an address only viewed offers CONNECT TO BRING ABOARD right on its page. A
+  phone's own browser has no wallet in it: there, connecting offers OPEN IN METAMASK,
+  which opens Low Pass in MetaMask's own browser, where it connects. Held upright, the
+  page scrolls as one, and touching a seeker goes to its page.
 - **LEADERS**: the leaderboard. Holders submit their own scans (one button, after the
   same one-time wallet link as the board); holders are ranked by witnessed scans, then
   by the rest, then by name, and a holder with none does not appear. Names follow the
   board's. Each holder's scans open in a gallery (a click on their row, or ENTER).
+- **SHOP**: **DATA**, and the scanner's depth. TRANSMIT sends every scan not yet sent
+  for DATA (they stay in the LOG and on the leaderboard; each counts once): a wild scan
+  is worth 10, and 10 more for every depth it came from; a witnessed one 40. TUNE
+  DEEPER spends it: the first depth costs 120 (twelve plain scans), each next one twice
+  the last, without end; what a scan is worth grows only by its depth, so every depth
+  is harder to reach than the last. Saved in this browser.
 
 Linking a wallet from LOG, BOARD or LEADERS brings you back where you were. A quiet mark
-on a tab says there is something new there: words on the board, or scans not yet
-submitted. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
+on a tab says there is something new there: words on the board, scans not yet
+submitted, or (SHOP) scans to transmit or a depth you can buy. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
 
 ### The leaderboard: how scans are checked
 
@@ -303,6 +342,7 @@ and this file are not needed at runtime.
 ## Development
 
 - `?dev` adds `window.__lp`: `look('orb')` to orbit a fresh artifact of a family,
+  `deep(4, 'medusa')` one from a depth (a form, if named),
   `fake('orb', 300, witness)` one ahead, `witness(token)` as if a seeker moved this
   moment, `sweep(7)` as if seven moved in one transaction, `clear()` to take them all
   away, `coffeeAt(seconds)` the coffee scene frozen at a moment, `freeze()`, `spawn(i)`
@@ -336,14 +376,15 @@ src/ship/                 the ship and its flight, cameras, the cabin, the Seeke
                           coffee scene
 src/artifacts/            from a seed or a move to an artifact: generation, models (the
                           first families, the witnessed seeker, the auras), the newer
-                          families, their shared parts, the field, the photograph
+                          families, their shared parts, the field, the photograph; the
+                          deep: its strata, its descriptions, its forms
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the
                           witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the
                           seekers' art
 src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the leaderboard
 src/core/                 math, palette, input, storage, keccak, the score, the artifacts'
-                          voices, the foley
+                          voices, the foley, progress (DATA and depth)
 src/ui/                   HUD, the Codex computer, menus, touch
 assets/                   fonts, SEEKER NET art atlas and metadata, shipped moves
 vendor/                   three.js r170, noble-secp256k1

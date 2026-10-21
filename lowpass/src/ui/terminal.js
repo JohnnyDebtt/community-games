@@ -1,7 +1,9 @@
 import { el, clear, ago, dateStr, short, key } from './dom.js';
 import { Board, hasLink } from '../net/board.js';
 import { Ranks } from '../net/ranks.js';
-import { load, save } from '../core/store.js';
+import { load, save, codexPut } from '../core/store.js';
+import { valueOf } from '../core/progress.js';
+import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
 import { formatInt, formatNum, clamp } from '../core/math.js';
@@ -14,11 +16,15 @@ import { formatInt, formatNum, clamp } from '../core/math.js';
 //            and when each should activate; and the wallet link that lets you post.
 //   LEADERS  the holders who submitted their scans, witnessed ones first (ranks.js), each
 //            with a gallery of what they recorded; and your own submission.
+//   SHOP     DATA: transmit your scans for it (they stay in the Codex), and spend it to
+//            tune the scanner deeper (progress.js).
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
-const TABS = ['log', 'board', 'seekers', 'ranks'];
-const NAMES = { log: 'LOG', board: 'BOARD', seekers: 'SEEKERS', ranks: 'LEADERS' };
+const TABS = ['log', 'board', 'seekers', 'ranks', 'shop'];
+const NAMES = { log: 'LOG', board: 'BOARD', seekers: 'SEEKERS', ranks: 'LEADERS', shop: 'SHOP' };
+const hexCss = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
+const depthColor = (d) => (d ? hexCss(stratum(d).light) : 'var(--muted)');
 const DAY = 86400000;
 const EXPLORER = 'https://robinhoodchain.blockscout.com/tx/';
 
@@ -112,6 +118,7 @@ export class Terminal {
     this.tabBtns.board.classList.toggle('dot', this.tab !== 'board' && newest > seen);
     const sent = new Set(b.ranks ? b.ranks.sent.keys : load('ranks.sent', { keys: [] }).keys);
     this.tabBtns.ranks.classList.toggle('dot', !!b.link && this.tab !== 'ranks' && g.codex.some((e) => !sent.has(e.tx)));
+    this.tabBtns.shop.classList.toggle('dot', this.tab !== 'shop' && (g.codex.some((e) => !e.sent) || g.progress.canBuy));
   }
 
   keys(input) {
@@ -123,6 +130,10 @@ export class Terminal {
       return;
     }
     if (this.tab === 'ranks') { this._rankKeys(input); return; }
+    if (this.tab === 'shop') {
+      if (input.hit('Enter', 'Space', 'Pad0')) { if (this.game.codex.some((e) => !e.sent)) this._transmit(); else this._buy(); }
+      return;
+    }
     const n = this.tab === 'log' ? this.game.codex.length : this.tab === 'seekers' ? (this.seekers.ids || []).length : 0;
     if (!n) return;
     const cols = this._cols || 3;
@@ -158,13 +169,15 @@ export class Terminal {
     if (this.tab === 'log') this._log();
     else if (this.tab === 'board') this._board();
     else if (this.tab === 'ranks') this._ranks();
+    else if (this.tab === 'shop') this._shop();
     else this._seekersTab();
     const f = this.foot;
     const k = (cap, what) => { const s = el('span', 'kr', f); key(s, cap); el('span', '', s, what); };
     k('TAB', 'tab');
     if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
-    else if (this.tab !== 'board') k('←→', 'choose');
+    else if (this.tab !== 'board' && this.tab !== 'shop') k('←→', 'choose');
     if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
+    if (this.tab === 'shop' && (this.game.codex.some((e) => !e.sent) || this.game.progress.canBuy)) k('ENTER', this.game.codex.some((e) => !e.sent) ? 'transmit' : 'tune deeper');
     k('ESC', this.tab === 'ranks' && this.gallery ? 'back' : 'close');
     this._dots();
   }
@@ -190,6 +203,7 @@ export class Terminal {
       img.src = e.photo;
       img.alt = e.name;
       if (e.special) el('span', 'wtag', w, 'WITNESSED');
+      else if (e.depth) { const tg = el('span', 'wtag', w, `DEPTH ${stratum(e.depth).numeral}`); tg.style.color = depthColor(e.depth); w.style.borderColor = depthColor(e.depth); }
       w.onclick = () => { this.sel = i; this.render(); this.game.audio.play('ui', { h: 24 }); };
     });
     const e = list[this.sel];
@@ -203,6 +217,7 @@ export class Terminal {
     const row = (k, v, cls) => { const r = el('div', 'row', o); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
     if (e.kind === 'wild') {
       row('ORIGIN', 'WILD · found by this ship alone');
+      if (e.depth) row('DEPTH', `${stratum(e.depth).numeral} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');
     } else {
       if (e.special) row('WITNESSED', 'a seeker moved while you flew: every ship flying then met this one', 'gold');
@@ -217,6 +232,7 @@ export class Terminal {
       a.rel = 'noopener noreferrer';
     }
     row('RECORDED', `${dateStr(e.scannedAt)} · ${e.clock} on the planet`);
+    row('DATA', `${valueOf(e)}${e.sent ? ' · transmitted' : ' · not transmitted yet'}`, e.sent ? 'muted' : 'pos');
     const notes = el('div', 'notes', d);
     for (const n of e.notes) el('div', '', notes, n);
     // share
@@ -288,6 +304,65 @@ export class Terminal {
       if (ms > 0) btn._tick = setTimeout(tick, (ms % 1000) + 20);
     };
     tick();
+  }
+
+  // ---------------------------------------------------------------- SHOP
+  // As few words as it can: DATA and the scans to send; the scanner's depth, and the next.
+  _shop() {
+    const g = this.game, pr = g.progress;
+    const wrap = el('div', 'shop', this.body);
+    const top = el('div', 'shoptop', wrap);
+    const bal = el('div', 'bal', top);
+    el('span', 'muted', bal, 'DATA');
+    this._dataEl = el('span', 'big', bal, formatInt(pr.data));
+    const un = pr.unsent(g.codex);
+    if (un.list.length) {
+      const sendBox = el('div', 'sendbox', top);
+      const b = el('button', 'btn', sendBox, `TRANSMIT ${un.list.length} · +${formatInt(un.value)}`);
+      b.onclick = () => this._transmit();
+      el('span', 'fine', sendBox, 'scans stay in your log');
+    }
+    const card = el('div', 'upg', wrap);
+    const head = el('div', 'uhead', card);
+    el('div', 'uname', head, 'SCANNER DEPTH');
+    const cur = el('div', 'ucur', head, pr.depth ? `${stratum(pr.depth).numeral} · ${stratum(pr.depth).name.toUpperCase()}` : 'SURFACE');
+    cur.style.color = depthColor(pr.depth);
+    const cost = pr.next;
+    const buyRow = el('div', 'ubuy', card);
+    const bar = el('div', 'ubar', buyRow);
+    el('i', '', bar).style.width = `${Math.min(100, (pr.data / cost) * 100)}%`;
+    const buy = el('button', 'btn', buyRow, `TUNE DEEPER · ${formatInt(cost)}`);
+    buy.disabled = !pr.canBuy;
+    buy.onclick = () => this._buy();
+    if (this._shopMsg) { const m = el('div', 'msg', card, this._shopMsg); m.style.color = depthColor(pr.depth); this._shopMsg = null; }
+  }
+
+  _transmit() {
+    const g = this.game, pr = g.progress;
+    const { list, value } = pr.unsent(g.codex);
+    if (!list.length) return;
+    for (const e of list) { e.sent = true; const { img, ...stored } = e; codexPut(stored); }
+    const from = pr.data;
+    pr.credit(value);
+    g.audio.play('transmit', { n: list.length });
+    this.render();
+    // the number counts up to it
+    const elx = this._dataEl, to = pr.data, t0 = performance.now();
+    const tick = () => {
+      if (!elx.isConnected) return;
+      const k = Math.min(1, (performance.now() - t0) / 900);
+      elx.textContent = formatInt(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  _buy() {
+    const g = this.game, pr = g.progress;
+    if (!pr.buy()) { g.audio.play('error'); return; }
+    g.audio.play('buy', { harm: harmonicOf(pr.depth) });
+    this._shopMsg = `Depth ${stratum(pr.depth).numeral} reached.`;
+    this.render();
   }
 
   // ---------------------------------------------------------------- BOARD
@@ -429,7 +504,7 @@ export class Terminal {
         }
         const t = el('div', 'ptext', row);
         el('div', 'name', t, p.scan.name || 'An artifact');
-        el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? ' · WILD, FOUND BY ONE SHIP' : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
+        el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? `${p.scan.depth ? ` · DEPTH ${stratum(p.scan.depth).numeral}` : ''} · WILD, FOUND BY ONE SHIP` : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
         if (p.note) el('div', '', t, p.note);
         const known = this.game.codex.find((e) => (e.hash || e.tx) === p.scan.tx && (e.kind === 'wild' || !p.scan.tokens.length || e.lead === p.scan.tokens[0]));
         if (known) el('div', 'pos', t, 'You recorded this one too.');
@@ -638,41 +713,58 @@ export class Terminal {
     if (!S.net) this._loadNetwork();
   }
 
+  // pick a wallet (EIP-6963), then do something with it; a phone's browser has none, so
+  // there it says where one is (the wallet app's own browser)
+  async _withWallet(row, msg, fn) {
+    msg.className = 'msg muted';
+    msg.textContent = 'Looking for wallets…';
+    const ws = await discover();
+    if (!ws.length) {
+      const phone = this.game.input.touchMode || matchMedia('(pointer: coarse)').matches;
+      if (!phone) { msg.className = 'msg neg'; msg.textContent = 'No browser wallet found. MetaMask, Rabby and other EIP-6963 wallets work.'; return; }
+      // a phone's browser has no wallet in it: the wallet app has a browser of its own
+      msg.className = 'msg muted';
+      msg.textContent = 'No wallet in this browser. On a phone, open Low Pass in your wallet app’s own browser. ';
+      const a = el('a', '', msg, 'OPEN IN METAMASK');
+      a.href = `https://metamask.app.link/dapp/${location.host}${location.pathname}`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      return;
+    }
+    const go = async (w) => {
+      try { await fn(w, msg); } catch (err) {
+        msg.className = 'msg neg';
+        msg.textContent = err && err.message ? err.message.slice(0, 120) : 'Not connected';
+      }
+    };
+    if (ws.length === 1) go(ws[0]);
+    else {
+      clear(row);
+      for (const w of ws) { const x = el('button', 'btn ghost', row, w.name.toUpperCase()); x.onclick = () => go(w); }
+      msg.textContent = 'Choose a wallet.';
+    }
+  }
+
+  // connect only: the wallet's address, for its seekers to come aboard
+  async _connectOnly(w, msg) {
+    const S = this.seekers;
+    msg.className = 'msg muted';
+    msg.textContent = `Asking ${w.name} for your address…`;
+    const a = await connect(w.provider);
+    S.address = a;
+    S.ids = null;
+    S.sel = 0;
+    this.game.audio.play('send');
+    this.render();
+  }
+
   _renderWalletLine() {
     const top = this._walletEl;
     if (!top || !top.isConnected) return;
     clear(top);
     const b = this.board, S = this.seekers;
     const msgRow = () => el('div', 'msg', top);
-    // pick a wallet (EIP-6963), then do something with it
-    const withWallet = async (row, msg, fn) => {
-      msg.className = 'msg muted';
-      msg.textContent = 'Looking for wallets…';
-      const ws = await discover();
-      if (!ws.length) {
-        if (!this.game.input.touchMode) { msg.className = 'msg neg'; msg.textContent = 'No browser wallet found. MetaMask, Rabby and other EIP-6963 wallets work.'; return; }
-        // a phone's browser has no wallet in it: the wallet app has a browser of its own
-        msg.className = 'msg muted';
-        msg.textContent = 'No wallet in this browser. On a phone, open Low Pass in your wallet app’s own browser. ';
-        const a = el('a', '', msg, 'OPEN IN METAMASK');
-        a.href = `https://metamask.app.link/dapp/${location.host}${location.pathname}`;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        return;
-      }
-      const go = async (w) => {
-        try { await fn(w, msg); } catch (err) {
-          msg.className = 'msg neg';
-          msg.textContent = err && err.message ? err.message.slice(0, 120) : 'Not connected';
-        }
-      };
-      if (ws.length === 1) go(ws[0]);
-      else {
-        clear(row);
-        for (const w of ws) { const x = el('button', 'btn ghost', row, w.name.toUpperCase()); x.onclick = () => go(w); }
-        msg.textContent = 'Choose a wallet.';
-      }
-    };
+    const withWallet = (row, msg, fn) => this._withWallet(row, msg, fn);
     const sign = async (w, msg) => {
       msg.className = 'msg muted';
       msg.textContent = `Asking ${w.name} for the signature…`;
@@ -704,7 +796,7 @@ export class Terminal {
       dc.onclick = () => { disconnect(); if (S.address === plain) { S.address = null; S.ids = null; } this.render(); };
     } else {
       el('div', '', top, 'CONNECT A WALLET');
-      el('div', 'muted', top, 'CONNECT shares your address only, so your seekers can come aboard. CONNECT AND SIGN also lets you post on the board and put your scans on the leaderboard: one free signature, not a transaction. Nothing is ever sent, approved or moved.');
+      el('div', 'muted', top, 'CONNECT brings your seekers aboard. CONNECT AND SIGN also lets you post and join the leaderboard: one free signature, never a transaction.');
       const row = el('div', 'wrow', top);
       const c = el('button', 'btn', row, 'CONNECT');
       const l = el('button', 'btn ghost', row, 'CONNECT AND SIGN');
@@ -718,16 +810,7 @@ export class Terminal {
         note.append(' yourself.');
       }
       const msg = msgRow();
-      c.onclick = () => withWallet(row, msg, async (w) => {
-        msg.className = 'msg muted';
-        msg.textContent = `Asking ${w.name} for your address…`;
-        const a = await connect(w.provider);
-        S.address = a;
-        S.ids = null;
-        S.sel = 0;
-        this.game.audio.play('send');
-        this.render();
-      });
+      c.onclick = () => withWallet(row, msg, (w, m) => this._connectOnly(w, m));
       l.onclick = () => withWallet(row, msg, sign);
       const view = el('div', 'wrow', top);
       const input = el('input', 'field one', view);
@@ -827,7 +910,14 @@ export class Terminal {
       const look = lookOf(st);
       art.drawCrop(c, id, look).catch(() => {});
       el('span', 'tid', w, '#' + id);
-      w.onclick = () => { S.sel = i; this._renderSeekerDetail(); this._markSel(); this.game.audio.play('ui', { h: 24 }); };
+      w.onclick = () => {
+        S.sel = i;
+        this._renderSeekerDetail();
+        this._markSel();
+        this.game.audio.play('ui', { h: 24 });
+        // stacked (a phone held upright), its page is below the list: go to it
+        if (matchMedia('(max-aspect-ratio: 1/1)').matches) this._seekDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
     });
     this._renderSeekerDetail();
   }
@@ -887,7 +977,10 @@ export class Terminal {
         };
       }
     } else if (S.address) {
-      el('span', 'muted', box, 'Connect the wallet that holds it to bring it aboard.');
+      const row = el('div', 'wrow', box);
+      const b = el('button', 'btn', row, 'CONNECT TO BRING ABOARD');
+      const msg = el('div', 'msg muted', box, 'Connect the wallet that holds it.');
+      b.onclick = () => this._withWallet(row, msg, (w, m) => this._connectOnly(w, m));
     }
   }
 

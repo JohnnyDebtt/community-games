@@ -14,6 +14,8 @@ import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp } from './core/math.js';
+import { Progress, rollDepth } from './core/progress.js';
+import { stratum } from './artifacts/strata.js';
 import { Chain } from './chain/chain.js';
 import { MoveWatcher } from './chain/moves.js';
 import { ChainClock } from './chain/clock.js';
@@ -117,6 +119,7 @@ export class Game {
     this.field.onAppear = (a) => this._appear(a);
     this.field.onWave = (list) => this._appear(list[0], list);
     this.field.onScanned = (a) => this._scanned(a);
+    this.ship.obstacle = (x, z, cruise) => this.field.topAt(x, z, cruise);
     // one missed alone is said; a sweep's, quietly (there were more than one could scan)
     this.field.onMissed = (a) => { if (!a.wave) this.hud.say('LOST IN THE FOG', 'It has gone back into the fog', 4); };
     this.field.onGate = (a, n) => { for (let i = 0; i < n; i++) this.audio.play('gate', { i: a.pass + i }); };
@@ -140,6 +143,7 @@ export class Game {
     const s = load('state', {});
     this.alertness = s.alertness ?? 0.6;
     this.plasmaLeft = s.plasma ?? 1;    // the boost's plasma, 0..1
+    this.progress = new Progress();     // DATA, and how deep the scanner reaches
     this._spent = false;
     this.warm = 0;
     this.stats_ = s.stats || { cups: 0, scans: 0, distance: 0 };
@@ -319,6 +323,17 @@ export class Game {
       if (this._aboard()) this.audio.play('alarm');
       if (this.mode !== 'fly' && this.mode !== 'seat' || this.terminal.open || this.menu.open) this.buzz([30, 90, 30, 90, 60]);
       else this.hud.say(title, `${who} moved ${a.move.time ? agoShort(a.move.time) : 'just now'}; every ship flying now sees ${ids.length > 1 ? 'them' : 'it'}`, 8);
+    } else if (a.d.depth) {
+      // something from below the surface: its own call, and always a word
+      const d = a.d, st = stratum(d.depth);
+      const title = `DEPTH ${st.numeral} · ${d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
+      const sub = d.glimpse ? `Deeper than your scanner reaches: ${d.cls.toLowerCase()}, rising out of the fog` : `From ${st.title}: ${d.cls.toLowerCase()}, rising out of the fog`;
+      this.audio.play('deep', { depth: d.depth, chord: d.params.voice.chord, glimpse: d.glimpse, pan: clamp(-(a.bearing || 0), -1, 1) });
+      if (this._aboard()) {
+        this.audio.play('chime');
+        if (this.mode === 'seat' && !this.menu.open) this.hud.say(title, sub, 5);
+        else this.hud.toast(title, `${sub}. Only this ship will ever find it.`);
+      } else this.hud.say(title, sub, 5);
     } else {
       this.audio.play('signal', { pan: clamp(-(a.bearing || 0), -1, 1) });
       // aboard, the cabin calls softly; at the controls the HUD says so, and away from the
@@ -336,7 +351,6 @@ export class Game {
     }
   }
 
-  // inside the ship: on foot (at the Codex too), at the controls, over coffee
   // A turned stand: the air about it warms a little; flying into one the first time in
   // a while, a word about it.
   _turned(dt, eye, overlay) {
@@ -358,6 +372,7 @@ export class Game {
     }
   }
 
+  // inside the ship: on foot (at the Codex too), at the controls, over coffee
   _aboard() {
     return this.mode === 'walk' || this.mode === 'seat' || this.mode === 'coffee';
   }
@@ -375,7 +390,9 @@ export class Game {
       accent: d.accent, tokens: d.tokens, lead: d.lead, charge: d.charge, recipients: d.recipients, pool: d.pool,
       block: d.block, time: a.move.time || null, scannedAt: Date.now(), clock: this.atmo.clockString(), photo,
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
+      ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
     };
+    if (d.depth) this.progress.met(d.depth);
     entry.img = new Image();
     entry.img.src = photo;
     this.codex = [entry, ...this.codex.filter((e) => e.tx !== entry.tx)];
@@ -497,7 +514,9 @@ export class Game {
       const wave = this.moves.takeWave(WAVE);
       const away = this.mode !== 'fly' && this.mode !== 'seat' || overlay;
       this._spawning = true;
-      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild()).finally(() => { this._spawning = false; });
+      // a wild one comes from as deep as the scanner's reach decides (progress.js)
+      const depth = rollDepth(this.progress.depth);
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth })).finally(() => { this._spawning = false; });
       this.field.next = this.moves.waiting ? 6 : WILD_GAP[0] + Math.random() * (WILD_GAP[1] - WILD_GAP[0]);
     }
     const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
@@ -776,6 +795,13 @@ export class Game {
       },
       clear: () => { for (const a of [...this.field.active]) this.field.remove(a); },
       inspect: (a, dist = null, height = null) => { this._inspect = a ? { a, dist, height } : null; },
+      // a deep one: of a depth, and a form if asked (orbited, like look)
+      deep: async (depth = 1, form = null, ahead = 700) => {
+        for (const a of [...this.field.active]) this.field.remove(a);
+        const a = await this.field.spawnWild({ depth, form, ahead, lateral: 0 });
+        this._inspect = { a };
+        return { name: a.d.name, code: a.d.code, form: a.d.form, notes: a.d.notes, params: a.d.params };
+      },
       look: async (family, ahead = 700) => {
         for (const a of [...this.field.active]) this.field.remove(a);
         const a = await window.__lp.fake(family, ahead);

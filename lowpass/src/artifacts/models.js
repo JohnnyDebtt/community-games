@@ -7,6 +7,7 @@ import { mixHex } from '../core/palette.js';
 import { SEQ } from './generate.js';
 import { STONE, RIM, PULSE, Y, beam, flatSeg, slab, motes, driftMotes } from './parts.js';
 import { NEWER } from './families.js';
+import { buildDeep } from './deepforms.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
@@ -697,7 +698,7 @@ function echo(d, A, mats, ctx) {
   return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, deep: buildDeep };
 
 // ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {
@@ -706,7 +707,7 @@ export function buildArtifact(d, ctx) {
   const out = BUILD[d.family](d, A, mats, ctx);
   out.mats = [mats.body, mats.glow, ...(out.mats || [])];
   // motes of its light, for every artifact but those that already have them
-  if (!['fungi', 'solids'].includes(d.family)) {
+  if (!['fungi', 'solids', 'deep'].includes(d.family)) {
     const m = motes(mixHex(A, 0xffffff, 0.35), 26, Math.max(10, out.span * 0.8), Math.max(10, out.height), d.seed[7], 0.4);
     out.group.add(m);
     const up = out.update;

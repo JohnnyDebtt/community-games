@@ -71,6 +71,38 @@ drifting resonances, beating glass, an inharmonic warble, a gliding voice, soft 
 its own light's rhythm, and a chord under a witnessed one), in the 42 Hz tuning, heard
 from the ship by distance and bearing, darker and wetter far off, never loud.
 
+### The deep: progression without a ceiling
+
+Every scan can be transmitted once for DATA, and DATA tunes the scanner deeper. A wild
+artifact starts at the surface and goes one depth deeper with three chances in four, as
+far as the scanner reaches; one in twenty-five comes from beyond its reach. So the first
+depth bought is most of what you then find (the reward is immediate), and every depth
+after is a thinner slice at the top (75%, 56%, 42%, 32%...): the deepest thing a scanner
+finds is always its rarest. Costs double (120, 240, 480...) while a scan's worth grows
+only by its depth (10 more a depth), so each depth takes longer than the last, without a
+ceiling. Transmitting never takes a scan away: the Codex is a collection, and the
+leaderboard counts it either way. Witnessed seekers are the network's, and stay exactly
+as they are.
+
+What grows below is built to be worth the climb. A depth is a stratum: three colors, a
+dark, and a sheen that runs over every shell by angle and place (and, deeper, in time),
+with veins of light wandering through it; drawn by hand for the first eight, made from
+the depth's number after (hues turned by the golden angle) without end. Each stratum
+opens forms (fourteen: corolla, spine, nested solids, armillary, choir, geode, coral,
+knot, nautilus, archipelago, attractor, medusa, star engine, watcher) and ornaments, and
+keeps those above it, so the deep gets more varied as it goes, not just bigger: past the
+fifth, a second form crowns the first; past the seventh, a court of small ones stands
+about it; its double hangs inverted in the sky, its echoes trail it. Size grows with the
+logarithm of the depth, forever and more slowly. Every count, symmetry, curve and
+ornament comes from the seed, so no two are alike at any depth. They are built as a few
+merged meshes per moving part (small crowns and courts flattened to a handful), so even a
+deep one costs about what the forest around it does.
+
+The sound follows the same ladder. The palette is harmonics 16, 18, 19, 24 and 28 of the
+root; each depth adds one more (20, 22, 26, 17, 21, 23, 27, 29, 31, then every odd one),
+and a deep voice's chord always holds its own depth's. The intervals stay just and stay
+in The Seeker's rule, and grow stranger the deeper you go.
+
 A lone artifact appears just past what the fog lets you see, nearly dead ahead, and keeps
 ahead of you until you have seen it: you can turn as you like and still meet it. It
 materializes in the ordered dither, and once you have come near it and lost it from

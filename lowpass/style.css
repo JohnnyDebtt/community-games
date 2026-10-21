@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "ebed9ad7"; }
+:root { --build: "f4b2e7ef"; }
 
 :root {
   --u: 3px;
@@ -94,6 +94,11 @@ html.touchmode .alarm .arow .muted { display: none; }
 .hud .bracket.special .bbar i { background: var(--gold); }
 .hud .bracket.special .blabel { color: var(--gold); }
 .hud .signal.special .mark { background: var(--gold); box-shadow: 0 0 calc(var(--u) * 5) var(--gold); }
+/* a deep one's marks, in its stratum's light */
+.hud .bracket.deep > i { border-color: var(--deep); }
+.hud .bracket.deep .bbar i { background: var(--deep); }
+.hud .bracket.deep .blabel { color: var(--deep); }
+.hud .signal.deep .mark { background: var(--deep); box-shadow: 0 0 calc(var(--u) * 5) var(--deep); }
 .term .well.witnessed { border-color: var(--gold); }
 .term .well .wtag { position: absolute; left: var(--u); bottom: var(--u); padding: 0 var(--u); background: rgba(4, 6, 10, 0.75); color: var(--gold); font-size: var(--px); line-height: calc(var(--u) * 10); }
 #ui .gold { color: var(--gold); }
@@ -195,10 +200,11 @@ html.touchmode .hud .alert.fuel { left: calc(var(--u) * 30 + var(--sl)); top: ca
 .term .win[data-tab='board'] { --acc: #a497c4; }
 .term .win[data-tab='seekers'] { --acc: var(--pos); }
 .term .win[data-tab='ranks'] { --acc: var(--gold); }
+.term .win[data-tab='shop'] { --acc: #e8c36a; }
 .term .thead { display: flex; align-items: center; gap: calc(var(--u) * 8); border-bottom: var(--u) solid var(--line); padding-bottom: calc(var(--u) * 2); }
 .term .ttitle { color: var(--acc); letter-spacing: calc(var(--u) * 1); }
-.term .ttabs { display: flex; gap: calc(var(--u) * 6); flex: 1; }
-.term .ttab { color: var(--muted); padding-bottom: var(--u); border-bottom: var(--u) solid transparent; }
+.term .ttabs { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2) calc(var(--u) * 6); flex: 1; }
+.term .ttab { color: var(--muted); padding-bottom: var(--u); border-bottom: var(--u) solid transparent; white-space: nowrap; }
 .term .ttab.sel { color: var(--text); border-bottom-color: var(--acc); }
 /* something new behind a tab: a quiet mark beside its name */
 .term .ttab.dot::after { content: ''; display: inline-block; width: calc(var(--u) * 2); height: calc(var(--u) * 2); margin-left: calc(var(--u) * 2); vertical-align: middle; background: var(--gold); transform: rotate(45deg) translateY(calc(var(--u) * -1)); }
@@ -273,6 +279,18 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 #ui .term .rgal { display: grid; grid-template-columns: 1fr 1fr; gap: var(--u); width: calc(var(--u) * 9); height: calc(var(--u) * 9); padding: var(--u); border: var(--u) solid var(--line); justify-self: end; }
 #ui .term .rgal i { background: var(--muted); }
 @media (hover: hover) { #ui .term .rgal:hover { border-color: var(--muted); } #ui .term .rgal:hover i { background: var(--text); } }
+/* the SHOP: DATA in hand, the scans to send, the scanner's depth and what it finds */
+.term .shop { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 6); padding-right: calc(var(--u) * 2); max-width: calc(var(--u) * 240); }
+.term .shoptop { display: flex; align-items: center; gap: calc(var(--u) * 4) calc(var(--u) * 10); flex-wrap: wrap; }
+.term .bal { display: flex; align-items: baseline; gap: calc(var(--u) * 4); }
+.term .fine { color: var(--muted); }
+.term .upg { display: flex; flex-direction: column; gap: calc(var(--u) * 3); border: var(--u) solid var(--line); padding: calc(var(--u) * 4) calc(var(--u) * 5); clip-path: var(--cut1); background: rgba(18, 21, 29, 0.6); }
+.term .uhead { display: flex; justify-content: space-between; align-items: baseline; gap: calc(var(--u) * 2) calc(var(--u) * 6); flex-wrap: wrap; }
+.term .uname { color: var(--acc); letter-spacing: var(--u); }
+.term .sendbox { display: flex; align-items: center; gap: calc(var(--u) * 4); flex-wrap: wrap; }
+.term .ubuy { display: flex; align-items: center; gap: calc(var(--u) * 3) calc(var(--u) * 5); flex-wrap: wrap; }
+.term .ubar { flex: 1 1 calc(var(--u) * 60); height: calc(var(--u) * 4); background: rgba(11, 13, 19, 0.75); border: var(--u) solid var(--line); position: relative; clip-path: var(--cut1); }
+.term .ubar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc); }
 .term .rsubmit { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--u) * 2) calc(var(--u) * 4); padding-top: calc(var(--u) * 3); border-top: var(--u) solid var(--line); }
 .term .rsubmit > .muted:first-child { flex: 1 1 calc(var(--u) * 120); }
 .term .rsubmit .msg { flex-basis: 100%; }
@@ -296,8 +314,16 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 .term .cbar.full i { background: var(--pos); }
 .term .traits { margin-top: calc(var(--u) * 3); }
 @media (max-aspect-ratio: 1/1) {
+  /* held upright, the tabs need the room the title takes (it is the Codex, plainly) */
+  .term .ttitle { display: none; }
+  .term .ttabs { column-gap: calc(var(--u) * 3.5); }
   .term .cols { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .term .grid { max-height: 30vh; }
+  /* the seekers page, held upright: it scrolls as one, so a seeker's page (and its BRING
+     ABOARD) is always there under the list, however much the wallet above takes */
+  .term .win[data-tab='seekers'] .tbody { overflow-y: auto; }
+  .term .win[data-tab='seekers'] .cols { flex: none; min-height: 0; }
+  .term .win[data-tab='seekers'] .detail { overflow: visible; }
 }
 /* a short screen (a phone held sideways): the seekers page scrolls as one, under the
    wallet, rather than squeezing its lists into what is left */

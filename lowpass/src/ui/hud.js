@@ -1,4 +1,7 @@
 import { el, clear, key } from './dom.js';
+import { stratum } from '../artifacts/strata.js';
+
+const hexCss = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 
 // The HUD: as little as the flight needs. A bearing to the signal along the top while it
 // is out in the fog (and a smaller mark for each other one of a sweep); brackets around
@@ -97,6 +100,11 @@ export class Hud {
     img.alt = entry.name;
     el('div', 'n', this.card, entry.name);
     el('div', 'c muted', this.card, `${entry.code} · ${entry.cls}`);
+    if (entry.depth) {
+      const st = stratum(entry.depth);
+      const dl = el('div', 'c deep', this.card, `DEPTH ${st.numeral} · ${st.title}`);
+      dl.style.color = hexCss(st.light);
+    }
     el('div', 'c muted', this.card, 'Logged on the Codex computer, in the cabin');
     this.card.classList.add('on');
     this._cardT = 6;
@@ -224,6 +232,12 @@ export class Hud {
     const sp = !!(t && t.special);
     this.signal.classList.toggle('special', sp);
     this.bracket.classList.toggle('special', sp);
+    // a deep one's marks are in its stratum's light
+    const dp = t && t.d.depth ? stratum(t.d.depth) : null;
+    if (dp !== this._dp) {
+      this._dp = dp;
+      for (const e of [this.signal, this.bracket]) { e.classList.toggle('deep', !!dp); if (dp) e.style.setProperty('--deep', hexCss(dp.light)); }
+    }
     // the bearing strip: to the one the scanner looks at, and a smaller mark for each
     // other one still out there (a sweep's)
     const open = flying ? f.open : [];
@@ -260,7 +274,7 @@ export class Hud {
         this.bracket.classList.toggle('lock', f.state === 'lock');
         // low in the view (a short screen held sideways), the words go above it
         this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
-        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
+        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral} · ` : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;
       }
     }

@@ -192,6 +192,99 @@ export function worldMaterial(opts = {}) {
   return m;
 }
 
+// ------------------------------------------------------------------ the deep's shells
+// What grows below the surface (artifacts/deep*.js) wears a sheen: its stratum's three
+// colors in a ramp that runs over it by the angle it is seen at and the place on it (and,
+// deeper, runs on its own in time), brightest at its edges; and veins of light that wander
+// through it, swelling on its pulse. Lit, dithered in and pulsing like the world material;
+// the pattern keeps to the object (its own coordinates), so it never slides.
+const DEEP_VERT = /* glsl */ `
+attribute float emissive;
+varying vec3 vColor;
+varying vec3 vWorld;
+varying vec3 vLocal;
+varying float vEmis;
+void main() {
+  vec4 p = vec4(position, 1.0);
+#ifdef USE_INSTANCING
+  p = instanceMatrix * p;
+#endif
+  vLocal = p.xyz;
+  vec4 w = modelMatrix * p;
+  vWorld = w.xyz;
+  vColor = color;
+#ifdef USE_INSTANCING_COLOR
+  vColor *= instanceColor;
+#endif
+  vEmis = emissive;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}
+`;
+const DEEP_FRAG = /* glsl */ `
+${COMMON}
+varying vec3 vColor;
+varying vec3 vWorld;
+varying vec3 vLocal;
+varying float vEmis;
+uniform vec3 uIrid0, uIrid1, uIrid2, uVeinColor;
+uniform float uIrid, uCycle, uSheen, uVein, uVeinScale, uFlow, uPulse, uReveal, uEmisBoost;
+vec3 ramp(float k) {
+  k = fract(k) * 3.0;
+  float f = smoothstep(0.0, 1.0, fract(k));
+  if (k < 1.0) return mix(uIrid0, uIrid1, f);
+  if (k < 2.0) return mix(uIrid1, uIrid2, f);
+  return mix(uIrid2, uIrid0, f);
+}
+void main() {
+  if (uReveal < 1.0 && bayer4(gl_FragCoord.xy) > uReveal) discard;
+  vec3 v = normalize(uCamPos - vWorld);
+  vec3 n = flatNormal(vWorld, v);
+  float fr = 1.0 - abs(dot(n, v));
+  vec3 ir = ramp(fr * 0.85 + dot(vLocal, vec3(0.011, 0.017, 0.013)) * uSheen + uTime * uCycle);
+  vec3 base = mix(vColor, ir, uIrid);
+  vec3 col = base * lightAt(vWorld, n, v, 1.0);
+  col += ir * uIrid * pow(fr, 2.0) * 0.55;
+  if (uVein > 0.0) {
+    vec3 q = vLocal * uVeinScale;
+    float t = uTime * uFlow;
+    float w = sin(q.x + 1.7 * sin(q.z * 0.8 + t)) + sin(q.y * 1.3 + 1.3 * sin(q.x * 0.9 - t)) + sin(q.z * 1.1 + 1.1 * sin(q.y * 0.7 + t * 0.7));
+    float vein = 1.0 - smoothstep(0.0, 0.16, abs(w));
+    col += uVeinColor * vein * uVein * (0.5 + 0.7 * uPulse);
+  }
+  float e = vEmis * uEmisBoost * (vEmis > 1.5 ? uPulse : 1.0);
+  col += base * e * 1.6;
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+// opts: irid ([3 hex]), amount (of the sheen, 0..1), cycle (its run in time), sheen (how
+// much the place on it turns the ramp), veins (0..1), veinColor, veinScale (per meter),
+// flow (the veins' drift)
+export function deepMaterial(opts = {}) {
+  const [a, b, c] = opts.irid || [0x444444, 0x888888, 0xcccccc];
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      ...U,
+      uIrid0: { value: new THREE.Color(a) },
+      uIrid1: { value: new THREE.Color(b) },
+      uIrid2: { value: new THREE.Color(c) },
+      uIrid: { value: opts.amount ?? 0.6 },
+      uCycle: { value: opts.cycle ?? 0 },
+      uSheen: { value: opts.sheen ?? 1 },
+      uVein: { value: opts.veins ?? 0 },
+      uVeinColor: { value: new THREE.Color(opts.veinColor ?? 0xffffff) },
+      uVeinScale: { value: opts.veinScale ?? 0.2 },
+      uFlow: { value: opts.flow ?? 0.3 },
+      uPulse: { value: 1 },
+      uReveal: { value: 1 },
+      uEmisBoost: { value: 1 },
+    },
+    vertexShader: DEEP_VERT,
+    fragmentShader: DEEP_FRAG,
+    vertexColors: true,
+    side: opts.side ?? THREE.DoubleSide,
+  });
+}
+
 // ------------------------------------------------------------------ trees
 // Instanced conifers: a bend from the foot that grows with height, stepped on the 12 fps
 // grid; the foot darker (the forest floor's shade), rime on the faces that look up.

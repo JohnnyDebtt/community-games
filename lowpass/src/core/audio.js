@@ -102,7 +102,15 @@ export class Audio {
     this.amb = ctx.createGain(); this.amb.connect(this.tone);
     this.sfx = ctx.createGain(); this.sfx.connect(this.out);
     // the artifacts' voices: under the effects' volume, through the cabin's walls
-    this.voiceBus = ctx.createGain(); this.voiceBus.connect(this.tone);
+    this.voiceBus = ctx.createGain();
+    // a guard on the artifacts' voices: untouched at any level they are meant to reach (a
+    // tenth or so), held under a ceiling past it, so no voice can ever come out painful
+    this.voiceGuard = ctx.createWaveShaper();
+    this.voiceGuard.curve = Float32Array.from({ length: 2048 }, (_, i) => {
+      const x = (i / 2047) * 2 - 1, a = Math.abs(x);
+      return Math.sign(x) * (a < 0.22 ? a : 0.22 + 0.1 * Math.tanh((a - 0.22) / 0.1));
+    });
+    this.voiceBus.connect(this.voiceGuard); this.voiceGuard.connect(this.tone);
     // the boost's roar: under the effects' volume, but it carves nothing (a long burn
     // would hold the music down)
     this.engineBus = ctx.createGain(); this.engineBus.connect(this.out);
@@ -860,6 +868,36 @@ export class Audio {
           this.note(pitch(d, 1), { type: 'sine', when: t + t0 + i * 0.16, attack: 0.01, release: 1.3, gain: 0.009, dest: S, verb: 0.9 });
         }));
         break;
+      case 'deep': {
+        // something from below the surface: a low breath, then its chord struck upward like
+        // bells, the deeper the more of them, its own depth's harmonic last and highest;
+        // one from beyond the scanner's reach ends in a shimmer
+        const chord = (o.chord && o.chord.length ? o.chord : [16, 19, 24]).slice().sort((a, b) => a - b);
+        const n = Math.min(9, 3 + (o.depth || 1));
+        this.note(R, { wave: 'sub', attack: 1.6, hold: 1, release: 6, gain: 0.05, linear: true, cutoff: 220 });
+        for (let i = 0; i < n; i++) {
+          const h = chord[i % chord.length], oct = 2 + Math.floor(i / chord.length);
+          const when = t + 0.5 + i * 0.17, pan = ((i / Math.max(1, n - 1)) * 2 - 1) * 0.6 + (o.pan || 0) * 0.3;
+          this.note(harmonic(h, oct), { wave: 'soft', when, attack: 0.008, release: 2.6 + i * 0.2, gain: 0.03, cutoff: 2200, pan, dest: S, verb: 0.9 });
+          this.note(harmonic(h, oct) * 2.76, { type: 'sine', when, attack: 0.004, release: 0.6, gain: 0.006, pan, dest: S, verb: 0.9 });
+        }
+        if ((o.depth || 1) >= 3) chord.slice(0, 3).forEach((h, i) => this.note(harmonic(h, 2), { wave: 'choir', when: t + 0.3, attack: 2.4, hold: 1.5, release: 6, gain: 0.016, linear: true, cutoff: 1200, pan: (i - 1) * 0.5, verb: 1.2 }));
+        if (o.glimpse) for (let i = 0; i < 9; i++) this.note(harmonic(chord[i % chord.length], 4), { type: 'sine', when: t + 0.5 + n * 0.17 + i * 0.06, attack: 0.004, release: 1.2, gain: 0.005, pan: Math.sin(i * 2.4) * 0.8, dest: S, verb: 1.2 });
+        break;
+      }
+      case 'transmit': {
+        // scans going out: a run of small bright notes climbing, then a soft landing
+        const n = Math.min(16, 6 + (o.n || 1));
+        for (let i = 0; i < n; i++) this.note(pitch(10 + (i % 7), 1 + Math.floor(i / 7)), { wave: 'soft', when: t + i * 0.055, attack: 0.004, release: 0.18, gain: 0.014, cutoff: 2600, pan: Math.sin(i * 1.7) * 0.4, dest: S, verb: 0.3 });
+        [10, 13, 15].forEach((d, i) => this.note(pitch(d), { wave: 'warm', when: t + n * 0.055 + i * 0.05, attack: 0.05, release: 2.2, gain: 0.02, cutoff: 1400, dest: S, verb: 0.7 }));
+        break;
+      }
+      case 'buy': {
+        // the scanner tuned deeper: a wide chord opening, and the new depth's harmonic over it
+        [0, 5, 10, 12, 14].forEach((d, i) => this.note(pitch(d), { wave: 'warm', when: t + i * 0.07, attack: 0.6, hold: 0.8, release: 5, gain: 0.024, linear: true, cutoff: 1500, pan: (i - 2) * 0.3, verb: 1.1 }));
+        if (o.harm) [2, 3, 4].forEach((oct, i) => this.note(harmonic(o.harm, oct), { wave: 'soft', when: t + 0.5 + i * 0.22, attack: 0.008, release: 3, gain: 0.026 - i * 0.006, cutoff: 3000, dest: S, verb: 1.1 }));
+        break;
+      }
       case 'lock':
         this.note(pitch(8), { wave: 'soft', attack: 0.04, release: 0.7, gain: 0.026, cutoff: 600, dest: S });
         break;

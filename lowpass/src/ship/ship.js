@@ -244,6 +244,14 @@ export class Ship {
       top = Math.max(top, canopyTop(x, z) - (1 - w) * 18);
       top = Math.max(top, canopyTop(x - fz * 14, z + fx * 14) - (1 - w) * 22, canopyTop(x + fz * 14, z - fx * 14) - (1 - w) * 22);
     }
+    // and over anything large standing in the way (the deep's artifacts)
+    if (this.obstacle) {
+      const cruise = top + CLEARANCE;
+      for (const d of [0, 35, 70, 110, 160, 220, 290]) {
+        const w = 1 - d / 420;
+        top = Math.max(top, this.obstacle(this.x + fx * d, this.z + fz * d, cruise) - (1 - w) * 18);
+      }
+    }
     return top + CLEARANCE;
   }
 
