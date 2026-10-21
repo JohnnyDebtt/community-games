@@ -583,6 +583,8 @@ export class Game {
       // the nearest thing to use: in reach and roughly ahead, the more roughly the closer
       // one stands (right beside it, any way one faces); the one already offered stays
       // offered until one has clearly turned or stepped away
+      // A station (the Codex computer, the coffee machine, the controls) comes before the
+      // seeker aboard, which hovers by the computer, however near it is.
       const was = this._spot;
       this._spot = null;
       let best = Infinity;
@@ -594,7 +596,8 @@ export class Game {
         const keep = s === was ? 1.15 : 1;
         const reach = s.r * keep;
         const cone = (d < 0.9 ? Math.PI : 0.9 + (1 - d / reach) * 1.3) + (keep > 1 ? 0.35 : 0);
-        if (d < reach && Math.abs(da) < cone && d < best) { best = d; this._spot = s; }
+        const rank = d + (s.id === 'companion' ? 100 : 0);
+        if (d < reach && Math.abs(da) < cone && rank < best) { best = rank; this._spot = s; }
       }
       // what one faces comes first (the Codex computer, the coffee machine, the controls);
       // else E hears the seeker aboard out, or asks it to talk

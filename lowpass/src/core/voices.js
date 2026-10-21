@@ -15,8 +15,8 @@ import { rng } from './math.js';
 // and fade away when it is gone.
 
 const REACH = 820;            // meters: beyond this, silence
-const CAP = 0.2;             // the loudest any artifact's voice gets (witnessed: CAP_W)
-const CAP_W = 0.24;
+const CAP = 0.32;            // the loudest any artifact's voice gets (witnessed: CAP_W)
+const CAP_W = 0.38;
 
 const FAMILY = {
   ring: ['breath', 'glass'], obelisk: ['fm', 'breath'], orb: ['glass', 'whale'], lattice: ['grains', 'breath'],
@@ -45,7 +45,7 @@ export class ArtifactVoices {
       // where it is
       const f = Math.max(0, 1 - x.dist / REACH);
       const behind = Math.abs(x.bearing) > Math.PI / 2;
-      const level = (x.d.special ? CAP_W : CAP) * Math.pow(f, 1.6) * (behind ? 0.6 : 1) * (0.35 + 0.65 * (x.reveal ?? 1));
+      const level = (x.d.special ? CAP_W : CAP) * Math.pow(f, 1.3) * (behind ? 0.7 : 1) * (0.35 + 0.65 * (x.reveal ?? 1));
       v.level.gain.setTargetAtTime(level, t, 0.35);
       v.send.gain.setTargetAtTime(level * (0.5 + 1.6 * (1 - f)), t, 0.35);
       v.tone.frequency.setTargetAtTime((320 + 2400 * Math.pow(f, 1.5)) * (behind ? 0.5 : 1), t, 0.35);
