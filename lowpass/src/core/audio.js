@@ -167,6 +167,16 @@ export class Audio {
     this._startTap();
     this.ready = true;
     this._timer = setInterval(() => this._schedule(), 100);
+    // The browser can pause the sound (another app or tab takes the output, the device
+    // changes, the machine sleeps). Started once by a gesture, it may start again by
+    // itself: try at once, and every second while the page is in view, rather than wait
+    // for the next key, so nothing in between goes unheard.
+    const wake = () => { if (!document.hidden) this.unlock(); };
+    ctx.addEventListener('statechange', () => { if (ctx.state !== 'running') setTimeout(wake, 50); });
+    document.addEventListener('visibilitychange', wake);
+    addEventListener('focus', wake);
+    addEventListener('pageshow', wake);
+    setInterval(() => { if (ctx.state !== 'running') wake(); }, 1000);
   }
 
   async _startPlate() {

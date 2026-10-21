@@ -118,13 +118,16 @@ to it and press E.
   ship's view, a wild one also gets a small note over everything (WILD ARTIFACT NEARBY,
   with the way out) that goes by itself.
 - **Their voices.** Every artifact has a voice of its own, from its seed and family
-  (src/core/voices.js): breath through drifting resonances, slowly beating glass, an
-  inharmonic warble, a voice that glides between notes, soft ticks on its own rhythm (in
-  time with its light), and under a witnessed one a slow chord. Quiet, in the game's
-  tuning and in the middle of the range, where any speaker carries it; heard from the
-  ship (the nearest four at a time, under the EFFECTS volume): nearer is louder and
-  brighter, farther is darker and wetter, panned by where it lies from the nose, quieter
-  behind, never loud. You hear one before you see it.
+  (src/core/voices.js), and unlike the music: where the score holds long notes, an
+  artifact pulses in time with its own light. A soft bed (breath through drifting
+  resonances, slowly beating glass, an inharmonic warble, a voice that glides between
+  notes) throbs open on each step of its rhythm and sinks between, and over it come soft
+  ticks, short chirping sweeps like a signal reporting home, or now and then a burst of
+  tiny stuttering blips, like data coming apart; under a witnessed one, a slow chord.
+  Quiet, in the game's tuning; heard from the ship (the nearest four at a time, under
+  the EFFECTS volume, nearly dry, so it sits where it is): nearer is louder and
+  brighter, farther is darker and a little wetter, panned by where it lies from the
+  nose, quieter behind. You hear one before you see it.
 - **Scanning.** Bring it into the brackets and hold SPACE (SCAN on a touch screen, A on
   a gamepad) for a couple of seconds; it works through the windshield at the controls
   too. With several out there, the scanner takes the one most nearly ahead, and the
