@@ -28,6 +28,8 @@ export class TouchControls {
     this.cam = btn('CAMERA', 'cam', () => input.pressed.add('KeyC'));
     this.stand = btn('STAND UP', 'stand', () => input.pressed.add('KeyE'));
     this.scan = btn('SCAN', 'scan', () => { input.touch.scan = true; }, () => { input.touch.scan = false; });
+    // the boost is a switch here: the thumbs are busy steering and scanning
+    this.boost = btn('BOOST', 'boost', () => { input.touch.boost = !input.touch.boost; });
     this.scanFill = el('i', 'fill', this.scan);
     this.act = btn('', 'act', () => input.pressed.add('KeyE'));
     this.left = el('div', 'steer l', this.root);
@@ -48,6 +50,10 @@ export class TouchControls {
     const show = (b, on) => b.classList.toggle('off', !on);
     const text = (b, s) => { if (b.label.textContent !== s) b.label.textContent = s; };
     show(this.scan, flying);
+    show(this.boost, flying);
+    if (!flying || overlay) input.touch.boost = false;
+    this.boost.classList.toggle('lit', input.touch.boost && !g._spent);
+    this.boost.classList.toggle('far', !!g._spent);
     show(this.cam, m === 'fly');
     show(this.stand, m === 'seat');
     text(this.view, m === 'fly' ? 'CABIN' : 'OUTSIDE');
@@ -64,7 +70,7 @@ export class TouchControls {
     // what the teaching line is about
     const tip = g.tips.shown;
     const hint = tip ? tip.btn : null;
-    for (const [k, b] of [['view', this.view], ['cam', this.cam], ['stand', this.stand]]) b.classList.toggle('hint', hint === k);
+    for (const [k, b] of [['view', this.view], ['cam', this.cam], ['stand', this.stand], ['boost', this.boost]]) b.classList.toggle('hint', hint === k);
     // steering: a mark at the edge being held; both, softly, while steering is taught
     const teachSteer = flying && tip && tip.id === 'steer';
     this.left.classList.toggle('on', flying && t.steer < 0);

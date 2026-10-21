@@ -23,6 +23,12 @@ export class Hud {
     this.alertBar = el('div', 'abar', this.alert);
     this.alertFill = el('i', '', this.alertBar);
     this.alertText = el('div', 'atext', this.alert);
+    // the boost's plasma, over it: spent by the burn, gathered back slowly
+    this.fuel = el('div', 'alert fuel', this.root);
+    el('div', 'pico', this.fuel);
+    this.fuelBar = el('div', 'abar', this.fuel);
+    this.fuelFill = el('i', '', this.fuelBar);
+    this.fuelText = el('div', 'atext', this.fuel);
     this.status = el('div', 'status', this.root);
     this.notice = el('div', 'notice', this.root);
     this.card = el('div', 'card', this.root);
@@ -265,5 +271,12 @@ export class Hud {
     this.alert.classList.toggle('low', a < 0.3);
     this.alert.classList.toggle('crit', a < 0.12);
     this.alertText.textContent = a < 0.3 ? 'TIRED · COFFEE IN THE CABIN' : 'ALERT';
+    // plasma
+    const p = g.plasmaLeft ?? 1, burning = g.ship.boost > 0.05 && !g._spent;
+    this.fuelFill.style.width = `${Math.round(p * 40) * 2.5}%`;
+    this.fuel.classList.toggle('burn', burning);
+    this.fuel.classList.toggle('spent', !!g._spent);
+    const ft = g._spent ? 'PLASMA SPENT · GATHERING' : burning ? 'PLASMA · BURNING' : 'PLASMA';
+    if (this.fuelText.textContent !== ft) this.fuelText.textContent = ft;
   }
 }

@@ -49,6 +49,7 @@ export class Tips {
           : { id: 'tired', caps: [['E']], text: 'tired: stand up and make coffee', on: 9, off: 35 };
       }
       if (f.state === 'far' && !L.scan) return { id: 'signal', caps: [], text: 'a signal: steer toward the mark along the top', on: 8, off: 30 };
+      if (!L.boost && t > 8) return { id: 'boost', caps: touch ? [['BOOST']] : [['W'], ['↑']], text: 'fly faster', on: 8, off: 60, btn: 'boost' };
       if (g.mode === 'fly' && !L.cabin && t > 16) return { id: 'cabin', caps: [[touch ? 'CABIN' : 'V']], text: 'step inside the ship', on: 10, off: 45, btn: 'view' };
       if (g.mode === 'fly' && L.cabin && !L.camera && t > 45) return { id: 'camera', caps: [[touch ? 'CAMERA' : 'C']], text: 'change the camera', on: 7, off: 150, btn: 'cam' };
       if (g.mode === 'seat' && !L.stand && t > 5) return touch ? { id: 'stand', caps: [['STAND UP']], text: 'walk around the cabin', on: 8, off: 60, btn: 'stand' } : { id: 'stand', caps: [['E']], text: 'stand up', on: 8, off: 60 };

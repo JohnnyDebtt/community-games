@@ -39,6 +39,7 @@ Safari). Keyboard and mouse, gamepad, or touch.
 | | |
 | --- | --- |
 | A D, or the arrows | steer (outside, and at the controls) |
+| W, or ↑ (hold) | boost: the core burns plasma and the ship flies faster (outside, and at the controls) |
 | SPACE (hold) | scan what is in your sights |
 | V | go inside the ship, or back out (and, when an alert is up, out from the Codex or the coffee) |
 | C | camera: chase, far, low, cinematic (it goes cinematic by itself after a minute idle) |
@@ -50,12 +51,13 @@ Safari). Keyboard and mouse, gamepad, or touch.
 | H | hide the interface |
 | ESC | pause: volumes, pixel size, light shafts, controls, credits |
 
-Gamepad: left stick steers and walks, right stick looks, A scans and uses, B stands up
-(and closes the Codex), X goes in and out, Y changes the camera, Start pauses.
+Gamepad: left stick steers and walks, right stick looks, the right trigger boosts, A scans
+and uses, B stands up (and closes the Codex), X goes in and out, Y changes the camera,
+Start pauses.
 
 On a phone or tablet: hold the left or right side of the screen to steer (a mark at that
 edge shows which way), and hold SCAN while something is in your sights; it lights up when
-there is, and fills as it records. Inside, drag on the left to walk (a ring follows your
+there is, and fills as it records. BOOST is a switch: touch it to burn, again to ease off. Inside, drag on the left to walk (a ring follows your
 thumb) and on the right to look. Buttons appear only for what you can do right then, named
 for what they do: CABIN or OUTSIDE, CAMERA, STAND UP, and, when you walk up to something,
 MAKE COFFEE, OPEN THE CODEX, TAKE THE CONTROLS or LISTEN (NEXT while a seeker talks); the
@@ -76,7 +78,11 @@ to it and press E.
 ## How it plays
 
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
-  only steer.
+  steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a
+  pale blue-violet trail, and the ship climbs to about 58 m/s while the view widens. The
+  **PLASMA** meter, over the alertness, runs out after about twelve seconds of burning
+  and gathers back slowly (about fifty seconds from empty); spent, the boost waits until
+  some has gathered again.
 - **Artifacts.** Every minute or two, a **wild** one: grown from a seed your own
   browser draws, so no one else will ever meet the same one. Twenty-five families:
   standing stones, monoliths, ringed orbs, cellular-automaton arrays, shells, crystal
@@ -114,8 +120,9 @@ to it and press E.
 - **Their voices.** Every artifact has a voice of its own, from its seed and family
   (src/core/voices.js): breath through drifting resonances, slowly beating glass, an
   inharmonic warble, a voice that glides between notes, soft ticks on its own rhythm (in
-  time with its light), and under a witnessed one a slow chord. All quiet and low, in the
-  game's tuning; heard from the ship (the nearest four at a time): nearer is louder and
+  time with its light), and under a witnessed one a slow chord. Quiet, in the game's
+  tuning and in the middle of the range, where any speaker carries it; heard from the
+  ship (the nearest four at a time, under the EFFECTS volume): nearer is louder and
   brighter, farther is darker and wetter, panned by where it lies from the nose, quieter
   behind, never loud. You hear one before you see it.
 - **Scanning.** Bring it into the brackets and hold SPACE (SCAN on a touch screen, A on

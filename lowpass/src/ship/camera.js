@@ -47,8 +47,8 @@ export class Cameras {
     const mode = this.auto ? 'cinematic' : this.mode;
     let want, look, lag = 3.2, roll = ship.bank * 0.35, fov = 56;
     if (mode === 'chase') {
-      const side = -ship.yawRate * 9;
-      want = this._tmp.set(p.x - fx * 34 + rx * side, p.y + 10, p.z - fz * 34 + rz * side);
+      const side = -ship.yawRate * 9, back = 34 + ship.boost * 9;
+      want = this._tmp.set(p.x - fx * back + rx * side, p.y + 10 + ship.boost * 2, p.z - fz * back + rz * side);
       look = new THREE.Vector3(p.x + fx * 70, p.y + 1, p.z + fz * 70);
     } else if (mode === 'far') {
       want = this._tmp.set(p.x - fx * 62 - rx * 18, p.y + 22, p.z - fz * 62 - rz * 18);
@@ -110,6 +110,8 @@ export class Cameras {
     cam.position.copy(this.pos);
     cam.up.set(-Math.cos(h) * Math.sin(this.roll), Math.cos(this.roll), Math.sin(h) * Math.sin(this.roll));
     cam.lookAt(this.target);
+    // the boost widens the view: speed
+    fov += ship.boost * 9;
     if (Math.abs(cam.fov - fov) > 0.01) {
       cam.fov = damp(cam.fov, fov, 2, dt);
       cam.updateProjectionMatrix();

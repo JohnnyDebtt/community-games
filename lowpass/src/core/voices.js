@@ -9,14 +9,16 @@ import { rng } from './math.js';
 //   whale    one voice that glides between notes of the palette and rests
 //   grains   soft pitched ticks on the artifact's own rhythm, in time with its light
 //   choir    (witnessed artifacts) a slow chord under everything
-// Everything sits in the palette on 42 Hz and below about 1.5 kHz. Where it is: louder
-// and brighter as the ship comes near, darker and wetter far off or behind, panned by its
-// bearing from the nose; never above CAP. Voices begin when an artifact is within reach
-// and fade away when it is gone.
+// Everything sits in the palette on 42 Hz, in the middle of the range (a few hundred Hz
+// to about 2 kHz, where any speaker, a phone's too, carries it and the score's low drone
+// does not cover it). Where it is: louder and brighter as the ship comes near, darker and
+// wetter far off or behind, panned by its bearing from the nose; never above CAP. Voices
+// begin when an artifact is within reach and fade away when it is gone. They go out on
+// their own bus, under the EFFECTS volume (and through the cabin's walls, aboard).
 
 const REACH = 820;            // meters: beyond this, silence
-const CAP = 0.32;            // the loudest any artifact's voice gets (witnessed: CAP_W)
-const CAP_W = 0.38;
+const CAP = 0.5;             // the loudest any artifact's voice gets (witnessed: CAP_W)
+const CAP_W = 0.56;
 
 const FAMILY = {
   ring: ['breath', 'glass'], obelisk: ['fm', 'breath'], orb: ['glass', 'whale'], lattice: ['grains', 'breath'],
@@ -45,10 +47,10 @@ export class ArtifactVoices {
       // where it is
       const f = Math.max(0, 1 - x.dist / REACH);
       const behind = Math.abs(x.bearing) > Math.PI / 2;
-      const level = (x.d.special ? CAP_W : CAP) * Math.pow(f, 1.3) * (behind ? 0.7 : 1) * (0.35 + 0.65 * (x.reveal ?? 1));
+      const level = (x.d.special ? CAP_W : CAP) * Math.pow(f, 1.1) * (behind ? 0.7 : 1) * (0.35 + 0.65 * (x.reveal ?? 1));
       v.level.gain.setTargetAtTime(level, t, 0.35);
       v.send.gain.setTargetAtTime(level * (0.5 + 1.6 * (1 - f)), t, 0.35);
-      v.tone.frequency.setTargetAtTime((320 + 2400 * Math.pow(f, 1.5)) * (behind ? 0.5 : 1), t, 0.35);
+      v.tone.frequency.setTargetAtTime((600 + 3600 * Math.pow(f, 1.5)) * (behind ? 0.55 : 1), t, 0.35);
       v.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, -Math.sin(x.bearing) * 0.9)), t, 0.25);
       this._tick(v, t, beatNow);
     }
@@ -73,7 +75,7 @@ export class ArtifactVoices {
     v.level = ctx.createGain(); v.level.gain.value = 0;
     v.send = ctx.createGain(); v.send.gain.value = 0;
     v.pan = ctx.createStereoPanner();
-    v.bus.connect(v.tone); v.tone.connect(v.level); v.level.connect(v.pan); v.pan.connect(a.amb);
+    v.bus.connect(v.tone); v.tone.connect(v.level); v.level.connect(v.pan); v.pan.connect(a.voiceBus);
     v.tone.connect(v.send); v.send.connect(a.verbIn);
     const layers = (FAMILY[d.family] || ['breath', 'glass']).slice();
     if (R() < 0.45) layers.pop();                      // one layer, sometimes
@@ -99,10 +101,10 @@ export class ArtifactVoices {
     const a = this.a, ctx = a.ctx, R = v.R;
     const src = ctx.createBufferSource();
     src.buffer = a.pink; src.loop = true;
-    const oct = R.pick([2, 3]);
+    const oct = R.pick([3, 4]);
     const out = ctx.createGain(); out.gain.value = 0;
     v.degs.slice(0, 2).forEach((dg, i) => {
-      const f = Math.min(1400, pitch(dg, oct));
+      const f = Math.min(2000, pitch(dg, oct));
       const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 10 + R() * 8; bp.frequency.value = f;
       this._lfo(v, 0.03 + R() * 0.07, f * 0.06, bp.frequency);
       const g = ctx.createGain(); g.gain.value = i ? 0.7 : 1;
@@ -117,7 +119,7 @@ export class ArtifactVoices {
 
   _glass(v) {
     const ctx = this.a.ctx, R = v.R;
-    const oct = R.pick([1, 2, 2]);
+    const oct = R.pick([2, 3, 3]);
     const f = pitch(v.degs[0], oct), beat = 0.35 + R() * 1.2;
     const out = ctx.createGain(); out.gain.value = 0;
     for (const [hz, g] of [[f, 0.5], [f + beat, 0.5], [pitch(v.degs[v.degs.length - 1], oct) * (R() < 0.5 ? 1 : 0.5), 0.22]]) {
@@ -132,14 +134,14 @@ export class ArtifactVoices {
 
   _fm(v) {
     const ctx = this.a.ctx, R = v.R;
-    const f = pitch(v.degs[0], R.pick([0, 1, 1]));
+    const f = pitch(v.degs[0], R.pick([1, 2, 2]));
     const car = ctx.createOscillator(); car.frequency.value = f;
     const mod = ctx.createOscillator(); mod.frequency.value = f * R.pick([1.414, 2.76, 3.53, 0.707, 1.618]);
     const idx = ctx.createGain(); idx.gain.value = 0;
     mod.connect(idx); idx.connect(car.frequency);
     // how far it bends wanders slowly: from nearly pure to strange
     this._lfo(v, 0.04 + R() * 0.06, f * 0.55, idx.gain, f * 0.6);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 650;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
     const out = ctx.createGain(); out.gain.value = 0;
     this._lfo(v, 0.05 + R() * 0.05, 0.2, out.gain, 0.24);
     car.connect(lp); lp.connect(out); out.connect(v.bus);
@@ -151,13 +153,13 @@ export class ArtifactVoices {
     const ctx = this.a.ctx, R = v.R;
     const o = ctx.createOscillator();
     o.setPeriodicWave(this.a.waves.soft);
-    v.whaleOct = R.pick([1, 2]);
+    v.whaleOct = R.pick([2, 3]);
     o.frequency.value = pitch(v.degs[0], v.whaleOct);
     const vib = ctx.createOscillator(); vib.frequency.value = 3.2 + R() * 1.5;
     const vg = ctx.createGain(); vg.gain.value = o.frequency.value * 0.004;
     vib.connect(vg); vg.connect(o.frequency);
     const env = ctx.createGain(); env.gain.value = 0;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
     o.connect(lp); lp.connect(env); env.connect(v.bus);
     o.start(); vib.start();
     v.sources.push(o, vib);
@@ -165,7 +167,7 @@ export class ArtifactVoices {
   }
 
   _grains(v) {
-    v.grains = { oct: v.R.pick([2, 3]), next: -1 };
+    v.grains = { oct: v.R.pick([3, 4]), next: -1 };
   }
 
   _choir(v) {
@@ -174,8 +176,8 @@ export class ArtifactVoices {
     [0, 2, 4].map((i) => v.degs[i % v.degs.length] + (i > 2 ? 5 : 0)).forEach((dg, i) => {
       const o = ctx.createOscillator();
       o.setPeriodicWave(a.waves.choir);
-      o.frequency.value = pitch(dg, 1 + (i === 2 ? 1 : 0)) * (1 + (R() - 0.5) * 0.002);
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+      o.frequency.value = pitch(dg, 2 + (i === 2 ? 1 : 0)) * (1 + (R() - 0.5) * 0.002);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
       const g = ctx.createGain(); g.gain.value = [0.3, 0.22, 0.16][i];
       o.connect(lp); lp.connect(g); g.connect(out);
       o.start(); v.sources.push(o);
@@ -218,7 +220,7 @@ export class ArtifactVoices {
     const src = ctx.createBufferSource();
     src.buffer = a.pink;
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 7;
-    bp.frequency.value = Math.min(1400, pitch(R.pick(v.degs), gr.oct));
+    bp.frequency.value = Math.min(2400, pitch(R.pick(v.degs), gr.oct));
     const env = ctx.createGain();
     env.gain.setValueAtTime(0.0001, when);
     env.gain.exponentialRampToValueAtTime(2.2, when + 0.006);

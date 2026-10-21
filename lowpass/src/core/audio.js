@@ -91,6 +91,8 @@ export class Audio {
     this.music = ctx.createGain(); this.music.connect(this.tone);
     this.amb = ctx.createGain(); this.amb.connect(this.tone);
     this.sfx = ctx.createGain(); this.sfx.connect(this.out);
+    // the artifacts' voices: under the effects' volume, through the cabin's walls
+    this.voiceBus = ctx.createGain(); this.voiceBus.connect(this.tone);
 
     // the hall: a moving plate (plate-worklet.js) with chorus in its tail and spinning
     // reflections; until it loads, or where worklets are missing, a still convolution
@@ -288,6 +290,7 @@ export class Audio {
     this.verbOut.gain.setTargetAtTime(this.vol.music * 0.85, t, 0.2);
     this.sfx.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
     this.amb.gain.setTargetAtTime(this.vol.ambience, t, 0.2);
+    this.voiceBus.gain.setTargetAtTime(this.vol.sfx, t, 0.2);
   }
 
   setVolumes(v) {
@@ -690,6 +693,74 @@ export class Audio {
     this.hum.gain.setTargetAtTime(0.008 + m.inside * 0.035, t, 0.5);
   }
 
+  // ---------------------------------------------------------------- the boost
+  // While the core burns: plasma, not an engine. A high, airy hiss through a resonant band
+  // that sweeps up with the burn and wanders; two soft tones a hair apart that climb
+  // with it and pulse; and a faint metallic shimmer over them. k: 0..1, every frame.
+  engine(k) {
+    if (!this.ready) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    if (!this._eng) {
+      const out = ctx.createGain(); out.gain.value = 0;
+      out.connect(this.sfx);
+      const send = ctx.createGain(); send.gain.value = 0.45; out.connect(send); send.connect(this.verbIn);
+      // the hiss
+      const src = ctx.createBufferSource(); src.buffer = this.pink; src.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 400;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 5; bp.frequency.value = 700;
+      const wob = ctx.createOscillator(); wob.frequency.value = 0.35;
+      const wobG = ctx.createGain(); wobG.gain.value = 130;
+      wob.connect(wobG); wobG.connect(bp.frequency);
+      const hissG = ctx.createGain(); hissG.gain.value = 0.9;
+      src.connect(hp); hp.connect(bp); bp.connect(hissG); hissG.connect(out);
+      // the two tones, pulsing
+      const tones = [1, 1.007].map((m) => {
+        const o = ctx.createOscillator(); o.setPeriodicWave(this.waves.soft); o.frequency.value = pitch(8) * m;
+        return o;
+      });
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+      const trem = ctx.createGain(); trem.gain.value = 0.32;
+      const tl = ctx.createOscillator(); tl.frequency.value = 7.5;
+      const tlG = ctx.createGain(); tlG.gain.value = 0.12;
+      tl.connect(tlG); tlG.connect(trem.gain);
+      for (const o of tones) o.connect(lp);
+      lp.connect(trem); trem.connect(out);
+      // the shimmer: a carrier bent by an inharmonic partner
+      const car = ctx.createOscillator(); car.frequency.value = pitch(13);
+      const mod = ctx.createOscillator(); mod.frequency.value = pitch(13) * 1.414;
+      const idx = ctx.createGain(); idx.gain.value = 0;
+      mod.connect(idx); idx.connect(car.frequency);
+      const shG = ctx.createGain(); shG.gain.value = 0.1;
+      car.connect(shG); shG.connect(out);
+      for (const n of [src, wob, tl, car, mod, ...tones]) n.start();
+      this._eng = { out, bp, tones, idx };
+    }
+    const e = this._eng;
+    e.out.gain.setTargetAtTime(0.11 * k, t, 0.12);
+    e.bp.frequency.setTargetAtTime(650 + 950 * k, t, 0.25);
+    e.tones.forEach((o, i) => o.frequency.setTargetAtTime(pitch(8) * (1 + 0.6 * k) * (i ? 1.007 : 1), t, 0.35));
+    e.idx.gain.setTargetAtTime(pitch(13) * 0.8 * k, t, 0.3);
+  }
+
+  // a tone that slides from one pitch to another (the boost's power up and down)
+  glide(f0, f1, o = {}) {
+    if (!this.ready) return;
+    const ctx = this.ctx, t = Math.max(o.when ?? ctx.currentTime, ctx.currentTime);
+    const dur = o.dur ?? 0.5, rel = o.release ?? 0.8;
+    const osc = ctx.createOscillator();
+    if (o.wave && this.waves[o.wave]) osc.setPeriodicWave(this.waves[o.wave]); else osc.type = 'sine';
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.gain ?? 0.03, t + (o.attack ?? 0.03));
+    g.gain.setTargetAtTime(0.0001, t + dur * 0.7, rel / 3);
+    osc.connect(g); g.connect(o.dest ?? this.sfx);
+    if (o.verb) { const s = ctx.createGain(); s.gain.value = o.verb; g.connect(s); s.connect(this.verbIn); }
+    osc.start(t);
+    osc.stop(t + dur + rel + 0.5);
+  }
+
   // ---------------------------------------------------------------- effects
   // All low and soft: swells, never bells.
   play(name, o = {}) {
@@ -707,6 +778,11 @@ export class Audio {
         this.note(R, { wave: 'sub', attack: 2.5, hold: 2, release: 9, gain: 0.07, linear: true, cutoff: 200 });
         [[0, 0, -0.6], [3, 0.5, 0.6], [5, 1.0, -0.2], [8, 1.6, 0.3]].forEach(([d, dt, pan]) => this.note(pitch(d, 1), { wave: 'choir', when: t + dt, attack: 3.2, hold: 2.5, release: 12, gain: 0.03, linear: true, cutoff: 800, pan: pan + (o.pan || 0) * 0.3, verb: 1.3 }));
         this.hiss({ type: 'bandpass', freq: 300, q: 0.8, to: 700, attack: 2.4, hold: 1, release: 4, gain: 0.05, pink: true, verb: 0.8 });
+        break;
+      case 'release':
+        // and lets it go: the power falls away, the air with it
+        this.glide(pitch(10), pitch(1), { wave: 'soft', dur: 0.6, gain: 0.026, release: 0.9, verb: 0.6 });
+        this.hiss({ type: 'bandpass', freq: 1400, q: 2, to: 250, attack: 0.02, release: 1.1, gain: 0.045, pink: true, verb: 0.6 });
         break;
       case 'chime':
         // the cabin's call that something is rising ahead: two soft notes, up a fourth,

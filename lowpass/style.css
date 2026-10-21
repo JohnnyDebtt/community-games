@@ -59,7 +59,7 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .hud { position: absolute; inset: 0; transition: opacity 0.4s; }
 /* hidden, the interface keeps only what is needed to act: notices, the prompt to use
    something, the brackets of a scan */
-.hud.hidden .signal, .hud.hidden .alert, .hud.hidden .status, .hud.hidden .card, .hud.hidden .bottom > .tip, .hud.hidden .bottom > .keys, .hud.hidden .mk { visibility: hidden; }
+.hud.hidden .signal, .hud.hidden .alert, .hud.hidden .fuel, .hud.hidden .status, .hud.hidden .card, .hud.hidden .bottom > .tip, .hud.hidden .bottom > .keys, .hud.hidden .mk { visibility: hidden; }
 .hud .signal { position: absolute; left: 0; right: 0; margin: 0 auto; top: calc(var(--u) * 8); width: min(calc(var(--u) * 140), 70vw); height: calc(var(--u) * 14); border-bottom: var(--u) solid rgba(240, 242, 232, 0.25); opacity: 0; transition: opacity 0.6s; }
 .hud .signal.on { opacity: 1; }
 .hud .signal .mark { position: absolute; bottom: calc(var(--u) * -3); width: calc(var(--u) * 5); height: calc(var(--u) * 5); margin-left: calc(var(--u) * -2.5); background: var(--glow2); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 4) var(--glow); animation: beat 0.667s steps(2) infinite; }
@@ -113,6 +113,16 @@ html.touchmode .alarm .arow .muted { display: none; }
 .hud .alert.low .atext { color: var(--text); }
 .hud .alert.crit .abar i { background: var(--neg); }
 .hud .alert.crit .cup { animation: beat 0.667s steps(2) infinite; }
+/* the boost's plasma, over the alertness */
+.hud .alert.fuel { bottom: calc(var(--u) * 30 + var(--sb)); }
+.hud .fuel .pico { grid-row: span 2; width: calc(var(--u) * 11); height: calc(var(--u) * 11); display: flex; align-items: center; justify-content: center; }
+.hud .fuel .pico::before { content: ''; width: calc(var(--u) * 4); height: calc(var(--u) * 4); background: #b4a8ec; transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 3) #8a7bd8; }
+.hud .fuel .abar i { background: #9d8fe0; transition: width 0.25s steps(4); }
+.hud .fuel.burn .abar i { background: #c9c0f5; }
+.hud .fuel.burn .atext { color: var(--text); }
+.hud .fuel.spent .abar i { background: var(--neg); }
+.hud .fuel.spent .pico::before { animation: beat 0.667s steps(2) infinite; }
+html.touchmode .hud .alert.fuel { left: calc(var(--u) * 30 + var(--sl)); top: calc(var(--u) * 24 + var(--st)); bottom: auto; }
 .hud .status { position: absolute; right: calc(var(--u) * 8 + var(--sr)); top: calc(var(--u) * 6 + var(--st)); color: var(--muted); display: flex; align-items: center; gap: calc(var(--u) * 3); }
 .hud .status .dot { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--muted); display: inline-block; }
 .hud .status .dot.live { background: var(--pos); animation: beat 1.333s steps(2) infinite; }
@@ -326,6 +336,8 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 #ui .touch .cam, #ui .touch .stand { right: calc(var(--u) * 8 + var(--sr)); top: calc(var(--u) * 47 + var(--st)); }
 #ui .touch .scan, #ui .touch .act { right: calc(var(--u) * 12 + var(--sr)); bottom: calc(var(--u) * 14 + var(--sb)); padding: calc(var(--u) * 10) calc(var(--u) * 12); }
 #ui .touch .act { border-color: var(--glow); color: var(--glow2); }
+#ui .touch .boost { right: calc(var(--u) * 12 + var(--sr)); bottom: calc(var(--u) * 52 + var(--sb)); padding: calc(var(--u) * 5) calc(var(--u) * 8); }
+#ui .touch .boost.lit { border-color: #9d8fe0; color: var(--glow2); background: rgba(157, 143, 224, 0.28); }
 /* the scan button sleeps until something is in the sights, and fills as it records */
 #ui .touch .scan.far { opacity: 0.45; }
 #ui .touch .scan.ready { border-color: var(--glow2); color: var(--glow2); }
@@ -345,7 +357,7 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
    recorded card under it, notices and the teaching line clear of the buttons */
 html.touchmode .hud .keys, html.touchmode .hud .prompt { display: none; }
 html.touchmode .hud .alert { left: calc(var(--u) * 30 + var(--sl)); top: calc(var(--u) * 6 + var(--st)); bottom: auto; }
-html.touchmode .hud .card { left: calc(var(--u) * 8 + var(--sl)); top: calc(var(--u) * 32 + var(--st)); right: auto; bottom: auto; width: min(calc(var(--u) * 170), calc(100vw - var(--u) * 16)); display: grid; grid-template-columns: calc(var(--u) * 56) minmax(0, 1fr); column-gap: calc(var(--u) * 4); align-content: start; }
+html.touchmode .hud .card { left: calc(var(--u) * 8 + var(--sl)); top: calc(var(--u) * 46 + var(--st)); right: auto; bottom: auto; width: min(calc(var(--u) * 170), calc(100vw - var(--u) * 16)); display: grid; grid-template-columns: calc(var(--u) * 56) minmax(0, 1fr); column-gap: calc(var(--u) * 4); align-content: start; }
 html.touchmode .hud .card .k { grid-column: 1 / -1; }
 html.touchmode .hud .card .photo { grid-row: span 3; margin: var(--u) 0 0; }
 html.touchmode .hud .notice { top: calc(var(--u) * 30 + var(--st)); max-width: calc(100vw - var(--u) * 140); }

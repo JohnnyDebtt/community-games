@@ -14,6 +14,7 @@ import { canopyTop } from '../world/terrain.js';
 // Local space: +z forward, +y up, the cabin floor at y = 0.
 
 export const SPEED = 24;            // m/s
+const BOOST = 1.4;                  // boosting adds this much of SPEED again (to about 58 m/s)
 const MAX_YAW = 0.5;                // rad/s
 const CLEARANCE = 17;               // above the canopy
 
@@ -218,6 +219,7 @@ export class Ship {
     this.drift = 0;           // asleep at the controls: a slow wander
     this.distance = 0;
     this.scanGlow = 0;
+    this.boost = 0;           // 0..1: how hard the core burns (W held), eased in and out
     this._t = 0;
   }
 
@@ -245,9 +247,13 @@ export class Ship {
     return top + CLEARANCE;
   }
 
-  update(dt, steer) {
+  // boosting: true while the boost is asked for (outside, or at the controls)
+  update(dt, steer, boosting = false) {
     this._t += dt;
     this.steer = steer;
+    // the core takes a moment to come up to a burn, and longer to settle back
+    this.boost = damp(this.boost, boosting ? 1 : 0, boosting ? 1.4 : 0.9, dt);
+    this.speed = SPEED * (1 + BOOST * this.boost);
     // heading grows toward +x, which is to the left when facing +z: steering right turns it down
     const target = -clamp(steer + this.drift, -1, 1) * MAX_YAW;
     this.yawRate = damp(this.yawRate, target, 2.0, dt);
@@ -277,11 +283,15 @@ export class Ship {
     this.coreMat.uniforms.uPulse.value = pulse;
     this.navMat.uniforms.uPulse.value = (beat % 2) < 0.25 ? 1.0 : 0.05;
     this.lensMat.uniforms.uEmisBoost.value = 0.6 + this.scanGlow * 3;
+    // burning, the core flares and its glow swells
+    this.coreMat.uniforms.uEmisBoost.value = 1 + this.boost * 1.6;
+    this.halo.material.uniforms.uOpacity.value = 0.9 + this.boost * 1.3;
+    this.halo.material.uniforms.uSize.value = 9 * (1 + this.boost * 0.6);
     const core = new THREE.Vector3(0, 1.55, -11.3).applyMatrix4(r.matrixWorld);
     const belly = new THREE.Vector3(0, -4, -2).applyMatrix4(r.matrixWorld);
     U.uPointPos.value[0].set(belly.x, belly.y - 6, belly.z, 46);
     U.uPointColor.value[0].setRGB(0.22, 0.32, 0.36).multiplyScalar(pulse);
-    FOG.uFogLights.value[0].set(core.x, core.y, core.z, 24);
+    FOG.uFogLights.value[0].set(core.x, core.y, core.z, 24 + this.boost * 22);
     FOG.uFogLightColor.value[0].setRGB(0.55, 0.8, 0.9);
     this.corePos = core;
   }

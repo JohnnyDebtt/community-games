@@ -8,7 +8,7 @@ export class Input {
     this.pressed = new Set();      // went down this frame
     this.look = { x: 0, y: 0 };    // accumulated mouse movement
     this.locked = false;
-    this.touch = { steer: 0, steers: new Map(), scan: false, move: { x: 0, y: 0 }, lookId: null, moveId: null, lx: 0, ly: 0, mx: 0, my: 0, starts: new Map() };
+    this.touch = { steer: 0, steers: new Map(), scan: false, boost: false, move: { x: 0, y: 0 }, lookId: null, moveId: null, lx: 0, ly: 0, mx: 0, my: 0, starts: new Map() };
     this.stickR = 50;              // how far the walking thumb goes for full speed (CSS px)
     // touch or keys: the hints and the buttons follow whichever was used last
     this.touchMode = matchMedia('(pointer: coarse)').matches;
@@ -181,6 +181,11 @@ export class Input {
     this.look.y = 0;
     if (this.padAxes) { x += (this.padAxes[2] || 0) * 14; y += (this.padAxes[3] || 0) * 14; }
     return { x, y };
+  }
+
+  // W or up held, the right trigger, or the touch screen's BOOST (a switch there)
+  boostHeld() {
+    return this.down('KeyW', 'ArrowUp') || this.padDown(7) || this.touch.boost;
   }
 
   scanHeld() {

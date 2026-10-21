@@ -82,7 +82,7 @@ export class Menu {
     if (this.page === 'controls' && this.game.input.touchMode) {
       const t = el('div', 'mtext', p);
       for (const [k, v] of [
-        ['HOLD LEFT OR RIGHT', 'steer: hold either side of the screen'], ['SCAN (hold)', 'record what is in your sights'],
+        ['HOLD LEFT OR RIGHT', 'steer: hold either side of the screen'], ['SCAN (hold)', 'record what is in your sights'], ['BOOST', 'fly faster (touch it again to ease off)'],
         ['CABIN, OUTSIDE', 'go inside the ship, or back out'], ['CAMERA', 'chase, far, low, cinematic'],
         ['DRAG LEFT, RIGHT', 'inside: walk with the left thumb, look with the right'],
         ['MAKE COFFEE, OPEN THE CODEX', 'buttons like these appear when you are close enough to use something'],
@@ -91,13 +91,13 @@ export class Menu {
     } else if (this.page === 'controls') {
       const t = el('div', 'mtext', p);
       for (const [k, v] of [
-        ['A D  ← →', 'steer (outside, and at the controls)'], ['SPACE (hold)', 'scan what is in your sights'], ['V', 'go inside the ship, or back outside'],
+        ['A D  ← →', 'steer (outside, and at the controls)'], ['W  ↑ (hold)', 'boost: fly faster'], ['SPACE (hold)', 'scan what is in your sights'], ['V', 'go inside the ship, or back outside'],
         ['C', 'camera: chase, far, low, cinematic'], ['W A S D, mouse', 'walk and look, inside (click to capture the mouse)'],
         ['E', 'use what is in front of you: the coffee machine, the Codex computer (on the right wall), the controls, a seeker aboard'],
         ['M', 'keep the music playing now: it will come back'], ['R', 'save the last minute of sound as a WAV file'],
         ['H', 'hide the interface'], ['ESC', 'pause'],
       ]) { const r = el('div', 'krow', t); el('span', 'kk', r, k); el('span', 'muted', r, v); }
-      el('div', 'muted', t, 'Gamepad: left stick steers and walks, right stick looks, A scans and uses, B stands up, X switches inside and outside, Y changes the camera, Start pauses. Touch: hold the left or right of the screen to steer; the buttons on screen do the rest.');
+      el('div', 'muted', t, 'Gamepad: left stick steers and walks, right stick looks, the right trigger boosts, A scans and uses, B stands up, X switches inside and outside, Y changes the camera, Start pauses. Touch: hold the left or right of the screen to steer; the buttons on screen do the rest.');
     } else if (this.page === 'about') {
       const t = el('div', 'mtext', p);
       for (const line of [

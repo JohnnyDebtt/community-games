@@ -7,6 +7,7 @@ import { Ship } from './ship/ship.js';
 import { Interior } from './ship/interior.js';
 import { Seeker } from './ship/seeker.js';
 import { CoffeeScene } from './ship/coffee.js';
+import { Plasma } from './ship/plasma.js';
 import { Cameras } from './ship/camera.js';
 import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
@@ -36,6 +37,9 @@ import { Boot } from './ui/boot.js';
 // The Codex computer (terminal) and the pause menu lie over whichever mode is current.
 
 const DECAY = 1 / 600;          // alertness lost a second: full to empty in ten minutes
+const BURN = 1 / 12;             // plasma a full boost spends a second: twelve seconds of it
+const GATHER = 1 / 50;           // plasma the core gathers back a second, not burning
+const RELIGHT = 0.15;            // once spent, the boost lights again at this much
 const WILD_GAP = [60, 110];      // seconds between artifacts, after the last is behind
 const WAVE = 12;                 // a sweep's artifacts at once, at most (the rest come next)
 const VOICES = 4;                // artifacts heard at once, the nearest
@@ -60,7 +64,9 @@ export class Game {
     this.cams = new Cameras(this.px.width / this.px.height);
     this.input = new Input(canvas);
     this.audio = new Audio();
-    this.world.onShift = (dx, dz) => this.cams.shift(dx, dz);
+    this.plasma = new Plasma(this.scene);
+    this._back = new THREE.Vector3();
+    this.world.onShift = (dx, dz) => { this.cams.shift(dx, dz); this.plasma.shift(dx, dz); };
 
     // the interface shares the world's pixel
     this.uiRoot = document.getElementById('ui');
@@ -130,6 +136,8 @@ export class Game {
     // saved state
     const s = load('state', {});
     this.alertness = s.alertness ?? 0.6;
+    this.plasmaLeft = s.plasma ?? 1;    // the boost's plasma, 0..1
+    this._spent = false;
     this.warm = 0;
     this.stats_ = s.stats || { cups: 0, scans: 0, distance: 0 };
     const saved = load('settings', {});
@@ -185,7 +193,7 @@ export class Game {
   }
 
   _save() {
-    save('state', { alertness: this.alertness, x: this.ship.x, z: this.ship.z, heading: this.ship.heading, stats: this.stats_ });
+    save('state', { alertness: this.alertness, plasma: this.plasmaLeft, x: this.ship.x, z: this.ship.z, heading: this.ship.heading, stats: this.stats_ });
   }
 
   // ---------------------------------------------------------------- modes
@@ -428,18 +436,33 @@ export class Game {
     }
     this.terminal.update(dt);
 
-    // the ship flies on whatever happens inside
+    // the ship flies on whatever happens inside; outside or at the controls, W boosts
     let steer = 0;
     if (!overlay && (this.mode === 'fly' || this.mode === 'seat')) steer = input.steer();
     if (this.mode === 'title') steer = Math.sin(this.time * 0.05) * 0.25;
+    // the boost burns plasma; spent, it waits until the core has gathered some back
+    if (this.plasmaLeft <= 0) this._spent = true;
+    else if (this._spent && this.plasmaLeft >= RELIGHT) this._spent = false;
+    const boosting = !overlay && !this._spent && (this.mode === 'fly' || this.mode === 'seat') && input.boostHeld();
+    // (the burn fades in with its own sound; letting go has a soft fall)
+    if (boosting !== this._boosting) {
+      if (!boosting && this.ship.boost > 0.4) this.audio.play('release');
+      this._boosting = boosting;
+    }
+    if (boosting) { this._boosted = (this._boosted || 0) + dt; if (this._boosted > 1) this.tips.learn('boost'); }
     this._alertness(dt);
-    this.ship.update(dt, steer);
+    this.ship.update(dt, steer, boosting);
+    if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - dt * BURN * this.ship.boost);
+    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + dt * GATHER);
     const [fx, fz] = this.ship.forward();
     const cp = this.cams.cam.position;
     this.world.update(this.ship.x, this.ship.z, fx, fz, 2, cp.x + this.world.origin.x, cp.z + this.world.origin.z, dt);
     if (this._devTime !== undefined && this.clock.source !== 'none') { this.atmo.setTime(this._devTime); this._devTime = undefined; }
     this.atmo.update(dt, this.world.origin);
     this.ship.sync(this.world.origin, this.beat);
+    // the boost's plasma, shed from the core behind the ship, and its roar
+    if (this.ship.corePos) this.plasma.emit(this.ship.corePos, this._back.set(-fx, 0, -fz), this.ship.boost, dt);
+    this.audio.engine(this.ship.boost);
     this.stats_.distance += this.ship.speed * dt;
 
     // artifacts, when the last are behind: the witnessed ones of the seekers that moved
@@ -628,7 +651,7 @@ export class Game {
       if (input.hit('KeyE', 'Pad1')) { this.tips.learn('stand'); this.mode = 'walk'; this.fp.x = 0; this.fp.z = 5.35; this.fp.yaw = 0; this.fp.pitch = -0.05; }
       else if (input.hit('KeyV', 'Pad2')) this.exitCabin();
     }
-    this.cams.firstPerson(this.ship, new THREE.Vector3(0, 1.3, 6.4), lo.yaw, -0.06 + lo.pitch, 68);
+    this.cams.firstPerson(this.ship, new THREE.Vector3(0, 1.3, 6.4), lo.yaw, -0.06 + lo.pitch, 68 + this.ship.boost * 7);
   }
 
   _inspectCam() {
@@ -652,9 +675,9 @@ export class Game {
     h.setStatus(st === 'live' ? 'SEEKER NET LIVE' : st === 'offline' ? 'SEEKER NET OFFLINE · ARCHIVE' : st === 'retrying' ? 'SEEKER NET RETRYING' : 'SEEKER NET …', st === 'live' ? 'live' : st === 'offline' ? 'off' : '');
     let keys = [];
     if (this.input.touchMode) keys = [];     // the buttons on screen say it
-    else if (this.mode === 'fly') keys = [['A D', 'steer'], ['SPACE', 'scan'], ['V', 'go inside'], ['C', 'camera'], ['ESC', 'menu']];
+    else if (this.mode === 'fly') keys = [['A D', 'steer'], ['W', 'boost'], ['SPACE', 'scan'], ['V', 'go inside'], ['C', 'camera'], ['ESC', 'menu']];
     else if (this.mode === 'walk') keys = [['W A S D', 'walk'], ['E', 'use'], ['V', 'outside'], ['ESC', 'menu']];
-    else if (this.mode === 'seat') keys = [['A D', 'steer'], ['SPACE', 'scan'], ['E', 'stand up'], ['V', 'outside']];
+    else if (this.mode === 'seat') keys = [['A D', 'steer'], ['W', 'boost'], ['SPACE', 'scan'], ['E', 'stand up'], ['V', 'outside']];
     h.setKeys(keys);
     // the teaching line and the marks; the keys stay a while after each change of place
     // (the tips reset the clock), and come back when an idle key is pressed
