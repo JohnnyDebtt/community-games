@@ -134,8 +134,14 @@ to it and press E.
   wind serpents, ice cathedrals. Deeper, one form
   crowns another, a court of small ones stands about it, and ornaments gather: rings,
   figures of light on the ground, beams, pillars, rain of light, aurora veils, its double hanging
-  upside down in the sky, its echoes a moment behind it. Each sings (below). Witnessed
-  seekers are never touched by any of it.
+  upside down in the sky, its echoes a moment behind it. Each sings (below). Rarest of
+  all, about one deep find in fifty is **marked**: its name ends in a **+**, it stands a
+  quarter larger under a column of light, and it is one of the marked ones' own forms,
+  at every depth (a tree of light dropping leaves of light, a maelstrom turning in a
+  standing ring, a band with one side, a Menger sponge of four hundred cubes breathing
+  apart, a whale of the under-sky swimming circles over the trees; on a mountain, the
+  mountains' own, crowned and courted). A marked scan is worth ten times its depth's.
+  Witnessed seekers are never touched by any of it.
 - **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
   fly, that seeker itself rises out of the fog, giant: its voxel model built from its own
   collection art as it is on the chain now (dormant ones dark by their stage, their
@@ -253,7 +259,8 @@ minute as a WAV file.
   board's. Each holder's scans open in a gallery (a click on their row, or ENTER).
 - **SHOP**: **DATA**, and what it buys. TRANSMIT sends every scan not yet sent for DATA
   (they stay in the LOG and on the leaderboard; each counts once): a wild scan is worth
-  10, and 10 more for every depth it came from; a witnessed one 40. Three upgrades:
+  10, and 10 more for every depth it came from (ten times that, if marked +); a
+  witnessed one 40. Two shelves, UPGRADES and SHIPS (left and right). Three upgrades:
   - **SCANNER DEPTH**, without end: the first depth costs 120 (twelve plain scans), each
     next one twice the last; what a scan is worth grows only by its depth, so every
     depth is harder to reach than the last.
@@ -263,11 +270,26 @@ minute as a WAV file.
     tank is large.
   - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how soon the next wild
     artifact comes once the last is behind, from 100 to 170 seconds down to 52 to 92.
-  Up and down choose, ENTER selects. Saved in this browser.
+  And the hangar: five ships, each with its portrait, its pips (speed, turn, plasma,
+  scan, room) and what is inside it. BUY takes you aboard at once; a ship bought is
+  boarded again with BOARD, whenever you like, from the Codex computer (it is the same
+  place in every ship):
+  - **SEED** (yours from the start): the survey craft, even in everything.
+  - **HERON** (400): long and pale, fast on the straight, slow to turn; a gallery with a
+    bench under the windows, a map table and two books.
+  - **MOTH** (800): round, with banded wings; turns on a leaf, a deeper tank, a quick
+    scanner; a reading nook with shelves of books, an armchair and a lamp.
+  - **KESTREL** (1,500): low, black and sharp, the fastest, with the smallest tank.
+  - **ARK** (3,000): a house that flies; slow, the deepest tank and the quickest
+    scanner; a lounge, a library of every book and a garden under lamps, lanterns under
+    its belly and a dome on its back.
+  The books are read at their shelves (E): a field guide, a scholar on the strata, a
+  pilot's log, small poems, an essay on coffee, the tales pilots tell. Each keeps its
+  page. Up and down choose, ENTER selects. Saved in this browser.
 
 Linking a wallet from LOG, BOARD or LEADERS brings you back where you were. A quiet mark
 on a tab says there is something new there: words on the board, scans not yet
-submitted, or (SHOP) scans to transmit or a depth you can buy. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
+submitted, or (SHOP) scans to transmit or something you can buy. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
 
 ### The leaderboard: how scans are checked
 
@@ -393,8 +415,9 @@ src/render/               the pipeline (opaque, fog and sky, glows, grade and di
                           materials, the geometry builder
 src/world/                terrain, trees, chunks with a floating origin, the canopy map
                           for light shafts, day, night and fog
-src/ship/                 the ship and its flight, cameras, the cabin, the Seeker, the
-                          coffee scene
+src/ship/                 the ships (their designs and hulls) and their flight, cameras,
+                          the cabins and their books, the Seeker, the coffee scene, the
+                          ships' portraits for the SHOP
 src/artifacts/            from a seed or a move to an artifact: generation, models (the
                           first families, the witnessed seeker, the auras), the newer
                           families, their shared parts, the field, the photograph; the
@@ -406,8 +429,8 @@ src/chain/                Robinhood Chain reads, the move watcher, the block clo
                           seekers' art
 src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the leaderboard
 src/core/                 math, palette, input, storage, keccak, the score, the artifacts'
-                          voices, the foley, progress (DATA and depth)
-src/ui/                   HUD, the Codex computer, menus, touch
+                          voices, the foley, progress (DATA, depth, upgrades, ships)
+src/ui/                   HUD, the Codex computer, menus, reading, touch
 assets/                   fonts, SEEKER NET art atlas and metadata, shipped moves
 vendor/                   three.js r170, noble-secp256k1
 tools/                    local server, test relay, moves snapshot, the stylesheet stamp

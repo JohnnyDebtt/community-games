@@ -103,7 +103,7 @@ export class Hud {
     el('div', 'c muted', this.card, `${entry.code} · ${entry.cls}`);
     if (entry.depth) {
       const st = stratum(entry.depth);
-      const dl = el('div', 'c deep', this.card, `DEPTH ${st.numeral} · ${st.title}`);
+      const dl = el('div', 'c deep', this.card, `DEPTH ${st.numeral}${entry.plus ? '+ · MARKED' : ''} · ${st.title}`);
       dl.style.color = hexCss(st.light);
     }
     el('div', 'c muted', this.card, 'Logged on the Codex computer, in the cabin');
@@ -224,7 +224,7 @@ export class Hud {
     if (this._toastT > 0) {
       this._toastT -= dt;
       // gone by itself, or once one is where it can be seen from
-      if (this._toastT <= 0 || this.alarmOn || ((g.mode === 'fly' || g.mode === 'seat') && !g.terminal.open && !g.menu.open)) this.hideToast();
+      if (this._toastT <= 0 || this.alarmOn || ((g.mode === 'fly' || g.mode === 'seat') && !g.terminal.open && !g.menu.open && !g.reader.open)) this.hideToast();
     }
 
     const f = g.field, t = f.target;
@@ -275,7 +275,7 @@ export class Hud {
         this.bracket.classList.toggle('lock', f.state === 'lock');
         // low in the view (a short screen held sideways), the words go above it
         this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
-        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral} · ` : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
+        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral}${t.d.plus ? '+' : ''} · ` : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;
       }
     }
@@ -287,7 +287,7 @@ export class Hud {
     this.alert.classList.toggle('crit', a < 0.12);
     this.alertText.textContent = a < 0.3 ? 'TIRED · COFFEE IN THE CABIN' : 'ALERT';
     // plasma: the meter as long as the tank is large
-    const tk = g.progress.tankSecs;
+    const tk = g.tankSecs;
     if (tk !== this._tank) { this._tank = tk; this.fuelBar.style.width = `calc(var(--u) * ${Math.round((52 * tk) / TANK[TANK.length - 1])})`; }
     const p = g.plasmaLeft ?? 1, burning = g.ship.boost > 0.05 && !g._spent;
     this.fuelFill.style.width = `${Math.round(p * 40) * 2.5}%`;

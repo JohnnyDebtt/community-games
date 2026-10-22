@@ -46,17 +46,19 @@ export class Cameras {
     const rx = Math.cos(h), rz = -Math.sin(h);
     const mode = this.auto ? 'cinematic' : this.mode;
     let want, look, lag = 3.2, roll = ship.bank * 0.35, fov = 56;
+    // a longer ship (or a wider one), a camera farther back
+    const ex = ship.H ? Math.max(0, ship.H.extra) + Math.max(0, ship.span - 8) * 0.9 : 0;
     if (mode === 'chase') {
-      const side = -ship.yawRate * 9, back = 34 + ship.boost * 9;
-      want = this._tmp.set(p.x - fx * back + rx * side, p.y + 10 + ship.boost * 2, p.z - fz * back + rz * side);
+      const side = -ship.yawRate * 9, back = 34 + ex * 0.9 + ship.boost * 9;
+      want = this._tmp.set(p.x - fx * back + rx * side, p.y + 10 + ex * 0.15 + ship.boost * 2, p.z - fz * back + rz * side);
       look = new THREE.Vector3(p.x + fx * 70, p.y + 1, p.z + fz * 70);
     } else if (mode === 'far') {
-      want = this._tmp.set(p.x - fx * 62 - rx * 18, p.y + 22, p.z - fz * 62 - rz * 18);
+      want = this._tmp.set(p.x - fx * (62 + ex) - rx * 18, p.y + 22, p.z - fz * (62 + ex) - rz * 18);
       look = new THREE.Vector3(p.x + fx * 40, p.y - 6, p.z + fz * 40);
       lag = 2.2;
       fov = 50;
     } else if (mode === 'low') {
-      want = this._tmp.set(p.x - fx * 20 + rx * 14, p.y - 5, p.z - fz * 20 + rz * 14);
+      want = this._tmp.set(p.x - fx * (20 + ex * 0.6) + rx * 14, p.y - 5, p.z - fz * (20 + ex * 0.6) + rz * 14);
       look = new THREE.Vector3(p.x + fx * 8, p.y + 1.5, p.z + fz * 8);
       lag = 4;
       roll = ship.bank * 0.6;

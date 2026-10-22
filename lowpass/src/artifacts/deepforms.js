@@ -1338,8 +1338,231 @@ function cathedral(k, P, S, art, mini) {
   return { light: new THREE.Vector3(0, y0 + Hn * 0.6, -L / 2), focus: new THREE.Vector3(0, y0 + Hn * 0.5, 0), span: Math.max(L, Wn) * 0.65, height: y0 + Hn + (P.spires && !mini ? 24 * S : 2 * S), solid: Math.max(L, Wn) * 0.55, low: 0 };
 }
 
+// ------------------------------------------------------------------ the marked ones (+)
+// The rarest of every depth, found nowhere else: a tree of light, a maelstrom in a ring,
+// a band with one side, a sponge of four hundred cubes, a whale of the under-sky.
+
+// a tree of light: a trunk of the sheen, branches dividing, crowns of light at their ends,
+// leaves of light falling, roots over the ground
+function tree(k, P, S, art, mini) {
+  const R = art.R, c = art.pal;
+  const ends = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  const branch = (p, dir, len, r, lvl) => {
+    const bend = new THREE.Vector3(R() - 0.5, 0.2, R() - 0.5).multiplyScalar(len * 0.25);
+    const q = p.clone().addScaledVector(dir, len);
+    const f = (t) => p.clone().lerp(q, t).addScaledVector(bend, Math.sin(Math.PI * t));
+    curveTube(lvl < 2 ? k.stone : k.shell, f, 6, (t) => r * (1 - t * 0.35), 6, lvl < 2 ? c.stone[2] : mixHex(c.shellLo, c.shellHi, lvl / P.levels));
+    if (lvl >= P.levels) { ends.push(q); return; }
+    const n = lvl === 0 ? P.split + 1 : P.split;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU + R() * 0.8 + lvl;
+      const tilt = 0.45 + R() * 0.35;
+      const d2 = new THREE.Vector3(Math.cos(a) * Math.sin(tilt), Math.cos(tilt), Math.sin(a) * Math.sin(tilt)).lerp(dir, 0.35).normalize();
+      branch(q, d2, len * (0.68 + R() * 0.12), r * 0.62, lvl + 1);
+    }
+  };
+  const trunk = 24 * S;
+  branch(new THREE.Vector3(0, -1 * S, 0), up, trunk, 2.6 * S, 0);
+  // the crowns: clusters of light, and lit buds
+  for (const e of ends) {
+    k.glow.ico((1.1 + R() * 0.9) * S, 1, mat(e.x, e.y, e.z), mixHex(c.light, c.second, R() * 0.6), 0.55);
+    for (let i = 0; i < 4; i++) k.lit.ico((0.35 + R() * 0.3) * S, 0, mat(e.x + (R() - 0.5) * 4 * S, e.y + (R() - 0.3) * 3 * S, e.z + (R() - 0.5) * 4 * S), [c.second, c.third, c.light, c.second][i], PULSE);
+  }
+  // the roots, over the ground and into it, veined with light
+  for (let i = 0; i < P.roots; i++) {
+    const a = (i / P.roots) * TAU + R() * 0.4, far = (14 + R() * 10) * S;
+    const f = (t) => new THREE.Vector3(Math.cos(a) * far * t, art.ground(Math.cos(a) * far * t, Math.sin(a) * far * t) + 1.2 * S * Math.sin(Math.PI * t) - t * t * 2 * S, Math.sin(a) * far * t);
+    curveTube(k.stone, f, 8, (t) => (2.0 - t * 1.6) * S, 5, c.stone[1]);
+    curveTube(k.glow, (t) => f(t).add(new THREE.Vector3(0, 0.9 * S * (1 - t), 0)), 8, 0.18 * S, 4, mixHex(c.light, 0xffffff, 0.3), 0.8);
+  }
+  // leaves of light, falling from the crowns and gone into the ground
+  const top = Math.max(...ends.map((e) => e.y)), span = Math.max(...ends.map((e) => Math.hypot(e.x, e.z))) + 4 * S;
+  const n = mini ? 0 : 70, leaves = cloud(art, k.group, n, mixHex(c.second, 0xffffff, 0.3), 1.1 * S, 1);
+  const L = Array.from({ length: n }, () => ({ e: ends[Math.floor(R() * ends.length)], t: R(), w: R() * TAU }));
+  art.updates.push((t, dt) => {
+    for (let i = 0; i < n; i++) {
+      const l = L[i];
+      l.t += dt * 0.05;
+      if (l.t > 1) { l.t -= 1; l.e = ends[Math.floor(R() * ends.length)]; }
+      const y = l.e.y - l.t * (l.e.y - 0.5);
+      leaves.pos[i * 3] = l.e.x + Math.sin(t * 0.8 + l.w + l.t * 9) * 3 * S;
+      leaves.pos[i * 3 + 1] = y;
+      leaves.pos[i * 3 + 2] = l.e.z + Math.cos(t * 0.7 + l.w + l.t * 7) * 3 * S;
+    }
+    leaves.attr.needsUpdate = true;
+  });
+  return { light: new THREE.Vector3(0, top * 0.8, 0), focus: new THREE.Vector3(0, top * 0.55, 0), span, height: top + 4 * S, solid: span * 0.8, low: 0 };
+}
+
+// a maelstrom in a ring: a standing ring, arms of light turning into its heart, motes
+// drawn in
+function vortex(k, P, S, art, mini) {
+  const R = art.R, c = art.pal;
+  const Rr = 21 * S, Hc = Rr + 7 * S;
+  const ring = k.sub(0, Hc, 0);
+  ring.shell.add(new THREE.TorusGeometry(Rr, 1.7 * S, 10, 96), null, mixHex(c.shellHi, c.light, 0.2));
+  ring.stone.add(new THREE.TorusGeometry(Rr + 2.2 * S, 0.7 * S, 6, 96), null, c.stone[2]);
+  for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU; ring.lit.box(1.2 * S, 1.2 * S, 3.6 * S, mat(Math.cos(a) * (Rr + 2.2 * S), Math.sin(a) * (Rr + 2.2 * S), 0, 0, 0, a), i % 3 ? c.second : c.light, PULSE); }
+  // two feet of stone down to the ground
+  for (const s of [-1, 1]) {
+    const a0 = new THREE.Vector3(s * Rr * 0.55, Hc - Rr * 0.83, 0), g = new THREE.Vector3(s * Rr * 0.95, art.ground(s * Rr * 0.95, 0) - 2 * S, 0);
+    curveTube(k.stone, (t) => a0.clone().lerp(g, t), 6, (t) => (2.2 + t * 1.4) * S, 6, c.stone[1]);
+  }
+  // the arms: turning about the heart
+  const arms = ring.sub();
+  for (let a = 0; a < P.arms; a++) {
+    const a0 = (a / P.arms) * TAU;
+    for (let i = 0; i < 40; i++) {
+      const u0 = i / 40, u1 = (i + 1) / 40;
+      const p = (u, w) => { const r = Rr * 0.96 * (1 - u), th = a0 + u * P.wind * TAU + w; return [Math.cos(th) * r, Math.sin(th) * r, (u - 0.5) * 2 * S]; };
+      const w = 0.16 * (1 - u0 * 0.6);
+      const col = mixHex(c.light, 0xffffff, u0 * 0.8);
+      arms.glow.quad(p(u0, -w), p(u1, -w), p(u1, w), p(u0, w), col, 0.25 + u0 * 0.7);
+    }
+  }
+  arms.glow.ico(3.2 * S, 2, null, 0xffffff, 1);
+  arms.lit.ico(1.6 * S, 1, null, c.light, PULSE);
+  for (let r = 1; r <= 3; r++) {
+    const rk = ring.sub();
+    rk.glow.add(new THREE.TorusGeometry(Rr * (0.25 + r * 0.18), 0.12 * S, 3, 64), null, [c.second, c.third, c.light][r - 1], 0.7);
+    art.updates.push((t) => { rk.group.rotation.set(Math.sin(t * 0.2 + r) * 0.4, Math.cos(t * 0.17 + r) * 0.4, t * 0.1 * (r % 2 ? 1 : -1)); });
+  }
+  // motes, drawn in along the spiral
+  const n = mini ? 0 : 90, motes = cloud(art, ring.group, n, mixHex(c.light, 0xffffff, 0.4), 0.9 * S, 1);
+  const M = Array.from({ length: n }, () => ({ u: R(), a: R() * TAU }));
+  art.updates.push((t, dt) => {
+    arms.group.rotation.z = -t * 0.35;
+    for (let i = 0; i < n; i++) {
+      const m = M[i];
+      m.u += dt * 0.08;
+      if (m.u > 1) { m.u -= 1; m.a = R() * TAU; }
+      const r = Rr * 1.1 * (1 - m.u), th = m.a - t * 0.35 + m.u * P.wind * TAU;
+      motes.pos[i * 3] = Math.cos(th) * r; motes.pos[i * 3 + 1] = Math.sin(th) * r; motes.pos[i * 3 + 2] = (1 - m.u) * Math.sin(m.a * 3) * 4 * S;
+    }
+    motes.attr.needsUpdate = true;
+  });
+  return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, Hc, 0), span: Rr * 1.15, height: Hc + Rr + 3 * S, solid: Rr * 0.5, low: 0 };
+}
+
+// a band with one side (or three half-twists): turning slowly, its edge lit, lights
+// running along it, over and under, without end
+function mobius(k, P, S, art, mini) {
+  const c = art.pal;
+  const Rb = 19 * S, Wb = 6 * S, Hc = Rb + 12 * S, h = P.twists / 2;
+  const band = k.sub(0, Hc, 0);
+  const pt = (u, v) => { const r = Rb + v * Math.cos(h * u); return [r * Math.cos(u), v * Math.sin(h * u), r * Math.sin(u)]; };
+  const N = 160, V = 4;
+  for (let i = 0; i < N; i++) for (let j = 0; j < V; j++) {
+    const u0 = (i / N) * TAU, u1 = ((i + 1) / N) * TAU, v0 = (j / V - 0.5) * 2 * Wb, v1 = ((j + 1) / V - 0.5) * 2 * Wb;
+    const col = mixHex(c.shellLo, c.shellHi, 0.5 + 0.5 * Math.sin(u0 * 3));
+    band.shell.quad(pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1), col);
+    band.shell.quad(pt(u0, v0), pt(u0, v1), pt(u1, v1), pt(u1, v0), col);
+  }
+  // its edge: one line, twice round
+  const edge = [];
+  for (let i = 0; i <= 320; i++) { const u = (i / 320) * TAU * 2; edge.push(new THREE.Vector3(...pt(u, Wb * 1.02))); }
+  band.glow.tube(edge, 0.3 * S, 4, mixHex(c.light, 0xffffff, 0.3), 1);
+  // lights running along its middle
+  const n = mini ? 0 : 24, runners = cloud(art, band.group, n, mixHex(c.second, 0xffffff, 0.35), 2.2 * S, 1);
+  band.lit.ico(2.4 * S, 1, mat(0, 0, 0), c.light, PULSE);
+  art.updates.push((t) => {
+    band.group.rotation.set(0.35 + Math.sin(t * 0.13) * 0.15, t * 0.06, Math.sin(t * 0.1) * 0.12);
+    for (let i = 0; i < n; i++) {
+      const u = t * 0.25 + (i / n) * TAU * 2, p = pt(u, Math.sin(u * 3 + i) * Wb * 0.4);
+      runners.pos.set([p[0], p[1] + 0.6 * S, p[2]], i * 3);
+    }
+    runners.attr.needsUpdate = true;
+  });
+  return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, Hc, 0), span: Rb + Wb, height: Hc + Rb * 0.7, solid: Rb + Wb, low: Hc - Rb * 0.7 };
+}
+
+// a sponge of cubes: a cube cut into twenty-seven and the middles taken away, twice; a
+// light inside it; its twenty blocks breathing apart and back
+function menger(k, P, S, art, mini) {
+  const c = art.pal;
+  const E = 30 * S, e = E / 9, Hc = E * 0.9 + 6 * S;
+  const holder = k.sub(0, Hc, 0);
+  holder.group.rotation.set(Math.atan(1 / Math.SQRT2), 0, Math.PI / 4);
+  const keep = (x, y, z) => [x, y, z].filter((v) => v === 1).length < 2;
+  const blocks = [];
+  for (let X = 0; X < 3; X++) for (let Y = 0; Y < 3; Y++) for (let Z = 0; Z < 3; Z++) {
+    if (!keep(X, Y, Z)) continue;
+    const base = new THREE.Vector3((X - 1) * 3 * e, (Y - 1) * 3 * e, (Z - 1) * 3 * e);
+    const bk = holder.sub(base.x, base.y, base.z);
+    for (let x = 0; x < 3; x++) for (let y = 0; y < 3; y++) for (let z = 0; z < 3; z++) {
+      if (!keep(x, y, z)) continue;
+      // the corners of the corners lit; the rest the sheen, paler going up
+      const lit = [x, y, z, X, Y, Z].every((v) => v !== 1) && (x + y + z + X + Y + Z) % 4 === 0;
+      const col = mixHex(c.shellLo, c.shellHi, 0.25 + 0.6 * ((y + Y * 3) / 8));
+      if (lit) bk.lit.box(e * 0.86, e * 0.86, e * 0.86, mat((x - 1) * e, (y - 1) * e, (z - 1) * e), c.second, PULSE);
+      else bk.shell.box(e * 0.88, e * 0.88, e * 0.88, mat((x - 1) * e, (y - 1) * e, (z - 1) * e), col);
+    }
+    blocks.push({ bk, base, ph: (X + Y * 3 + Z * 9) * 0.7 });
+  }
+  holder.glow.ico(E * 0.22, 2, null, mixHex(c.light, 0xffffff, 0.4), 1);
+  art.updates.push((t) => {
+    holder.group.rotation.y = t * 0.05;
+    const b = 0.06 + 0.06 * Math.sin(t * 0.45);
+    for (const B of blocks) B.bk.group.position.copy(B.base).multiplyScalar(1 + b * (0.6 + 0.4 * Math.sin(t * 0.3 + B.ph)));
+  });
+  const half = E * 0.87;
+  return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, Hc, 0), span: half, height: Hc + half, solid: half, low: Hc - half };
+}
+
+// a whale of the under-sky: swimming slow circles over the trees, its flukes beating
+function whale(k, P, S, art, mini) {
+  const R = art.R, c = art.pal;
+  const N = 44, Lw = 34 * S, Rp = 30 * S, Hc = 34 * S;
+  const body = liveTube(k, art, N, 9, (u) => (u > 0.06 && u < 0.6 && Math.floor(u * 40) % 5 === 0 ? mixHex(c.shellHi, c.light, 0.3) : mixHex(c.shellLo, c.shellHi, 0.35 + u * 0.4)));
+  // a blunt head, broadest a quarter of the way back, tapering to the flukes
+  const radius = (u) => S * (0.3 + 4.8 * (u < 0.25 ? 0.62 + 0.38 * Math.sin((u / 0.25) * (Math.PI / 2)) : Math.pow(1 - (u - 0.25) / 0.75, 1.1)));
+  const flukes = k.sub(), fins = k.sub();
+  for (const s of [-1, 1]) {
+    flukes.shell.add(new THREE.ConeGeometry(2.4 * S, 9 * S, 4), mat(s * 4.2 * S, 0, -1.6 * S, 0, 0, s * (Math.PI / 2 + 0.25), 0.22, 1, 1), c.shellHi);
+    fins.shell.add(new THREE.ConeGeometry(1.6 * S, 8 * S, 4), mat(s * 5.6 * S, -1.6 * S, 0, 0.5, 0, s * (Math.PI / 2 + 0.5), 0.25, 1, 1), c.shellHi);
+  }
+  flukes.glow.ico(0.9 * S, 0, mat(0, 0, -2 * S), mixHex(c.light, 0xffffff, 0.4), 0.8);
+  const eyes = k.sub();
+  for (const s of [-1, 1]) eyes.lit.ico(0.5 * S, 0, mat(s * 3.6 * S, 0.5 * S, 0), mixHex(c.light, 0xffffff, 0.5), PULSE);
+  // a trail of motes, and the lights along its flanks
+  const n = mini ? 0 : 60, trail = cloud(art, k.group, n, mixHex(c.light, 0xffffff, 0.3), 1.1 * S, 1);
+  const T = new Float32Array(n * 3);
+  let head = 0;
+  const path = (u, t) => {
+    const ph = t * P.speed - u * (Lw / Rp);
+    return new THREE.Vector3(Math.cos(ph) * Rp, Hc + Math.sin(t * 0.3) * 3 * S + Math.sin(ph * 2 - u * 6 + t * 1.2) * 1.6 * S * u, Math.sin(ph) * Rp);
+  };
+  const q = new THREE.Vector3(), place = (g, u, t, off = 0) => {
+    const p = path(u, t), p2 = path(u + 0.02, t);
+    q.subVectors(p, p2);
+    g.group.position.copy(p);
+    g.group.rotation.set(-Math.atan2(q.y, Math.hypot(q.x, q.z)) + off, Math.atan2(q.x, q.z), 0, 'YXZ');
+  };
+  let acc = 0;
+  const p0 = path(1, 0);
+  for (let i = 0; i < n; i++) T.set([p0.x, p0.y, p0.z], i * 3);
+  art.updates.push((t, dt) => {
+    for (let i = 0; i < N; i++) { const u = i / (N - 1); body.set(i, path(u, t), radius(u)); }
+    body.commit();
+    place(flukes, 1, t, Math.sin(t * 1.2) * 0.35);
+    place(fins, 0.22, t, 0);
+    place(eyes, 0.06, t, 0);
+    acc += dt;
+    if (acc > 0.08 && n) {
+      acc = 0;
+      const p = path(1, t);
+      T.set([p.x, p.y, p.z], head * 3);
+      head = (head + 1) % n;
+      for (let i = 0; i < n; i++) trail.pos.set([T[i * 3], T[i * 3 + 1] - ((head - i + n) % n) * 0.05 * S, T[i * 3 + 2]], i * 3);
+      trail.attr.needsUpdate = true;
+    }
+  });
+  return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, Hc, 0), span: Rp + 6 * S, height: Hc + 8 * S, solid: Rp + 6 * S, low: Hc - 8 * S };
+}
+
 const FORMS = { corolla, spine, nest, armillary, choir, geode, bloom, knot, nautilus, archipelago, murmuration, medusa, sun, watcher,
-  spire, temple, halo, loom, storm, serpent, cathedral };
+  spire, temple, halo, loom, storm, serpent, cathedral, tree, vortex, mobius, menger, whale };
 
 // ------------------------------------------------------------------ ornaments
 const ORN = {

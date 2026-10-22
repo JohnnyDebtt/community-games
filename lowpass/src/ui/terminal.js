@@ -7,8 +7,10 @@ import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
 import { formatInt, formatNum, clamp } from '../core/math.js';
+import { SHIPS, pips } from '../ship/designs.js';
+import { portrait } from '../ship/portrait.js';
 
-// The Codex computer. Four tabs:
+// The Codex computer. Five tabs:
 //   LOG      what you have recorded: each photograph, its name, where it came from, the
 //            Codex's notes; share it to the board.
 //   BOARD    the seekers' board on Nostr: scans and words from holders, readable by all.
@@ -17,7 +19,8 @@ import { formatInt, formatNum, clamp } from '../core/math.js';
 //   LEADERS  the holders who submitted their scans, witnessed ones first (ranks.js), each
 //            with a gallery of what they recorded; and your own submission.
 //   SHOP     DATA: transmit your scans for it (they stay in the Codex), and spend it on
-//            the scanner's depth, the plasma tank and the signal gain (progress.js).
+//            the scanner's depth, the plasma tank and the signal gain (progress.js), or
+//            on ships (designs.js), boarded from here.
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
@@ -174,7 +177,7 @@ export class Terminal {
     if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
     else if (this.tab !== 'board' && this.tab !== 'shop') k('←→', 'choose');
     if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
-    if (this.tab === 'shop') { k('↑↓', 'choose'); k('ENTER', 'select'); }
+    if (this.tab === 'shop') { k('←→', 'upgrades, ships'); k('↑↓', 'choose'); k('ENTER', 'select'); }
     k('ESC', this.tab === 'ranks' && this.gallery ? 'back' : 'close');
     this._dots();
   }
@@ -200,7 +203,7 @@ export class Terminal {
       img.src = e.photo;
       img.alt = e.name;
       if (e.special) el('span', 'wtag', w, 'WITNESSED');
-      else if (e.depth) { const tg = el('span', 'wtag', w, `DEPTH ${stratum(e.depth).numeral}`); tg.style.color = depthColor(e.depth); w.style.borderColor = depthColor(e.depth); }
+      else if (e.depth) { const tg = el('span', 'wtag', w, `DEPTH ${stratum(e.depth).numeral}${e.plus ? '+' : ''}`); tg.style.color = depthColor(e.depth); w.style.borderColor = depthColor(e.depth); }
       w.onclick = () => { this.sel = i; this.render(); this.game.audio.play('ui', { h: 24 }); };
     });
     const e = list[this.sel];
@@ -214,7 +217,7 @@ export class Terminal {
     const row = (k, v, cls) => { const r = el('div', 'row', o); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
     if (e.kind === 'wild') {
       row('ORIGIN', e.mountain ? 'WILD · on the mountain · found by this ship alone' : 'WILD · found by this ship alone');
-      if (e.depth) row('DEPTH', `${stratum(e.depth).numeral} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
+      if (e.depth) row('DEPTH', `${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');
     } else {
       if (e.special) row('WITNESSED', 'a seeker moved while you flew: every ship flying then met this one', 'gold');
@@ -304,12 +307,14 @@ export class Terminal {
   }
 
   // ---------------------------------------------------------------- SHOP
-  // As few words as it can: DATA and the scans to send, then the three upgrades: how deep
-  // the scanner reaches (its stratum's name; no last one), the plasma tank and the signal
-  // gain (a pip for each level, five of each), each with what its next step costs.
+  // As few words as it can: DATA and the scans to send, then two shelves. UPGRADES: how
+  // deep the scanner reaches (its stratum's name; no last one), the plasma tank and the
+  // signal gain (a pip for each level), each with what its next step costs. SHIPS: the
+  // hangar, each ship's portrait, its pips, what is inside it, and BUY, BOARD or ABOARD.
   _shopItems() {
     const g = this.game;
-    return [...(g.codex.some((e) => !e.sent) ? ['send'] : []), 'depth', 'tank', 'gain'];
+    const shelf = this.shelf === 'ships' ? SHIPS.map((d) => d.id) : ['depth', 'tank', 'gain'];
+    return [...(g.codex.some((e) => !e.sent) ? ['send'] : []), ...shelf];
   }
 
   _shop() {
@@ -317,7 +322,7 @@ export class Terminal {
     const items = this._shopItems();
     this.shopSel = clamp(this.shopSel || 0, 0, items.length - 1);
     const sel = items[this.shopSel];
-    const wrap = el('div', 'shop', this.body);
+    const wrap = el('div', 'shop' + (this.shelf === 'ships' ? ' wide' : ''), this.body);
     const top = el('div', 'shoptop', wrap);
     const bal = el('div', 'bal', top);
     el('span', 'muted', bal, 'DATA');
@@ -329,6 +334,13 @@ export class Terminal {
       b.onclick = () => this._transmit();
       el('span', 'fine', sendBox, 'scans stay in your log');
     }
+    // the two shelves
+    const sw = el('div', 'shelves', wrap);
+    for (const [k, label] of [['upgrades', 'UPGRADES'], ['ships', 'SHIPS']]) {
+      const c = el('button', 'chip' + ((this.shelf || 'upgrades') === k ? ' sel' : ''), sw, label);
+      c.onclick = () => this._shelf(k);
+    }
+    if (this.shelf === 'ships') { this._ships(wrap, sel); return; }
     const card = (kind, name, verb) => {
       const c = el('div', 'upg' + (sel === kind ? ' sel' : ''), wrap);
       const head = el('div', 'uhead', c);
@@ -354,16 +366,75 @@ export class Terminal {
     card('gain', 'SIGNAL GAIN', 'UPGRADE');
   }
 
-  // up and down choose, ENTER does it
+  // the hangar: a card for each ship
+  _ships(wrap, sel) {
+    const g = this.game, pr = g.progress;
+    const list = el('div', 'hangar', wrap);
+    for (const d of SHIPS) {
+      const own = pr.owns(d.id), here = pr.ship === d.id;
+      const c = el('div', 'shipc' + (sel === d.id ? ' sel' : '') + (here ? ' here' : ''), list);
+      c.style.setProperty('--core', hexCss(d.look.core));
+      const img = el('img', 'sport', c);
+      img.src = portrait(d);
+      img.alt = d.name;
+      const info = el('div', 'sinfo', c);
+      const head = el('div', 'uhead', info);
+      el('div', 'uname', head, d.name);
+      if (here) el('div', 'stag', head, 'ABOARD');
+      el('div', 'sline', info, d.line);
+      const stats = el('div', 'sstats', info);
+      for (const [k, v] of Object.entries(pips(d))) {
+        const r = el('div', 'srow', stats);
+        el('span', 'muted', r, k);
+        const pp = el('span', 'pips', r);
+        for (let i = 0; i < 5; i++) el('i', i < v ? 'on' : '', pp);
+      }
+      el('div', 'sin muted', info, d.inside);
+      const row = el('div', 'ubuy', info);
+      const b = el('button', 'btn', row, here ? 'ABOARD' : own ? 'BOARD' : `BUY · ${formatInt(d.price)}`);
+      b.disabled = here || (!own && !pr.canShip(d.id));
+      b.onclick = () => this._ship(d.id);
+      if (!own && !pr.canShip(d.id)) el('span', 'fine', row, `${formatInt(Math.max(0, d.price - pr.data))} more DATA`);
+      if (this._shopMsg && this._shopMsg.kind === d.id) { el('div', 'msg', info, this._shopMsg.text).style.color = 'var(--core)'; this._shopMsg = null; }
+      if (sel === d.id && this._scrollTo) { const cc = c; requestAnimationFrame(() => cc.scrollIntoView({ block: 'nearest' })); }
+    }
+    this._scrollTo = false;
+  }
+
+  _shelf(k) {
+    if ((this.shelf || 'upgrades') === k) return;
+    this.shelf = k;
+    this.shopSel = this.game.codex.some((e) => !e.sent) ? 1 : 0;
+    if (k === 'ships') { const i = SHIPS.findIndex((d) => d.id === this.game.progress.ship); this.shopSel += Math.max(0, i); this._scrollTo = true; }
+    this.game.audio.play('ui', { h: 27 });
+    this.render();
+  }
+
+  // buy a ship (and go aboard it at once), or board one already bought
+  _ship(id) {
+    const g = this.game, pr = g.progress, d = SHIPS.find((x) => x.id === id);
+    if (pr.ship === id) return;
+    if (!pr.owns(id)) {
+      if (!pr.buyShip(id)) { g.audio.play('error'); return; }
+      g.audio.play('buy', {});
+    } else g.audio.play('ui', { h: 30 });
+    g.board(id);
+    this._shopMsg = { kind: id, text: `You are aboard the ${d.name}.` };
+    this.render();
+  }
+
+  // up and down choose, left and right change the shelf, ENTER does it
   _shopKeys(input) {
+    if (input.hit('ArrowLeft', 'KeyA', 'Pad14')) { this._shelf('upgrades'); return; }
+    if (input.hit('ArrowRight', 'KeyD', 'Pad15')) { this._shelf('ships'); return; }
     const items = this._shopItems();
     let d = 0;
     if (input.hit('ArrowDown', 'KeyS')) d = 1;
     if (input.hit('ArrowUp', 'KeyW')) d = -1;
-    if (d) { this.shopSel = clamp((this.shopSel || 0) + d, 0, items.length - 1); this.game.audio.play('ui', { h: 24 }); this.render(); }
+    if (d) { this.shopSel = clamp((this.shopSel || 0) + d, 0, items.length - 1); this._scrollTo = true; this.game.audio.play('ui', { h: 24 }); this.render(); }
     if (input.hit('Enter', 'Space', 'Pad0')) {
       const it = items[clamp(this.shopSel || 0, 0, items.length - 1)];
-      if (it === 'send') this._transmit(); else this._buy(it);
+      if (it === 'send') this._transmit(); else if (this.shelf === 'ships') this._ship(it); else this._buy(it);
     }
   }
 
@@ -535,7 +606,7 @@ export class Terminal {
         }
         const t = el('div', 'ptext', row);
         el('div', 'name', t, p.scan.name || 'An artifact');
-        el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? `${p.scan.depth ? ` · DEPTH ${stratum(p.scan.depth).numeral}` : ''} · WILD, FOUND BY ONE SHIP` : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
+        el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? `${p.scan.depth ? ` · DEPTH ${stratum(p.scan.depth).numeral}${p.scan.plus ? '+' : ''}` : ''} · WILD, FOUND BY ONE SHIP` : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
         if (p.note) el('div', '', t, p.note);
         const known = this.game.codex.find((e) => (e.hash || e.tx) === p.scan.tx && (e.kind === 'wild' || !p.scan.tokens.length || e.lead === p.scan.tokens[0]));
         if (known) el('div', 'pos', t, 'You recorded this one too.');

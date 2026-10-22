@@ -44,7 +44,7 @@ export class TouchControls {
     const g = this.game, input = g.input, t = input.touch, m = g.mode;
     this.root.classList.toggle('on', input.touchMode);
     if (!input.touchMode) return;
-    const overlay = g.terminal.open || g.menu.open;
+    const overlay = g.terminal.open || g.menu.open || g.reader.open;
     this.root.classList.toggle('hide', m === 'title' || m === 'coffee' || overlay);
     const flying = m === 'fly' || m === 'seat';
     const show = (b, on) => b.classList.toggle('off', !on);

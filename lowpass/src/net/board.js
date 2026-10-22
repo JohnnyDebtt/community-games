@@ -277,7 +277,8 @@ export class Board {
     if (post.type === 'scan') {
       const s = tag(ev, 'lp-scan');
       if (!s || !/^0x[0-9a-f]{64}$/i.test(s[1] || '')) return;
-      post.scan = { tx: s[1].toLowerCase(), block: Number(s[2]) || null, tokens: String(s[3] || '').split(',').map(Number).filter((n) => n >= 1 && n <= 2222).slice(0, 40), name: String(s[4] || '').slice(0, 60), code: String(s[5] || '').slice(0, 12), family: String(s[6] || '').slice(0, 12), kind: s[7] === 'wild' ? 'wild' : s[7] === 'witnessed' ? 'witnessed' : 'move', depth: Math.max(0, Math.min(999, parseInt(s[8], 10) || 0)) };
+      post.scan = { tx: s[1].toLowerCase(), block: Number(s[2]) || null, tokens: String(s[3] || '').split(',').map(Number).filter((n) => n >= 1 && n <= 2222).slice(0, 40), name: String(s[4] || '').slice(0, 60), code: String(s[5] || '').slice(0, 14), family: String(s[6] || '').slice(0, 12), kind: s[7] === 'wild' ? 'wild' : s[7] === 'witnessed' ? 'witnessed' : 'move', depth: Math.max(0, Math.min(999, parseInt(s[8], 10) || 0)) };
+      post.scan.plus = /^D\d+\+/.test(post.scan.code);
       if (post.scan.kind === 'wild') post.scan.tokens = [];
       const ph = tag(ev, 'lp-photo');
       if (ph && typeof ph[1] === 'string' && ph[1].length <= MAX_PHOTO && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(ph[1])) post.photo = ph[1];

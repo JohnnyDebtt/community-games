@@ -5,6 +5,7 @@ import { World } from './world/chunks.js';
 import { autumn, mountain, mountainEnv } from './world/terrain.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { Ship } from './ship/ship.js';
+import { shipById } from './ship/designs.js';
 import { Interior } from './ship/interior.js';
 import { Seeker } from './ship/seeker.js';
 import { CoffeeScene } from './ship/coffee.js';
@@ -14,7 +15,7 @@ import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp } from './core/math.js';
-import { Progress, rollDepth, REFILL } from './core/progress.js';
+import { Progress, rollDepth, REFILL, PLUS } from './core/progress.js';
 import { stratum } from './artifacts/strata.js';
 import { Chain } from './chain/chain.js';
 import { MoveWatcher } from './chain/moves.js';
@@ -28,6 +29,7 @@ import { Terminal } from './ui/terminal.js';
 import { Menu, Title } from './ui/menu.js';
 import { TouchControls } from './ui/touch.js';
 import { Tips } from './ui/tips.js';
+import { Reader } from './ui/reader.js';
 import { Companion } from './companion/companion.js';
 import { Boot } from './ui/boot.js';
 
@@ -60,13 +62,15 @@ export class Game {
     this.world = new World(this.scene);
     FOG.tCanopy.value = this.world.canopy.texture;
     this.atmo = new Atmosphere();
-    this.ship = new Ship(this.scene, this.world);
+    this.progress = new Progress();     // DATA, depth, upgrades, ships
+    this.ship = new Ship(this.scene, this.world, shipById(this.progress.ship));
     this.interior = new Interior(this.ship);
     this.seeker = new Seeker(this.interior.group);
     this.cams = new Cameras(this.px.width / this.px.height);
     this.input = new Input(canvas);
     this.audio = new Audio();
     this.plasma = new Plasma(this.scene);
+    this.plasma.setColors(...this.ship.design.look.plasma);
     this._back = new THREE.Vector3();
     this._autumn = 0;           // how turned the stand about the eye is, eased
     this._autumnSaid = false;
@@ -90,6 +94,7 @@ export class Game {
     this.hud.onAlarm = () => this.goOutside();
     this.tips = new Tips(this);
     this.terminal = new Terminal(this);
+    this.reader = new Reader(this);
     this.menu = new Menu(this);
     this.title = new Title(this);
     this.touch = new TouchControls(this);
@@ -142,7 +147,6 @@ export class Game {
     const s = load('state', {});
     this.alertness = s.alertness ?? 0.6;
     this.plasmaLeft = s.plasma ?? 1;    // the boost's plasma, 0..1
-    this.progress = new Progress();     // DATA, and how deep the scanner reaches
     this._spent = false;
     this.warm = 0;
     this.stats_ = s.stats || { cups: 0, scans: 0, distance: 0 };
@@ -200,6 +204,20 @@ export class Game {
     save('settings', st);
   }
 
+  // seconds of a full boost: the upgraded tank, as large as this ship carries
+  get tankSecs() { return this.progress.tankSecs * this.ship.design.fly.tank; }
+
+  // go aboard another ship one owns: it is built around whoever stands in the galley
+  board(id) {
+    if (!this.progress.board(id)) return false;
+    const d = shipById(id);
+    this.ship.setDesign(d);
+    this.interior.setDesign(d);
+    this.plasma.setColors(...d.look.plasma);
+    this.cams._cut = true;
+    return true;
+  }
+
   _save() {
     save('state', { alertness: this.alertness, plasma: this.plasmaLeft, x: this.ship.x, z: this.ship.z, heading: this.ship.heading, stats: this.stats_ });
   }
@@ -240,6 +258,7 @@ export class Game {
   goOutside() {
     if (this.menu.open) this.menu.hide();
     if (this.terminal.open) this.terminal.hide();
+    if (this.reader.open) this.reader.hide();
     if (this.mode === 'coffee') this.coffee.finish();
     if (this.mode === 'walk') this.exitCabin();
   }
@@ -322,15 +341,16 @@ export class Game {
       // anywhere aboard the cabin calls; away from the ship's view (on foot, at the Codex,
       // over coffee) the alert says it too, where it cannot be missed (the HUD's alarm)
       if (this._aboard()) this.audio.play('alarm');
-      if (this.mode !== 'fly' && this.mode !== 'seat' || this.terminal.open || this.menu.open) this.buzz([30, 90, 30, 90, 60]);
+      if (this.mode !== 'fly' && this.mode !== 'seat' || this.terminal.open || this.menu.open || this.reader.open) this.buzz([30, 90, 30, 90, 60]);
       else this.hud.say(title, `${who} moved ${a.move.time ? agoShort(a.move.time) : 'just now'}; every ship flying now sees ${ids.length > 1 ? 'them' : 'it'}`, 8);
     } else if (a.d.depth) {
       // something from below the surface: its own call, and always a word
       const d = a.d, st = stratum(d.depth);
-      const title = `DEPTH ${st.numeral} · ${d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
+      const title = `DEPTH ${st.numeral}${d.plus ? '+' : ''} · ${d.plus ? 'MARKED' : d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
       const where = d.mountain ? 'on the mountain ahead' : 'rising out of the fog';
-      const sub = d.glimpse ? `Deeper than your scanner reaches: ${d.cls.toLowerCase()}, ${where}` : `From ${st.title}: ${d.cls.toLowerCase()}, ${where}`;
-      this.audio.play('deep', { depth: d.depth, chord: d.params.voice.chord, glimpse: d.glimpse, pan: clamp(-(a.bearing || 0), -1, 1) });
+      const sub = d.plus ? `The rarest of ${st.title}: ${d.cls.toLowerCase()}, ${where}` : d.glimpse ? `Deeper than your scanner reaches: ${d.cls.toLowerCase()}, ${where}` : `From ${st.title}: ${d.cls.toLowerCase()}, ${where}`;
+      this.audio.play('deep', { depth: d.depth, chord: d.params.voice.chord, glimpse: d.glimpse || d.plus, pan: clamp(-(a.bearing || 0), -1, 1) });
+      if (d.plus) this.atmo.networkPulse(0.8);
       if (this._aboard()) {
         this.audio.play('chime');
         if (this.mode === 'seat' && !this.menu.open) this.hud.say(title, sub, 5);
@@ -404,6 +424,7 @@ export class Game {
       block: d.block, time: a.move.time || null, scannedAt: Date.now(), clock: this.atmo.clockString(), photo,
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
       ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
+      ...(d.plus ? { plus: true } : {}),
       ...(d.mountain ? { mountain: true } : {}),
     };
     if (d.depth) this.progress.met(d.depth);
@@ -452,7 +473,7 @@ export class Game {
     const input = this.input;
     input.pollPad();
     input.mode = this.mode;
-    const overlay = this.terminal.open || this.menu.open;
+    const overlay = this.terminal.open || this.menu.open || this.reader.open;
     if (this.paused) dt = 0;
     this.time += dt;
     // the beat follows the score's clock when there is one
@@ -487,6 +508,7 @@ export class Game {
       else if (input.hit('KeyR')) this.saveSound();
     } else {
       if (this.terminal.open) this.terminal.keys(input);
+      else if (this.reader.open) this.reader.keys(input);
       else this.menu.keys(input);
     }
     this.terminal.update(dt);
@@ -507,7 +529,7 @@ export class Game {
     if (boosting) { this._boosted = (this._boosted || 0) + dt; if (this._boosted > 1) this.tips.learn('boost'); }
     this._alertness(dt);
     this.ship.update(dt, steer, boosting);
-    const tank = this.progress.tankSecs;
+    const tank = this.tankSecs;
     if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - (dt * this.ship.boost) / tank);
     else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * REFILL) / tank);
     const [fx, fz] = this.ship.forward();
@@ -531,10 +553,12 @@ export class Game {
       this._spawning = true;
       // a wild one comes from as deep as the scanner's reach decides (progress.js)
       const depth = rollDepth(this.progress.depth);
+      // and now and then, one of the marked: the rarest a depth holds
+      const plus = depth >= 1 && Math.random() < PLUS;
       // where it would rise is on a mountain: it is one of the mountains' own
       const [fx0, fz0] = this.ship.forward(), sd = this.field.spawnDistance();
       const onMountain = mountainEnv(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
-      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain })).finally(() => { this._spawning = false; });
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, plus })).finally(() => { this._spawning = false; });
       const [g0, g1] = this.progress.gap;
       this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
     }
@@ -701,6 +725,7 @@ export class Game {
     if (s.id === 'coffee') this.startCoffee();
     else if (s.id === 'codex') { this.terminal.show(); this.tips.learn('codex'); }
     else if (s.id === 'companion') this.companion.talk();
+    else if (s.id === 'books') this.reader.show(this.ship.design.cabin.books);
     else if (s.id === 'seat') { this.mode = 'seat'; this.lookOff.yaw = 0; this.lookOff.pitch = 0; this.audio.play('ui', { h: 16 }); }
   }
 
@@ -813,12 +838,14 @@ export class Game {
         return tx;
       },
       clear: () => { for (const a of [...this.field.active]) this.field.remove(a); },
+      // aboard a ship of the hangar, as if bought
+      ship: (id) => { if (!this.progress.owns(id)) this.progress.ships.push(id); this.board(id); return this.ship.design.name; },
       inspect: (a, dist = null, height = null, ang = null) => { this._inspect = a ? { a, dist, height, ang } : null; },
       // a deep one: of a depth, and a form if asked (orbited, like look); mountain: one of
       // the mountains' own (a surface one too, depth 0, family named as form)
-      deep: async (depth = 1, form = null, ahead = 700, mountain = false) => {
+      deep: async (depth = 1, form = null, ahead = 700, mountain = false, plus = false) => {
         for (const a of [...this.field.active]) this.field.remove(a);
-        const a = depth > 0 ? await this.field.spawnWild({ depth, form, ahead, lateral: 0, mountain }) : await this.field.spawnWild({ ahead, lateral: 0, mountain: true, family: form || undefined });
+        const a = depth > 0 ? await this.field.spawnWild({ depth, form, ahead, lateral: 0, mountain, plus }) : await this.field.spawnWild({ ahead, lateral: 0, mountain: true, family: form || undefined });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, form: a.d.form, notes: a.d.notes, params: a.d.params };
       },

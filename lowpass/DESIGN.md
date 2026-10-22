@@ -92,6 +92,23 @@ each, priced so that one or two come early, before the first depth, and the last
 after a few depths. Witnessed seekers are the network's, and stay exactly
 as they are.
 
+The marked ones (+) are the jackpot inside every depth: one deep find in fifty, ten times
+the DATA, a form no other find has (five of them, three from the first depth, more
+deeper), a quarter larger, always under a column and a ring of light, with two more
+layers to their voice. They change nothing about the climb (a depth costs what it did),
+but they make every flight at any depth a lottery worth flying. On a mountain the
+mountains' rule holds: a marked one there is a mountain form, crowned and courted.
+
+Ships are what DATA buys once the upgrades are done, and they are sideways, not up:
+each trades one thing for another (the Kestrel's speed for its tank, the Ark's room and
+scanner for its speed), so none is simply the best, and boarding another is free once
+bought. Each is the Seed's hull changed (stretched at the nose and tail, rounder or
+squarer, longer by whole three-meter bays between the galley and the bunk), so the
+cockpit, the coffee and the Codex computer stand in the same place in every ship, and
+the coffee scene, the seeker aboard and the walking all work unchanged; the bays are
+where a larger ship keeps its rooms. The books are short and of the fog belt, there to
+be read slowly while the ship flies on.
+
 What grows below is built to be worth the climb. A depth is a stratum: three colors, a
 dark, and a sheen that runs over every shell by angle and place (and, deeper, in time),
 with veins of light wandering through it; drawn by hand for the first eight, made from

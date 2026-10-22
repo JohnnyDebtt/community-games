@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "178d053b"; }
+:root { --build: "54ff81b7"; }
 
 :root {
   --u: 3px;
@@ -295,6 +295,22 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 .term .ubuy { display: flex; align-items: center; gap: calc(var(--u) * 3) calc(var(--u) * 5); flex-wrap: wrap; }
 .term .ubar { flex: 1 1 calc(var(--u) * 60); height: calc(var(--u) * 4); background: rgba(11, 13, 19, 0.75); border: var(--u) solid var(--line); position: relative; clip-path: var(--cut1); }
 .term .ubar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc); }
+.term .shop.wide { max-width: calc(var(--u) * 300); overflow: hidden; }
+.term .shelves { display: flex; gap: calc(var(--u) * 3); flex: none; }
+.term .hangar { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 4); padding-right: calc(var(--u) * 2); }
+.term .shop.wide .shoptop { flex: none; }
+html.touchmode .term .hangar { touch-action: pan-y; }
+.term .shipc { display: grid; grid-template-columns: calc(var(--u) * 110) minmax(0, 1fr); gap: calc(var(--u) * 3) calc(var(--u) * 7); align-items: center; border: var(--u) solid var(--line); padding: calc(var(--u) * 4) calc(var(--u) * 5); clip-path: var(--cut1); background: rgba(18, 21, 29, 0.6); }
+.term .shipc.sel { border-color: var(--acc); }
+.term .shipc .sport { width: 100%; image-rendering: pixelated; display: block; filter: drop-shadow(0 0 calc(var(--u) * 3) color-mix(in srgb, var(--core) 25%, transparent)); }
+.term .shipc .sinfo { display: flex; flex-direction: column; gap: calc(var(--u) * 2); min-width: 0; }
+.term .shipc .stag { color: var(--core); }
+.term .shipc .sline { color: #c7cbc0; }
+.term .shipc .sstats { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 56), 1fr)); gap: 0 calc(var(--u) * 8); }
+.term .shipc .srow { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 3); }
+.term .shipc .pips i { width: calc(var(--u) * 3); height: calc(var(--u) * 3); }
+.term .shipc .pips i.on { background: var(--core); border-color: var(--core); }
+@media (max-width: 700px), (orientation: portrait) { .term .shipc { grid-template-columns: minmax(0, 1fr); } .term .shipc .sport { max-width: calc(var(--u) * 150); } }
 .term .rsubmit { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--u) * 2) calc(var(--u) * 4); padding-top: calc(var(--u) * 3); border-top: var(--u) solid var(--line); }
 .term .rsubmit > .muted:first-child { flex: 1 1 calc(var(--u) * 120); }
 .term .rsubmit .msg { flex-basis: 100%; }
@@ -351,6 +367,25 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 .menu .mtext p { margin: 0 0 calc(var(--u) * 3); }
 .menu .krow { display: grid; grid-template-columns: calc(var(--u) * 70) 1fr; gap: calc(var(--u) * 4); }
 .menu .krow .kk { color: var(--text); }
+
+/* ---------------------------------------------------------------- reading */
+.reader { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(4, 6, 10, 0.5); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+.reader.on { opacity: 1; pointer-events: auto; }
+.reader .rpanel { width: min(94vw, calc(var(--u) * 230)); max-height: 92vh; display: flex; flex-direction: column; gap: calc(var(--u) * 4); padding: calc(var(--u) * 6) calc(var(--u) * 9); background: rgba(16, 13, 11, 0.95); border: var(--u) solid #6b6258; clip-path: var(--cut2); }
+.reader .rhead { display: flex; align-items: center; gap: calc(var(--u) * 5); border-bottom: var(--u) solid #3a332c; padding-bottom: calc(var(--u) * 2); }
+.reader .rtitle { flex: 1; color: var(--gold); letter-spacing: var(--u); }
+.reader .rclose, .reader .rback { color: var(--muted); }
+.reader .rshelf { display: flex; flex-direction: column; gap: calc(var(--u) * 2); overflow-y: auto; }
+.reader .rbook { display: flex; align-items: center; gap: calc(var(--u) * 4); text-align: left; padding: calc(var(--u) * 2) calc(var(--u) * 3); border: var(--u) solid transparent; color: var(--text); }
+.reader .rbook.sel { border-color: #6b6258; background: rgba(185, 168, 123, 0.08); }
+.reader .rbook .spine { flex: none; width: calc(var(--u) * 5); height: calc(var(--u) * 20); box-shadow: inset calc(var(--u) * -1) 0 0 rgba(0, 0, 0, 0.35), inset 0 calc(var(--u) * 3) 0 rgba(255, 255, 255, 0.12); }
+.reader .rbt { display: flex; flex-direction: column; }
+.reader .rpage { min-height: calc(var(--u) * 70); overflow-y: auto; color: #e9e2d0; line-height: calc(var(--u) * 14); }
+.reader .rpage p { margin: 0; white-space: pre-line; }
+.reader .rby { margin-bottom: calc(var(--u) * 4); }
+.reader .rfoot { display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 8); }
+html.touchmode .reader .rpage, html.touchmode .reader .rshelf { touch-action: pan-y; }
+html.touchmode #ui .reader .rclose, html.touchmode #ui .reader .rback { padding: var(--u) calc(var(--u) * 5); border: var(--u) solid #3a332c; }
 
 /* ---------------------------------------------------------------- touch */
 /* On a touch screen: buttons named for what they do, only while they do something; a

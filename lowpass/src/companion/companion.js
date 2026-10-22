@@ -185,7 +185,7 @@ export class Companion {
     m.update(dt, time, Math.floor(time * 12), g.mode === 'walk' ? side : 0);
 
     // a remark when you come near, now and then (and a hello the first time)
-    if (!this.say && g.mode === 'walk' && near < 3.6 && !g.terminal.open && !g.menu.open) {
+    if (!this.say && g.mode === 'walk' && near < 3.6 && !g.terminal.open && !g.menu.open && !g.reader.open) {
       if (!this.greeted) {
         this.greeted = true;
         const st = this.look ? { activated: this.look.activated, stage: this.look.stage, charge: this.look.charge ?? 0 } : null;

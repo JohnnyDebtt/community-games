@@ -1,4 +1,5 @@
 import { load, save } from './store.js';
+import { SHIPS } from '../ship/designs.js';
 
 // Progress: DATA, and what it buys: how deep the scanner reaches (without end), how much
 // plasma the tank holds and how often signals are picked up out of the fog (five levels
@@ -14,7 +15,12 @@ import { load, save } from './store.js';
 // the most common right after it is bought (three in four, at the first), and rarer with
 // every one after (the top of a deep scanner is the rarest thing it finds). Now and then
 // (GLIMPSE) one comes from beyond the scanner's reach: one depth deeper, sometimes two.
+// Rarer still (PLUS), a deep one is one of the marked: a form of its own, larger, its name
+// with a +, worth PLUS_VALUE times what its depth's are.
 // Witnessed seekers are never touched by any of it.
+//
+// Ships (designs.js): bought once with DATA, then boarded whenever one likes; the Seed is
+// everyone's from the start.
 //
 // The plasma tank: seconds of a full boost (TANK, by level); the core gathers it back at
 // REFILL seconds' worth a second, so a small tank fills sooner. Signal gain: the seconds
@@ -25,6 +31,8 @@ export const WITNESSED = 40;
 export const FIRST = 120;
 export const STEP = 0.75;
 export const GLIMPSE = 0.04;
+export const PLUS = 0.02;          // a deep one is one of the marked (+)
+export const PLUS_VALUE = 10;      // and worth this many times its depth's
 
 export const TANK = [5, 7, 9, 11, 13, 15];
 export const REFILL = 0.24;
@@ -34,7 +42,7 @@ const COSTS = { tank: [40, 80, 130, 200, 300], gain: [80, 150, 250, 380, 550] };
 export const MAX = { tank: COSTS.tank.length, gain: COSTS.gain.length };
 
 export const costOf = (depth) => FIRST * Math.pow(2, depth - 1);     // to reach this depth
-export const valueOf = (e) => (e.kind === 'wild' ? BASE * (1 + (e.depth || 0)) : e.special ? WITNESSED : BASE);
+export const valueOf = (e) => (e.kind === 'wild' ? BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) : e.special ? WITNESSED : BASE);
 
 export function rollDepth(reach, rand = Math.random) {
   if (rand() < GLIMPSE) return reach + (rand() < 0.15 ? 2 : 1);
@@ -52,14 +60,26 @@ export class Progress {
     this.deepest = s.deepest || 0;    // the deepest artifact ever met
     this.tank = s.tank || 0;          // the plasma tank's level
     this.gain = s.gain || 0;          // the signal gain's level
+    this.ships = s.ships || ['seed'];  // the ships bought
+    this.ship = this.ships.includes(s.ship) ? s.ship : 'seed';   // the one boarded
   }
-  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain }); }
+  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, ships: this.ships, ship: this.ship }); }
+  owns(id) { return this.ships.includes(id); }
+  canShip(id) { const d = SHIPS.find((x) => x.id === id); return !!d && !this.owns(id) && this.data >= d.price; }
+  buyShip(id) {
+    if (!this.canShip(id)) return false;
+    this.data -= SHIPS.find((x) => x.id === id).price;
+    this.ships.push(id);
+    this.save();
+    return true;
+  }
+  board(id) { if (!this.owns(id) || this.ship === id) return false; this.ship = id; this.save(); return true; }
   get tankSecs() { return TANK[Math.min(this.tank, TANK.length - 1)]; }
   get gap() { return GAIN[Math.min(this.gain, GAIN.length - 1)]; }
   // what the next step of an upgrade costs (null: at its last level)
   cost(kind) { return kind === 'depth' ? costOf(this.depth + 1) : COSTS[kind][this[kind]] ?? null; }
   can(kind) { const c = this.cost(kind); return c !== null && this.data >= c; }
-  get anyCan() { return ['depth', 'tank', 'gain'].some((k) => this.can(k)); }
+  get anyCan() { return ['depth', 'tank', 'gain'].some((k) => this.can(k)) || SHIPS.some((d) => this.canShip(d.id)); }
   // the scans not yet transmitted, and what they are worth together
   unsent(codex) {
     const list = codex.filter((e) => !e.sent);

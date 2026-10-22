@@ -72,6 +72,12 @@ export class Plasma {
     this._last = null;        // where the core was last frame
   }
 
+  // the ship's own plasma: its heart and its haze
+  setColors(heart, haze) {
+    this.heart.points.material.uniforms.uColor.value.setHex(heart);
+    this.haze.points.material.uniforms.uColor.value.setHex(haze);
+  }
+
   // at: the core (render space); back: the ship's backward direction (unit); k: 0..1
   emit(at, back, k, dt) {
     const last = this._last && this._last.distanceTo(at) < 20 ? this._last : at;

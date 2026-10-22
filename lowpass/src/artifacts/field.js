@@ -32,7 +32,7 @@ const SCAN_RANGE = 340;
 const SCAN_CONE = 0.52;       // radians either side of the nose
 const HOLD_CONE = 1.3;        // once a scan is under way and held, it holds on this far
 const NEAR_CONE = 0.5;        // and close by (within 150 m) the cone opens by up to this
-const SCAN_TIME = 2.4;        // seconds of holding
+const SCAN_TIME = 2.4;        // seconds of holding (the ship's scanner may be quicker)
 const FIRST_DELAY = 30;
 const REVEAL_SECS = 2.6;
 const SPACING = 95;           // meters at least between the artifacts of a sweep
@@ -78,9 +78,9 @@ export class Field {
   }
 
   // A wild artifact, from a seed nobody else will draw; from below the surface if
-  // opts.depth (opts.glimpse: deeper than the scanner reaches).
+  // opts.depth (opts.glimpse: deeper than the scanner reaches; opts.plus: one of the marked).
   spawnWild(opts = {}) {
-    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain }, opts);
+    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, plus: !!opts.plus }, opts);
   }
 
   // The highest ground near (x, z): where a mountain's artifact stands (a summit, a ridge).
@@ -337,7 +337,7 @@ export class Field {
     const inCone = Math.abs(t.bearing) < cone(t, going && t === this.target);
     if (inRange && inCone && !g.asleep) {
       this.state = 'lock';
-      if (scanHeld) this.scan = Math.min(1, this.scan + dt / SCAN_TIME);
+      if (scanHeld) this.scan = Math.min(1, this.scan + (dt * g.ship.design.fly.scan) / SCAN_TIME);
       else this.scan = Math.max(0, this.scan - dt * 0.4);
       if (this.scan >= 1) {
         t.scanned = true;

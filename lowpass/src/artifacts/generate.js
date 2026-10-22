@@ -188,7 +188,7 @@ export function describe(move, seekerInfo, force = null) {
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !!move.mountain,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !!move.mountain, plus: wild && depth >= 1 && !!move.plus,
   };
   const P = d.params;
   let structure = '';
