@@ -261,7 +261,8 @@ export class Hud {
     });
     // brackets
     let shown = false;
-    if (t && flying && (f.state === 'near' || f.state === 'lock')) {
+    // (a creature's from farther off: it is scanned only close by)
+    if (t && flying && (f.state === 'near' || f.state === 'lock' || (t.fly && t.dist < 420 && t.revealed))) {
       const p = g.screenOf(t);
       if (p) {
         shown = true;

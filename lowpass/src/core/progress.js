@@ -16,7 +16,9 @@ import { SHIPS } from '../ship/designs.js';
 // every one after (the top of a deep scanner is the rarest thing it finds). Now and then
 // (GLIMPSE) one comes from beyond the scanner's reach: one depth deeper, sometimes two.
 // Rarer still (PLUS), a deep one is one of the marked: a form of its own, larger, its name
-// with a +, worth PLUS_VALUE times what its depth's are.
+// with a +, worth PLUS_VALUE times what its depth's are. And now and then (CREATURE), at
+// any depth, a wild one is a creature that flees: hard to scan, worth CREATURE_VALUE
+// times its depth's.
 // Witnessed seekers are never touched by any of it.
 //
 // Ships (designs.js): bought once with DATA, then boarded whenever one likes; the Seed is
@@ -33,6 +35,8 @@ export const STEP = 0.75;
 export const GLIMPSE = 0.04;
 export const PLUS = 0.02;          // a deep one is one of the marked (+)
 export const PLUS_VALUE = 10;      // and worth this many times its depth's
+export const CREATURE = 0.08;      // a wild one is a creature that flees (species.js)
+export const CREATURE_VALUE = 4;   // and worth this many times its depth's
 
 export const TANK = [5, 7, 9, 11, 13, 15];
 export const REFILL = 0.24;
@@ -42,7 +46,7 @@ const COSTS = { tank: [40, 80, 130, 200, 300], gain: [80, 150, 250, 380, 550] };
 export const MAX = { tank: COSTS.tank.length, gain: COSTS.gain.length };
 
 export const costOf = (depth) => FIRST * Math.pow(2, depth - 1);     // to reach this depth
-export const valueOf = (e) => (e.kind === 'wild' ? BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) : e.special ? WITNESSED : BASE);
+export const valueOf = (e) => (e.kind === 'wild' ? BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : e.creature ? CREATURE_VALUE : 1) : e.special ? WITNESSED : BASE);
 
 export function rollDepth(reach, rand = Math.random) {
   if (rand() < GLIMPSE) return reach + (rand() < 0.15 ? 2 : 1);

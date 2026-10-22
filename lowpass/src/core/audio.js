@@ -901,6 +901,15 @@ export class Audio {
       case 'lock':
         this.note(pitch(8), { wave: 'soft', attack: 0.04, release: 0.7, gain: 0.026, cutoff: 600, dest: S });
         break;
+      case 'flee':
+        // and it is off: a rush of air, and the call again, higher
+        this.hiss({ type: 'bandpass', freq: 700, q: 1.2, to: 2600, attack: 0.05, release: 0.6, gain: 0.04, pink: true, verb: 0.5 });
+        [17, 19].forEach((d, i) => this.note(pitch(d), { wave: 'soft', when: t + 0.1 + i * 0.08, attack: 0.006, release: 0.4, gain: 0.016, cutoff: 2600, dest: S, verb: 0.7 }));
+        break;
+      case 'lost':
+        // the scan let go: two soft notes falling
+        [10, 6].forEach((d, i) => this.note(pitch(d), { wave: 'soft', when: t + i * 0.12, attack: 0.01, release: 0.5, gain: 0.02, cutoff: 900, dest: S }));
+        break;
       case 'scan': {
         // the hum climbs the palette as the scan fills
         const d = 10 + Math.floor((o.progress || 0) * 5);

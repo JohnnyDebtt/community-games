@@ -2,6 +2,7 @@ import { rng, seedsFromHex, clamp, formatInt, formatNum } from '../core/math.js'
 import { pitch } from '../core/tuning.js';
 import { keccak256, toHex } from '../core/keccak.js';
 import { describeDeep } from './deep.js';
+import { describeCreature } from './species.js';
 
 // What grows in the forest, from a 256-bit seed.
 //
@@ -185,16 +186,19 @@ export function describe(move, seekerInfo, force = null) {
   const count = tokens.length;
 
   const depth = wild ? Math.max(0, Math.floor(move.depth || 0)) : 0;
+  // a creature (species.js): a wild one that flies, and flees
+  const creature = wild && !!move.creature;
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !!move.mountain, plus: wild && depth >= 1 && !!move.plus,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !creature && !!move.mountain, plus: wild && !creature && depth >= 1 && !!move.plus,
   };
   const P = d.params;
   let structure = '';
-  if (depth >= 1) describeDeep(d, move, R1, R3);
+  if (creature) describeCreature(d, move, R1, R3);
+  else if (depth >= 1) describeDeep(d, move, R1, R3);
 
-  if (depth < 1) switch (family) {
+  if (depth < 1 && !creature) switch (family) {
     case 'ring': {
       P.n = R1.pick([3, 5, 7, 8, 11, 13]);
       P.seq = R1.pick(['primes', 'Fibonacci numbers', 'harmonic series', 'odd numbers']);
@@ -530,6 +534,10 @@ export function describe(move, seekerInfo, force = null) {
   };
   const hz = Math.round(pitch(d.song.degrees[0], d.song.octave));
   d.fund = hz;
+  if (creature) {
+    d.notes = [d.structure, d.hint, `Its light pulses ${k} of every ${n} steps; it calls near ${hz} Hz.`, d.origin];
+    return d;
+  }
   if (depth >= 1) {
     d.notes = [d.structure, `Its light pulses ${k} of every ${n} steps; it sings a chord of ${d.params.voice.chord.length}, near ${hz} Hz.`, d.flavor, d.origin];
     return d;

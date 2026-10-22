@@ -99,6 +99,20 @@ layers to their voice. They change nothing about the climb (a depth costs what i
 but they make every flight at any depth a lottery worth flying. On a mountain the
 mountains' rule holds: a marked one there is a mountain form, crowned and courted.
 
+Creatures are the chase the forest otherwise lacks: everything else stands still and
+waits to be flown past. One flees, so the ship's handling finally matters, and the scan
+becomes a skill (close in, line up, hold it there for several seconds while it swerves;
+lose it and start again). Its speed is the world's own, but close by it paces the ship's
+cruising speed, so the ship can neither run it down nor simply overtake it; a creature
+faster than the ship must be kept up with on the boost. It always tires (spent, it is
+slower than any ship, swerves hardly at all and flies on ahead), so every ship can scan
+every one, but each species leans on one thing (speed, a tight turn, a hard boost, a
+quick scanner), and which ships chase which best was settled by simulating the chase,
+every ship against every species, with a player's hands a little late. The game says
+nothing of creatures at all, not in the HUD, the shop or this game's README: one simply
+flies off one day, and the rest is for players to find out (a rush of air when it bolts,
+two falling notes when its scan is lost, are all the help there is).
+
 Ships are what DATA buys once the upgrades are done, and they are sideways, not up:
 each trades one thing for another (the Kestrel's speed for its tank, the Ark's room and
 scanner for its speed), so none is simply the best, and boarding another is free once

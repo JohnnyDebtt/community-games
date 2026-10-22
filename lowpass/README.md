@@ -421,8 +421,8 @@ src/ship/                 the ships (their designs and hulls) and their flight, 
 src/artifacts/            from a seed or a move to an artifact: generation, models (the
                           first families, the witnessed seeker, the auras), the newer
                           families, their shared parts, the field, the photograph; the
-                          mountains' own; the deep: its strata, its descriptions, its
-                          forms
+                          mountains' own; a few more (the field flies them); the deep:
+                          its strata, its descriptions, its forms
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the
                           witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the

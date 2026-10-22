@@ -4,7 +4,8 @@
 //   speed  cruising speed, m/s          boost  how much the boost adds (of the speed)
 //   turn   the fastest turn, rad/s      tank   the plasma tank, times the upgraded one
 //   scan   how fast it scans (times)
-// Bought in the SHOP with DATA; once bought, boarded whenever one likes.
+// Bought in the SHOP with DATA; once bought, boarded whenever one likes. What each is
+// built for decides which creatures (species.js) it chases best, which is not said.
 
 export const SHIPS = [
   {
@@ -71,9 +72,12 @@ export const SHIPS = [
 
 export const shipById = (id) => SHIPS.find((s) => s.id === id) || SHIPS[0];
 
-// the stats as pips (1 to 5) for the SHOP, from the slowest to the fastest in the hangar
-const range = (k) => [Math.min(...SHIPS.map((s) => s.fly[k])), Math.max(...SHIPS.map((s) => s.fly[k]))];
+
+// the stats as pips (1 to 5) for the SHOP, from the least to the most in the hangar (TURN:
+// how tight a circle it flies, its turn for its speed)
+const stat = (s, k) => (k === 'turn' ? s.fly.turn / s.fly.speed : s.fly[k]);
+const range = (k) => [Math.min(...SHIPS.map((s) => stat(s, k))), Math.max(...SHIPS.map((s) => stat(s, k)))];
 export function pips(s) {
-  const p = (k, v = s.fly[k]) => { const [a, b] = range(k); return 1 + Math.round(((v - a) / (b - a)) * 4); };
+  const p = (k) => { const [a, b] = range(k); return 1 + Math.round(((stat(s, k) - a) / (b - a)) * 4); };
   return { SPEED: p('speed'), TURN: p('turn'), PLASMA: p('tank'), SCAN: p('scan'), ROOM: 1 + Math.round((s.hull.bays / 3) * 4) };
 }

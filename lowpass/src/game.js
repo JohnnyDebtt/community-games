@@ -15,7 +15,8 @@ import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp } from './core/math.js';
-import { Progress, rollDepth, REFILL, PLUS } from './core/progress.js';
+import { Progress, rollDepth, REFILL, PLUS, CREATURE } from './core/progress.js';
+import { SPECIES } from './artifacts/species.js';
 import { stratum } from './artifacts/strata.js';
 import { Chain } from './chain/chain.js';
 import { MoveWatcher } from './chain/moves.js';
@@ -126,6 +127,10 @@ export class Game {
     this.ship.obstacle = (x, z, cruise) => this.field.topAt(x, z, cruise);
     // one missed alone is said; a sweep's, quietly (there were more than one could scan)
     this.field.onMissed = (a) => { if (!a.wave) this.hud.say('LOST IN THE FOG', 'It has gone back into the fog', 4); };
+    // a creature that saw the ship, and a creature's scan let go: heard, never said (the
+    // creatures are for finding out)
+    this.field.onFlee = () => this.audio.play('flee');
+    this.field.onScanLost = () => this.audio.play('lost');
     this.field.onGate = (a, n) => { for (let i = 0; i < n; i++) this.audio.play('gate', { i: a.pass + i }); };
     // a seeker moved while you fly: the next artifact is its witnessed one; a wild one
     // still out of sight gives way to it at once
@@ -348,8 +353,10 @@ export class Game {
       const d = a.d, st = stratum(d.depth);
       const title = `DEPTH ${st.numeral}${d.plus ? '+' : ''} · ${d.plus ? 'MARKED' : d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
       const where = d.mountain ? 'on the mountain ahead' : 'rising out of the fog';
-      const sub = d.plus ? `The rarest of ${st.title}: ${d.cls.toLowerCase()}, ${where}` : d.glimpse ? `Deeper than your scanner reaches: ${d.cls.toLowerCase()}, ${where}` : `From ${st.title}: ${d.cls.toLowerCase()}, ${where}`;
-      this.audio.play('deep', { depth: d.depth, chord: d.params.voice.chord, glimpse: d.glimpse || d.plus, pan: clamp(-(a.bearing || 0), -1, 1) });
+      // (a creature is announced as anything else from its depth, and not named)
+      const what = d.family === 'creature' ? `, ${where}` : `: ${d.cls.toLowerCase()}, ${where}`;
+      const sub = d.plus ? `The rarest of ${st.title}${what}` : d.glimpse ? `Deeper than your scanner reaches${what}` : `From ${st.title}${what}`;
+      this.audio.play('deep', { depth: d.depth, chord: d.params.voice && d.params.voice.chord, glimpse: d.glimpse || d.plus, pan: clamp(-(a.bearing || 0), -1, 1) });
       if (d.plus) this.atmo.networkPulse(0.8);
       if (this._aboard()) {
         this.audio.play('chime');
@@ -425,6 +432,7 @@ export class Game {
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
       ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
       ...(d.plus ? { plus: true } : {}),
+      ...(d.family === 'creature' ? { creature: d.species } : {}),
       ...(d.mountain ? { mountain: true } : {}),
     };
     if (d.depth) this.progress.met(d.depth);
@@ -553,12 +561,14 @@ export class Game {
       this._spawning = true;
       // a wild one comes from as deep as the scanner's reach decides (progress.js)
       const depth = rollDepth(this.progress.depth);
-      // and now and then, one of the marked: the rarest a depth holds
-      const plus = depth >= 1 && Math.random() < PLUS;
       // where it would rise is on a mountain: it is one of the mountains' own
       const [fx0, fz0] = this.ship.forward(), sd = this.field.spawnDistance();
       const onMountain = mountainEnv(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
-      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, plus })).finally(() => { this._spawning = false; });
+      // now and then, a creature (never on a mountain: what rises there is the mountains'
+      // own), and now and then one of the marked: the rarest a depth holds
+      const creature = !onMountain && Math.random() < CREATURE;
+      const plus = !creature && depth >= 1 && Math.random() < PLUS;
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, plus, creature })).finally(() => { this._spawning = false; });
       const [g0, g1] = this.progress.gap;
       this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
     }
@@ -848,6 +858,12 @@ export class Game {
         const a = depth > 0 ? await this.field.spawnWild({ depth, form, ahead, lateral: 0, mountain, plus }) : await this.field.spawnWild({ ahead, lateral: 0, mountain: true, family: form || undefined });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, form: a.d.form, notes: a.d.notes, params: a.d.params };
+      },
+      // a creature of a species, at a depth, ahead
+      creature: async (species = null, depth = 0, ahead = 300) => {
+        for (const a of [...this.field.active]) this.field.remove(a);
+        const a = await this.field.spawnWild({ depth, ahead, lateral: 0, creature: true, species });
+        return { name: a.d.name, code: a.d.code, species: a.d.species, notes: a.d.notes };
       },
       look: async (family, ahead = 700) => {
         for (const a of [...this.field.active]) this.field.remove(a);

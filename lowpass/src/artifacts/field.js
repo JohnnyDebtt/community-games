@@ -8,6 +8,7 @@ import { U } from '../render/materials.js';
 import { FOG } from '../render/pipeline.js';
 import { WATER, canopyTop } from '../world/terrain.js';
 import { angleDelta, clamp, TAU, damp } from '../core/math.js';
+import { SPECIES } from './species.js';
 
 // The artifacts in the forest: where each appears, the clearing it makes, its light in
 // the fog and on the trees, its pulse, the scanner's lock and hold, and when it is left
@@ -25,6 +26,12 @@ import { angleDelta, clamp, TAU, damp } from '../core/math.js';
 // ordered dither, so nothing pops into view. The scanner looks at whichever of them is
 // most nearly ahead. Once you have come near one and lost it from sight (or left one far
 // behind), it goes back into the fog, dissolving the way it came: no turning back for it.
+//
+// A creature (species.js) is otherwise: it hangs in the air until the ship comes near,
+// then flees, swerving, bolting, tiring as it is chased (slower in the end than any
+// ship), never letting the ship close nor run so far it is lost. It is scanned only from
+// close by and slowly, and the scan falls to nothing the moment it is out of range or
+// out of the sights.
 // A witnessed seeker looks as it is on the chain now: dormant ones dark by their stage,
 // their battery for an eye; activated ones bright.
 
@@ -38,6 +45,10 @@ const REVEAL_SECS = 2.6;
 const SPACING = 95;           // meters at least between the artifacts of a sweep
 const NEAR = 450;             // within this, an artifact has been come near
 const FADE_SECS = 2.4;        // going back into the fog
+// creatures: when one notices the ship, how slow it is when spent, how far it lets the
+// ship fall behind before it waits, and its height over the canopy
+const NOTICE = 240, TIRED = 13, LEASH = 400, FLY_Y = 18;
+const CR_CONE = [0.42, 0.3];  // a creature's sights: this far off the nose, and wider close by
 
 export class Field {
   constructor(game) {
@@ -78,9 +89,10 @@ export class Field {
   }
 
   // A wild artifact, from a seed nobody else will draw; from below the surface if
-  // opts.depth (opts.glimpse: deeper than the scanner reaches; opts.plus: one of the marked).
+  // opts.depth (opts.glimpse: deeper than the scanner reaches; opts.plus: one of the marked;
+  // opts.creature: one that flies, and flees).
   spawnWild(opts = {}) {
-    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, plus: !!opts.plus }, opts);
+    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, plus: !!opts.plus, creature: !!opts.creature, species: opts.species }, opts);
   }
 
   // The highest ground near (x, z): where a mountain's artifact stands (a summit, a ridge).
@@ -179,8 +191,8 @@ export class Field {
     // on the mountains: on the highest ground near there
     if (d.mountain && !a.at) [x, z] = this._summit(x, z);
     const ground = Math.max(g.world.groundAt(x, z), WATER);
-    // (a gate lies across the way; a door faces the ship)
-    const yaw = d.family === 'gate' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : (d.seed[2] / 4294967296) * TAU;
+    // (a gate lies across the way; a door faces the ship; a creature, away from it)
+    const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : (d.seed[2] / 4294967296) * TAU;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     // a witnessed one: its seeker, giant, built from its art as it is now
     let seeker = null;
@@ -195,7 +207,8 @@ export class Field {
       seeker,
     };
     const model = buildArtifact(d, ctx);
-    Object.assign(a, { model, x, z, y: ground, yaw, prevLocal: null });
+    Object.assign(a, { model, x, z, y: d.family === 'creature' ? canopyTop(x, z) + FLY_Y : ground, yaw, prevLocal: null });
+    if (d.family === 'creature' && !a.fly) a.fly = { h: yaw, v: 0, stamina: 1, fled: false, jink: 0, jinkT: 2, dart: 0, dartT: 4, pulse: 0, sprint: 0, speed: 0, turn: 0, off: 0 };
     model.group.rotation.y = yaw;
     a.clearings = [];
     if (model.clear > 0) a.clearings.push(g.world.addClearing(x, z, model.clear));
@@ -251,6 +264,7 @@ export class Field {
     const vis = this.visibility();
     for (const a of [...this.active]) {
       if (a.building) continue;
+      if (a.fly) this._fly(a, dt);
       this.place(a);
       const dx = a.x - ship.x, dz = a.z - ship.z;
       a.dist = Math.hypot(dx, dz);
@@ -261,6 +275,7 @@ export class Field {
         if (a.dist < vis * 0.85 && Math.abs(a.bearing) < 0.8) a.revealed = true;
         else if ((Math.abs(a.bearing) > 0.5 || a.dist > a.spawnDist * 1.3) && g.time - a.movedAt > 1.2) {
           a.spawnDist = this.spawnDistance();
+          if (a.fly) { this._ahead(a); continue; }
           this._build(a);
           continue;
         }
@@ -269,7 +284,8 @@ export class Field {
       a.closest = Math.min(a.closest, a.dist);
       // (not the one being scanned while the scan goes on)
       const scanningThis = a === this.target && this.scan > 0;
-      const lost = !scanningThis && Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
+      const lost = a.fly ? (a.scanned && g.time - a.fly.off > 3) || (!scanningThis && Math.abs(a.bearing) > 1.6 && a.dist > 650)
+        : !scanningThis && Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
       if (lost && !a.passed && !a.scanned) {
         a.passed = true;
         if (this.onMissed) this.onMissed(a);
@@ -287,7 +303,7 @@ export class Field {
         if (m.uniforms.uReveal) m.uniforms.uReveal.value = a.reveal;
       }
       const local = a.model.group.worldToLocal(shipR.clone());
-      a.model.update(g.time, beat, { pulse, near: a.near, shipLocal: local, reveal: a.reveal });
+      a.model.update(g.time, beat, { pulse, near: a.near, shipLocal: local, reveal: a.reveal, fly: a.fly });
       if (a.model.onShip) {
         if (a.prevLocal) {
           const n = a.model.onShip(local, a.prevLocal);
@@ -322,9 +338,11 @@ export class Field {
     for (const a of open) if (!t || score(a) < score(t)) t = a;
     // how far off the nose still counts: wider close by, and wider still once a scan is
     // under way and held, so flying right past one does not lose it
-    const cone = (a, scanning) => (scanning ? HOLD_CONE : SCAN_CONE) + clamp(1 - a.dist / 150, 0, 1) * NEAR_CONE;
+    // (a creature: only from close by, and its sights do not widen once the scan is held)
+    const range = (a) => (a.fly ? this.rangeOf(a) : SCAN_RANGE + a.model.span * 0.5);
+    const cone = (a, scanning) => (a.fly ? this.sightsOf(a, a.dist) : (scanning ? HOLD_CONE : SCAN_CONE) + clamp(1 - a.dist / 150, 0, 1) * NEAR_CONE);
     const going = this.scan > 0 && scanHeld;
-    const held = this.target && open.includes(this.target) && this.state === 'lock' && Math.abs(this.target.bearing) < cone(this.target, going) && this.target.dist < SCAN_RANGE + this.target.model.span * 0.5;
+    const held = this.target && open.includes(this.target) && this.state === 'lock' && Math.abs(this.target.bearing) < cone(this.target, going) && this.target.dist < range(this.target);
     if (held && t !== this.target && score(t) > score(this.target) - 150) t = this.target;
     if (t !== this.target) this.scan = 0;
     this.target = t;
@@ -333,14 +351,20 @@ export class Field {
       this.scan = Math.max(0, this.scan - dt);
       return;
     }
-    const inRange = t.dist < SCAN_RANGE + t.model.span * 0.5;
+    const inRange = t.dist < range(t);
     const inCone = Math.abs(t.bearing) < cone(t, going && t === this.target);
+    // a creature's scan: lost the moment it is out of range or sights, or let go
+    if (t.fly && this.scan > 0 && !(inRange && inCone && scanHeld && !g.asleep)) {
+      if (this.onScanLost) this.onScanLost(t, !inRange ? 'far' : !inCone ? 'sights' : 'held');
+      this.scan = 0;
+    }
     if (inRange && inCone && !g.asleep) {
       this.state = 'lock';
-      if (scanHeld) this.scan = Math.min(1, this.scan + (dt * g.ship.design.fly.scan) / SCAN_TIME);
+      if (scanHeld) this.scan = Math.min(1, this.scan + (dt * g.ship.design.fly.scan) / (t.fly ? SPECIES[t.d.species].scan : SCAN_TIME));
       else this.scan = Math.max(0, this.scan - dt * 0.4);
       if (this.scan >= 1) {
         t.scanned = true;
+        if (t.fly) t.fly.off = g.time;
         this.scan = 0;
         this.state = 'done';
         if (this.onScanned) this.onScanned(t);
@@ -351,6 +375,96 @@ export class Field {
       this.scan = Math.max(0, this.scan - dt * 0.25);
     }
     ship.scanGlow = damp(ship.scanGlow, this.state === 'lock' && scanHeld ? 1 : 0, 8, dt);
+  }
+
+  // how close a creature's scan must be, and how far off the nose it may be at d
+  rangeOf(a) { return SPECIES[a.d.species].range * Math.sqrt(a.d.size); }
+  sightsOf(a, d) { const s = SPECIES[a.d.species].sights || CR_CONE; return s[0] + s[1] * clamp(1 - d / this.rangeOf(a), 0, 1); }
+
+  // a creature not yet seen: moved (not rebuilt) to just beyond sight ahead of the nose
+  _ahead(a) {
+    const ship = this.game.ship, [fx, fz] = ship.forward(), dist = a.spawnDist, lat = a.latK * dist;
+    a.x = ship.x + fx * dist + fz * lat;
+    a.z = ship.z + fz * dist - fx * lat;
+    a.fly.h = ship.heading;
+    a.movedAt = this.game.time;
+  }
+
+  // A creature's flight, a frame of it. Unseen or unnoticed, it hangs and drifts; once the
+  // ship comes near it flees: away from the ship, swaying, swerving now and then, bolting
+  // when the ship is close (more often while it is scanned), tiring all the while it is
+  // chased; it lets the ship come no nearer than its keep, and waits when it has left the
+  // ship far behind. Scanned, it climbs away and is gone.
+  _fly(a, dt) {
+    const g = this.game, ship = g.ship, f = a.fly, sp = SPECIES[a.d.species], S = a.d.size;
+    const dx = a.x - ship.x, dz = a.z - ship.z, d = Math.hypot(dx, dz) || 1;
+    // it flees away from the ship, and ahead of it, as a startled bird flies on ahead of
+    // what walks up behind it (so a chase runs on, not round in circles)
+    const [sfx, sfz] = ship.forward();
+    const away = Math.atan2(dx / d + sfx * 0.9, dz / d + sfz * 0.9);
+    const t = g.time;
+    if (a.scanned) {
+      f.v = Math.min(sp.sprint * 1.2, f.v + dt * 20);
+      f.sprint = 1;
+      a.y += dt * 9;
+    } else if (!f.fled && !(a.revealed && d < NOTICE)) {
+      // waiting: a slow drift about where it rose
+      f.h += dt * 0.25;
+      f.v = 4;
+      f.sprint = 0;
+    } else {
+      if (!f.fled) { f.fled = true; f.h = away; f.v = Math.max(f.v, sp.speed); if (this.onFlee) this.onFlee(a); }
+      const scanned = this.target === a && this.scan > 0;
+      const chased = d < LEASH + 80;
+      if (chased) f.stamina = Math.max(0, f.stamina - dt / sp.stamina);
+      else if (d > 650) f.stamina = Math.min(1, f.stamina + dt / 60);
+      const k = Math.pow(f.stamina, 0.7);
+      // its course: away, swaying, and now and then a swerve to one side
+      f.jinkT -= dt * (scanned ? 1.5 : d < sp.range * 1.6 ? 1.2 : 0.6);
+      // (tired, it swerves less, and turns slower)
+      if (f.jinkT <= 0) { f.jinkT = sp.jinkEvery[0] + Math.random() * (sp.jinkEvery[1] - sp.jinkEvery[0]); f.jink = (Math.random() < 0.5 ? -1 : 1) * sp.jink * (0.6 + 0.4 * Math.random()) * (0.12 + 0.88 * k); }
+      f.jink *= Math.exp(-dt * 0.35);
+      // (as wide in meters however fast it is made to fly: narrower in angle, faster)
+      const wide = Math.min(1, sp.speed / Math.max(1, f.v));
+      const want = away + (Math.sin((t * TAU) / sp.weave[1] + a.d.seed[3]) * sp.weave[0] * (0.12 + 0.88 * k) + f.jink) * wide;
+      const rate = sp.turn * (0.6 + 0.4 * k);
+      const turn = clamp(angleDelta(f.h, want), -rate * dt, rate * dt);
+      f.h += turn;
+      f.turn = turn / Math.max(dt, 1e-4);
+      // its speed: its own, less as it tires; close by, its pace for the ship's cruising
+      // speed (so the ship cannot simply run it down, nor keep up without the boost if it
+      // is the faster); bursts besides
+      let v = TIRED + (sp.speed - TIRED) * k;
+      // (one that keeps no pace, spent, gives up dodging and flies on ahead of the ship)
+      const pace = sp.pace || (f.stamina < 0.2 ? [0.9, 0.9] : null);
+      if (pace && d < Math.max(this.rangeOf(a) * 2.2, 140)) v = Math.max(v, ship.cruise * (pace[1] + (pace[0] - pace[1]) * k));
+      if (sp.pulse) {
+        // a jelly drifts, then bolts, again and again
+        f.pulse = (f.pulse + dt) % (sp.pulse[0] + sp.pulse[1]);
+        if (f.pulse > sp.pulse[0]) v = Math.max(v, sp.sprint * (0.45 + 0.55 * k));
+        else v *= 0.75;
+      }
+      f.dartT -= dt * (scanned ? 1.6 : 1);
+      if (f.dartT <= 0 && d < sp.range * 1.3 && f.stamina > 0.05) { f.dartT = 4 + Math.random() * 3; f.dart = 1; f.stamina = Math.max(0, f.stamina - 0.03); }
+      if (f.dart > 0) { f.dart -= dt; v = Math.max(v, sp.sprint * (0.5 + 0.5 * k)); }
+      // far ahead (or out of sight in the fog), it waits for the ship
+      if (d > Math.min(LEASH, Math.max(170, this.visibility() * 0.9))) v = Math.min(v, ship.speed * 0.75);
+      f.v = damp(f.v, v, f.dart > 0 || (sp.pulse && f.pulse > sp.pulse[0]) ? 6 : 1.5, dt);
+      f.sprint = clamp((f.v - sp.speed * 0.8) / (sp.sprint - sp.speed * 0.8 + 1e-3), 0, 1);
+    }
+    a.x += Math.sin(f.h) * f.v * dt;
+    a.z += Math.cos(f.h) * f.v * dt;
+    // it lets the ship come no nearer than its keep: what the ship gains, it gives back
+    if (!a.scanned && f.fled) {
+      const keep = sp.keep * S;
+      const ux = dx / d, uz = dz / d;
+      const close = (sfx * ux + sfz * uz) * ship.speed - (Math.sin(f.h) * ux + Math.cos(f.h) * uz) * f.v;
+      if (d < keep * 3 && close > 0) { const push = close * clamp((keep * 3 - d) / (keep * 1.5), 0, 1) + Math.max(0, keep - d) * 2; a.x += ux * push * dt; a.z += uz * push * dt; }
+    }
+    f.speed = f.v;
+    if (!a.scanned) a.y = damp(a.y, canopyTop(a.x, a.z) + FLY_Y + Math.sin(t * 0.7 + a.d.seed[1]) * 3, 1.5, dt);
+    a.yaw = f.h;
+    a.model.group.rotation.set(0, f.h, clamp(-f.turn * 0.5, -0.6, 0.6), 'YXZ');
   }
 
   // How high the ship must be over (x, z) to clear what stands there: a deep artifact's

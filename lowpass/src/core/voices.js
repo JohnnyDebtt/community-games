@@ -53,6 +53,8 @@ const FAMILY = {
   cradle: ['whale', 'grains'], lanterns: ['glass', 'chirp'], dish: ['grains', 'glitch'],
   cairns: ['breath', 'grains'], banners: ['breath', 'chirp'], relay: ['fm', 'glitch'], door: ['whale', 'grains'],
   arch: ['breath', 'glass'], observatory: ['glass', 'chirp'], harp: ['glass', 'grains'], ice: ['glass', 'chirp'],
+  // the creatures, by species
+  darter: ['chirp', 'glitch'], manta: ['whale', 'glass'], crane: ['chirp', 'breath'], eel: ['fm', 'grains'], jelly: ['glass', 'breath'],
 };
 
 export class ArtifactVoices {
@@ -108,7 +110,7 @@ export class ArtifactVoices {
     v.bus.connect(v.gate); v.gate.connect(v.tone); v.tone.connect(v.level); v.level.connect(v.pan); v.pan.connect(a.voiceBus);
     v.tone.connect(v.send); v.send.connect(a.verbIn);
     const deep = d.depth >= 1 && d.params && d.params.voice;
-    const layers = deep ? d.params.voice.layers.slice() : (FAMILY[d.family] || ['glass', 'chirp']).slice();
+    const layers = deep ? d.params.voice.layers.slice() : (FAMILY[d.species] || FAMILY[d.family] || ['glass', 'chirp']).slice();
     // the mountains' deep ones have the wind in them too
     if (deep && d.mountain && !layers.includes('breath')) layers.push('breath');
     if (deep) {
