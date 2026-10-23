@@ -69,7 +69,7 @@ export class Input {
       this._setTouch(true);
       for (const p of e.changedTouches) {
         t.starts.set(p.identifier, { x: p.clientX, y: p.clientY, at: performance.now() });
-        if (this.mode === 'walk') {
+        if (this.mode === 'walk' || this.mode === 'ground') {
           if (p.clientX < innerWidth / 2 && t.moveId === null) { t.moveId = p.identifier; t.mx = t.cx = p.clientX; t.my = t.cy = p.clientY; }
           else if (t.lookId === null) { t.lookId = p.identifier; t.lx = p.clientX; t.ly = p.clientY; }
         } else {
@@ -189,7 +189,7 @@ export class Input {
   }
 
   scanHeld() {
-    return this.down('Space') || this.padDown(0) || this.touch.scan || (this.mouseDown && !this.locked && this.mode !== 'walk');
+    return this.down('Space') || this.padDown(0) || this.touch.scan || (this.mouseDown && !this.locked && this.mode !== 'walk' && this.mode !== 'ground');
   }
 
   endFrame() {

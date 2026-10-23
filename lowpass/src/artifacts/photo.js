@@ -9,10 +9,11 @@ import { clamp } from '../core/math.js';
 
 export const PHOTO_W = 288, PHOTO_H = 162;
 
-export function takePhoto(game, a) {
+// from: where it is taken from (render space), else the ship's nose
+export function takePhoto(game, a, from = null) {
   const ship = game.ship;
-  const cam = new THREE.PerspectiveCamera(30, PHOTO_W / PHOTO_H, 0.5, 2600);
-  const nose = new THREE.Vector3(0, 1.0, 14).applyMatrix4(ship.root.matrixWorld);
+  const cam = new THREE.PerspectiveCamera(30, PHOTO_W / PHOTO_H, 0.3, 2600);
+  const nose = from ? from.clone() : new THREE.Vector3(0, 1.0, 14).applyMatrix4(ship.root.matrixWorld);
   const focus = a.model.focus.clone().applyMatrix4(a.model.group.matrixWorld);
   cam.position.copy(nose);
   cam.up.set(0, 1, 0);

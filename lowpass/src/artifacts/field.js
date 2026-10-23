@@ -92,7 +92,7 @@ export class Field {
   // opts.depth (opts.glimpse: deeper than the scanner reaches; opts.plus: one of the marked;
   // opts.creature: one that flies, and flees).
   spawnWild(opts = {}) {
-    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, plus: !!opts.plus, creature: !!opts.creature, species: opts.species }, opts);
+    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, plus: !!opts.plus, creature: !!opts.creature, species: opts.species, landing: !!opts.landing }, opts);
   }
 
   // The highest ground near (x, z): where a mountain's artifact stands (a summit, a ridge).
@@ -105,6 +105,19 @@ export class Field {
         const h = w.groundAt(cx + i, cz + j);
         if (h > best[2]) best = [cx + i, cz + j, h];
       }
+    }
+    return best;
+  }
+
+  // The flattest dry ground near (x, z), for a clearing to land in.
+  _flat(x, z) {
+    const w = this.game.world;
+    let best = [x, z], score = Infinity;
+    for (let j = -120; j <= 120; j += 30) for (let i = -120; i <= 120; i += 30) {
+      const cx = x + i, cz = z + j, hs = [[0, 0], [24, 0], [-24, 0], [0, 24], [0, -24], [17, 17], [-17, -17]].map(([dx, dz]) => w.groundAt(cx + dx, cz + dz));
+      if (Math.min(...hs) < WATER + 1.5) continue;
+      const s = Math.max(...hs) - Math.min(...hs) + Math.hypot(i, j) * 0.01;
+      if (s < score) { score = s; best = [cx, cz]; }
     }
     return best;
   }
@@ -188,8 +201,9 @@ export class Field {
     const [fx, fz] = ship.forward();
     const dist = a.spawnDist, lat = a.latK * dist;
     let x = a.at ? a.at.x : ship.x + fx * dist + fz * lat, z = a.at ? a.at.z : ship.z + fz * dist - fx * lat;
-    // on the mountains: on the highest ground near there
+    // on the mountains: on the highest ground near there; a clearing: on the flattest
     if (d.mountain && !a.at) [x, z] = this._summit(x, z);
+    if (d.family === 'landing' && !a.at) [x, z] = this._flat(x, z);
     const ground = Math.max(g.world.groundAt(x, z), WATER);
     // (a gate lies across the way; a door faces the ship; a creature, away from it)
     const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : (d.seed[2] / 4294967296) * TAU;

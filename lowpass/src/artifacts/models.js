@@ -10,6 +10,8 @@ import { NEWER } from './families.js';
 import { buildDeep } from './deepforms.js';
 import { MOUNTAIN, mountainMats } from './mountain.js';
 import { buildCreature } from './creatures.js';
+import { buildLanding } from './clearing.js';
+import { buildCurio } from './curios.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
@@ -704,7 +706,7 @@ function echo(d, A, mats, ctx) {
   return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, deep: buildDeep, creature: buildCreature };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio };
 
 // ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {
@@ -720,7 +722,7 @@ export function buildArtifact(d, ctx) {
     out.update = (t, beat, c) => { up(t, beat, c); driftMotes(m, t); };
   }
   // (a creature's softer: it is near, and it is a body, not a lamp)
-  const h = out.creature ? halo(A, Math.max(5, out.span * 0.35), 0.28 * d.strength) : halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
+  const h = out.creature ? halo(A, Math.max(5, out.span * 0.35), 0.28 * d.strength) : out.curio ? halo(A, Math.max(2.5, out.span * 0.9), 0.35 * d.strength) : halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
   h.position.copy(out.light);
   h.layers.set(LAYER_FX);
   out.group.add(h);

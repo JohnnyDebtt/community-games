@@ -4,6 +4,7 @@ import { worldMaterial, glowMaterial, halo, U } from '../render/materials.js';
 import { LAYER_FX } from '../render/pipeline.js';
 import { TAU, rng } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
+import { DOOR } from './hull.js';
 
 // The cabin: long and calm, a shell ribbed like the outside, warm lamps, the forest
 // sliding past the windows. At the front the controls under the windshield; amidships
@@ -52,6 +53,8 @@ function shell(H, C) {
       let col = s > 0.7 ? C.dark : (i % 3 === 0 ? C.wall2 : C.wall);
       // the window frames: pale where the shell meets the glass
       if (H.isWindow(zm + 0.6, am) || H.isWindow(zm - 0.6, am) || H.isWindow(zm, am + 0.23) || H.isWindow(zm, am - 0.23)) col = C.edge;
+      // the door: a panel in a pale frame, a lit handle-strip down its middle
+      if (H.isDoor(zm, am, INNER)) col = H.isDoor(zm - 0.35, am, INNER) && H.isDoor(zm + 0.35, am, INNER) && H.isDoor(zm, am + 0.2, INNER) ? C.wall2 : C.edge;
       b.quad(p00, p10, p11, p01, col);
     }
   }
@@ -102,6 +105,15 @@ function ribs(b, H, C, core) {
     b.box(0.08, 0.03, 0.3, mat(0.32, p[1] - 0.05, z), core, 0.45);
     b.box(0.08, 0.03, 0.3, mat(-0.32, p[1] - 0.05, z), core, 0.45);
   }
+}
+
+// the door's inside: a step at its foot, a light over it
+function door(b, H, C, core) {
+  const zm = (DOOR.z0 + DOOR.z1) / 2, x = -floorHalf(H, zm) + 0.2;
+  b.box(0.5, 0.06, DOOR.z1 - DOOR.z0, mat(x + 0.1, 0.03, zm), C.runner);
+  b.box(0.04, 0.04, DOOR.z1 - DOOR.z0 - 0.3, mat(x + 0.36, 0.05, zm), core, 1.4);
+  const top = H.hullPoint(zm, Math.PI * 0.86, INNER);
+  b.box(0.12, 0.06, 0.6, mat(top[0] + 0.15, DOOR.top + 0.12, zm), core, 1.6);
 }
 
 function cockpit(b, C, core) {
@@ -514,6 +526,7 @@ export class Interior {
     floor(b, H, C, core);
     ribs(b, H, C, core);
     cockpit(b, C, core);
+    door(b, H, C, core);
     coffeeCounter(b, H, C);
     terminalDesk(b, H, C);
     rear(b, H, C, core);
@@ -552,13 +565,24 @@ export class Interior {
     this.spots = [
       { id: 'coffee', at: new THREE.Vector3(1.75, 1.2, 0.8), label: 'Make coffee', r: 1.5 },
       { id: 'codex', at: new THREE.Vector3(-1.9, 1.4, 0.8), label: 'Use the Codex computer', r: 1.6 },
-      { id: 'seat', at: new THREE.Vector3(0, 0.9, 6.3), label: 'Take the controls', r: 1.4 },
+      { id: 'seat', at: new THREE.Vector3(0, 0.9, 6.3), label: this.landed ? 'Take off' : 'Take the controls', r: 1.4 },
+      ...(this.landed ? [{ id: 'hatch', at: new THREE.Vector3(-floorHalf(H, (DOOR.z0 + DOOR.z1) / 2) + 0.5, 1.2, (DOOR.z0 + DOOR.z1) / 2), label: 'Go outside', r: 1.5 }] : []),
       ...out.spots,
       ...keep,
     ];
     // the lamps: the general one stands in the middle of the cabin
     this._mid = (Z(-6.35) + 6) / 2;
     this._reach = 9 + H.L * 0.5;
+  }
+
+  // landed (the controls take off again, the door opens on the forest), or flying
+  setLanded(on) {
+    this.landed = on;
+    const seat = this.spots.find((s) => s.id === 'seat');
+    seat.label = on ? 'Take off' : 'Take the controls';
+    this.spots = this.spots.filter((s) => s.id !== 'hatch');
+    const zm = (DOOR.z0 + DOOR.z1) / 2;
+    if (on) this.spots.push({ id: 'hatch', at: new THREE.Vector3(-floorHalf(this.H, zm) + 0.5, 1.2, zm), label: 'Go outside', r: 1.5 });
   }
 
   // where a walker may stand

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { hash2, fbm2, smoothstep, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
 import { height, forestDensity, treeKind, autumn, mountainEnv, WATER } from './terrain.js';
-import { treeGeometries, BIRCH, BIRCH_SHAPES } from './trees.js';
+import { treeGeometries, BIRCH, BIRCH_SHAPES, WALK } from './trees.js';
 import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS } from '../render/materials.js';
 
 // The forest streams in around the ship in square chunks, and the world keeps a floating
@@ -11,7 +11,10 @@ import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS } from '..
 export const CHUNK = 128;
 const GRID = 16;                 // terrain quads per side (8 m)
 const CELL = 6.2;                // one tree candidate per cell
-const KINDS = BIRCH + BIRCH_SHAPES; // spruce, fir, snag, the rare giant spruce and fir, birches
+const KINDS = WALK + 2;          // spruce, fir, snag, the rare giant spruce and fir, birches, and to walk among
+const WALK_KEEP = 0.45;          // where one walks, the trees that stand (the rest are not planted)
+// a trunk's radius for its height and width, by kind (for walking into)
+const TRUNK_R = [0.03, 0.04, 0.032, 0.03, 0.04];
 const CLEAR_SECS = 1.6;          // a clearing opens (or grows back) over this long
 
 const WATER_VERT = /* glsl */ `
@@ -169,7 +172,7 @@ const LATE = [0.82, 1.06, 1.15];
 function treeTint(t, k, c) {
   const v = 0.82 + (t.tint % 1) * 0.3;
   if (k === 2) return c.setRGB(v, v, v);
-  if (k >= BIRCH) {
+  if (k >= BIRCH && k < WALK) {
     const T = (t.r6 * 7.31) % 1 < (1 - smoothstep(0.15, 0.7, t.au)) * 0.6 ? LATE : TURNED[Math.floor(t.r6 * TURNED.length)];
     return c.setRGB(T[0] * v, T[1] * v, T[2] * v);
   }
@@ -329,6 +332,10 @@ export class Chunk {
       let kind = treeKind(x, z, r4);
       // giants, rarely: dark spires over the canopy
       const giant = r4 > 0.9975;
+      // where the ship has landed, fewer trees, their boughs high: a forest to walk in
+      const wz = this.world.walk;
+      const walk = !!wz && Math.hypot(x - wz.x, z - wz.z) < wz.r;
+      if (walk && !giant && hash2(gx * 13 + 5, gz * 7 - 11) > WALK_KEEP) continue;
       // in a turned stand most trees are birches gone gold (some spruce and fir stand
       // dark among them, the giants over them); toward its edges fewer
       const au = autumn(x, z);
@@ -341,7 +348,7 @@ export class Chunk {
       const wd = kind === 1 ? 0.9 + r3 * 0.3 : birch ? 0.9 + r3 * 0.25 : 0.8 + r2 * 0.35;
       // a birch's crown a little oval, each its own way
       const r6 = birch ? hash2(gx - 13, gz * 3 + 29) : 0;
-      list.push({ x, z, h, kind, giant, ht, wd, sq: birch ? 0.84 + ((r6 * 31.7) % 1) * 0.34 : 1, yaw: r3 * 6.283, tint: r1 / Math.max(d, 0.01), lean: (r4 - 0.5) * (birch ? 0.12 : 0.06), au, r6 });
+      list.push({ x, z, h, kind, giant, ht, wd, sq: birch ? 0.84 + ((r6 * 31.7) % 1) * 0.34 : 1, yaw: r3 * 6.283, tint: r1 / Math.max(d, 0.01), lean: (r4 - 0.5) * (birch ? 0.12 : 0.06), au, r6, walk: walk && kind < 2 && !giant });
     }
     this.trees = list;
   }
@@ -351,7 +358,7 @@ export class Chunk {
   // has taken it, is decided per tree on the GPU (materials.js), never by rebuilding.
   _treeMeshes() {
     const byKind = Array.from({ length: KINDS }, () => []);
-    for (const t of this.trees) byKind[t.giant && t.kind < 2 ? 3 + t.kind : t.kind].push(t);
+    for (const t of this.trees) byKind[t.giant && t.kind < 2 ? 3 + t.kind : t.walk ? WALK + t.kind : t.kind].push(t);
     this.bakeCanopy();
     const m4 = new THREE.Matrix4(), c = new THREE.Color();
     const geos = treeGeometries();
@@ -514,6 +521,40 @@ export class World {
       if (c.amount > 0) u[n++].set(c.x - this.origin.x, c.z - this.origin.z, c.r, c.amount);
     }
     TREES.uClearN.value = n;
+  }
+
+  // Where the ship has landed, a forest to walk in (zone: { x, z, r }, or null to have it
+  // back as it was): the chunks it touches are let go, to be built again (the caller builds
+  // them at once, behind a cut).
+  setWalk(zone) {
+    const old = this.walk;
+    this.walk = zone;
+    for (const [k, ch] of this.chunks) {
+      const near = (w) => w && Math.hypot(Math.max(Math.abs(w.x - (ch.x0 + CHUNK / 2)) - CHUNK / 2, 0), Math.max(Math.abs(w.z - (ch.z0 + CHUNK / 2)) - CHUNK / 2, 0)) < w.r;
+      if (!near(old) && !near(zone)) continue;
+      this.scene.remove(ch.group);
+      ch.dispose();
+      this.chunks.delete(k);
+      if (ch.giants.length) this.giants.dirty = true;
+    }
+  }
+
+  // The trunks near (x, z), for walking into: [{ x, z, r }] (not those a clearing has taken)
+  trunksNear(x, z, reach) {
+    const out = [];
+    const clear = this.clearings.filter((c) => c.amount > 0.5);
+    for (let j = Math.floor((z - reach) / CHUNK); j <= Math.floor((z + reach) / CHUNK); j++) for (let i = Math.floor((x - reach) / CHUNK); i <= Math.floor((x + reach) / CHUNK); i++) {
+      const ch = this.chunks.get(this.key(i, j));
+      if (!ch || !ch.trees) continue;
+      for (const t of ch.trees) {
+        const dx = t.x - x, dz = t.z - z;
+        if (Math.abs(dx) > reach || Math.abs(dz) > reach) continue;
+        if (clear.some((c) => (t.x - c.x) ** 2 + (t.z - c.z) ** 2 < (c.r * 0.85) ** 2)) continue;
+        const k = t.giant && t.kind < 2 ? 3 + t.kind : t.kind;
+        out.push({ x: t.x, z: t.z, r: Math.max(0.25, (k >= BIRCH ? 0.022 : TRUNK_R[k]) * t.ht * t.wd) });
+      }
+    }
+    return out;
   }
 
   // Keep the ship near the GPU's origin.

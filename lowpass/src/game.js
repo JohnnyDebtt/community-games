@@ -15,7 +15,7 @@ import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp } from './core/math.js';
-import { Progress, rollDepth, REFILL, PLUS, CREATURE } from './core/progress.js';
+import { Progress, rollDepth, REFILL, PLUS, CREATURE, LANDING, LANDING_DEPTH } from './core/progress.js';
 import { SPECIES } from './artifacts/species.js';
 import { stratum } from './artifacts/strata.js';
 import { Chain } from './chain/chain.js';
@@ -31,6 +31,8 @@ import { Menu, Title } from './ui/menu.js';
 import { TouchControls } from './ui/touch.js';
 import { Tips } from './ui/tips.js';
 import { Reader } from './ui/reader.js';
+import { Landing } from './ground/landing.js';
+import { Afoot } from './ground/afoot.js';
 import { Companion } from './companion/companion.js';
 import { Boot } from './ui/boot.js';
 
@@ -75,7 +77,10 @@ export class Game {
     this._back = new THREE.Vector3();
     this._autumn = 0;           // how turned the stand about the eye is, eased
     this._autumnSaid = false;
-    this.world.onShift = (dx, dz) => { this.cams.shift(dx, dz); this.plasma.shift(dx, dz); };
+    this.landing = new Landing(this);
+    this.afoot = new Afoot(this);
+    this.landed = null;         // the clearing the ship stands in, if it has landed
+    this.world.onShift = (dx, dz) => { this.cams.shift(dx, dz); this.plasma.shift(dx, dz); this.landing.dust.shift(dx, dz); };
 
     // the interface shares the world's pixel
     this.uiRoot = document.getElementById('ui');
@@ -250,6 +255,8 @@ export class Game {
   }
 
   exitCabin() {
+    // landed, the way out is the door
+    if (this.landed) { this.goOut(); return; }
     this.mode = 'fly';
     this.input.unlock();
     this.input.dragLook = false;
@@ -265,7 +272,82 @@ export class Game {
     if (this.terminal.open) this.terminal.hide();
     if (this.reader.open) this.reader.hide();
     if (this.mode === 'coffee') this.coffee.finish();
-    if (this.mode === 'walk') this.exitCabin();
+    if (this.mode === 'walk' && !this.landed) this.exitCabin();
+  }
+
+  // ---------------------------------------------------------------- landing
+  // The ship comes down into a clearing (landing.js), and the one aboard walks out into
+  // the forest (afoot.js); back aboard, the controls take it up again.
+  land(site) {
+    if (this.landed || this.landing.active) return;
+    if (this.terminal.open) this.terminal.hide();
+    if (this.reader.open) this.reader.hide();
+    this.input.unlock();
+    this.mode = 'landing';
+    this.cams._cut = true;
+    this.landing.down(site);
+  }
+
+  // the forest about (zone) made over for walking in, or back as it was (null): rebuilt
+  // at once, behind a cut
+  walkZone(zone) {
+    const w = this.world, [fx, fz] = this.ship.forward(), was = w.instant;
+    w.setWalk(zone);
+    w.instant = true;
+    for (let i = 0; i < 12 && w.update(this.ship.x, this.ship.z, fx, fz, 64, this.ship.x, this.ship.z, 0) > 0; i++);
+    w.instant = was;
+  }
+
+  // down, and out: standing at (x, z) facing yaw
+  landedAt(site, at) {
+    this.landed = { site };
+    this.interior.setLanded(true);
+    this.afoot.populate(site);
+    this.afoot.enter(at.x, at.z, at.yaw);
+    this.mode = 'ground';
+    this.input.dragLook = true;
+    this._fadeIn = 0.6;
+    POST.uFade.value = 1;
+  }
+
+  // up the ramp, aboard: just inside the door, facing in
+  goAboard() {
+    const h = this.interior.spots.find((s) => s.id === 'hatch');
+    this.mode = 'walk';
+    this.fp.x = h.at.x + 0.7; this.fp.z = h.at.z; this.fp.yaw = Math.PI / 2; this.fp.pitch = -0.05;
+    this.audio.play('door');
+    this._fadeIn = 0.4;
+    POST.uFade.value = 1;
+  }
+
+  // out of the door, down the ramp: at its foot, facing away from the ship
+  goOut() {
+    const s = this.ship, f = s.rampFoot(), c = Math.cos(s.heading), si = Math.sin(s.heading);
+    const x = s.x + (f.x - 1.2) * c + f.z * si, z = s.z - (f.x - 1.2) * si + f.z * c;
+    this.afoot.enter(x, z, s.heading - Math.PI / 2);
+    this.mode = 'ground';
+    this.input.dragLook = true;
+    this.audio.play('door');
+    this._fadeIn = 0.4;
+    POST.uFade.value = 1;
+  }
+
+  // from the controls, up again
+  takeoff() {
+    this.input.unlock();
+    this.afoot.clear();
+    this.interior.setLanded(false);
+    this.mode = 'takeoff';
+    this.landing.up();
+  }
+
+  tookOff() {
+    const site = this.landed && this.landed.site;
+    if (site && !site.passed) { site.passed = true; site.fading = true; }
+    this.landed = null;
+    this.mode = 'fly';
+    this.cams._cut = true;
+    this.input.dragLook = false;
   }
 
   startCoffee() {
@@ -363,6 +445,11 @@ export class Game {
         if (this.mode === 'seat' && !this.menu.open) this.hud.say(title, sub, 5);
         else this.hud.toast(title, `${sub}. Only this ship will ever find it.`);
       } else this.hud.say(title, sub, 5);
+    } else if (a.d.family === 'landing') {
+      // lanterns in the forest: a clearing (what it is for, the scanner shows)
+      this.audio.play('signal', { pan: clamp(-(a.bearing || 0), -1, 1) });
+      if (this._aboard()) { this.audio.play('chime'); this.hud.toast('A CLEARING', 'Lanterns among the trees ahead of the ship.'); }
+      else this.hud.say('A CLEARING', 'Lanterns among the trees ahead', 5);
     } else {
       this.audio.play('signal', { pan: clamp(-(a.bearing || 0), -1, 1) });
       // aboard, the cabin calls softly; at the controls the HUD says so, and away from the
@@ -417,9 +504,13 @@ export class Game {
     return this.mode === 'walk' || this.mode === 'seat' || this.mode === 'coffee';
   }
 
-  async _scanned(a) {
+  // a: what was scanned; from: where the photograph is taken from (render space; on foot,
+  // the eye), else the ship's nose
+  async _scanned(a, from = null) {
+    // a clearing held in the scanner is not recorded: the ship comes down into it
+    if (a.d.family === 'landing') { this.land(a); return; }
     this.audio.play('shutter');
-    const photo = takePhoto(this, a);
+    const photo = takePhoto(this, a, from);
     POST.uFlash.value = 0.9;
     const d = a.d;
     // kept by its key: the transaction (or seed), or for one of a sweep's seekers the
@@ -428,11 +519,12 @@ export class Game {
       tx: d.key, ...(d.key !== d.tx ? { hash: d.tx, total: d.total } : {}), grand: !!d.grand,
       v: GENERATOR_VERSION, kind: d.kind, special: !!d.special, name: d.name, code: d.code, cls: d.cls, family: d.family, notes: d.notes,
       accent: d.accent, tokens: d.tokens, lead: d.lead, charge: d.charge, recipients: d.recipients, pool: d.pool,
-      block: d.block, time: a.move.time || null, scannedAt: Date.now(), clock: this.atmo.clockString(), photo,
+      block: d.block, time: (a.move && a.move.time) || null, scannedAt: Date.now(), clock: this.atmo.clockString(), photo,
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
       ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
       ...(d.plus ? { plus: true } : {}),
       ...(d.family === 'creature' ? { creature: d.species } : {}),
+      ...(d.family === 'curio' ? { ground: true, curio: d.curio } : {}),
       ...(d.mountain ? { mountain: true } : {}),
     };
     if (d.depth) this.progress.met(d.depth);
@@ -554,8 +646,10 @@ export class Game {
     // artifacts, when the last are behind: the witnessed ones of the seekers that moved
     // (a sweep's together) if any are waiting, else a wild one, every minute or two.
     // Inside the ship they rise farther off, to give time to come out to them.
-    if (!overlay || !this.field.pending) this.field.next -= dt;
-    if (this.mode !== 'title' && this.field.next <= 0 && !this.field.pending && !this._spawning) {
+    // (nothing new rises while the ship is down, nor while it comes down or goes up)
+    const down = !!this.landed || !!this.landing.active;
+    if ((!overlay || !this.field.pending) && !down) this.field.next -= dt;
+    if (this.mode !== 'title' && !down && this.field.next <= 0 && !this.field.pending && !this._spawning) {
       const wave = this.moves.takeWave(WAVE);
       const away = this.mode !== 'fly' && this.mode !== 'seat' || overlay;
       this._spawning = true;
@@ -568,7 +662,9 @@ export class Game {
       // own), and now and then one of the marked: the rarest a depth holds
       const creature = !onMountain && Math.random() < CREATURE;
       const plus = !creature && depth >= 1 && Math.random() < PLUS;
-      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, plus, creature })).finally(() => { this._spawning = false; });
+      // and once the scanner reaches deep enough, very rarely, a clearing to land in
+      const landing = !creature && !plus && !onMountain && !wave.length && this.progress.depth >= LANDING_DEPTH && Math.random() < LANDING;
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : (landing ? this.field.spawnWild({ landing: true }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, plus, creature }))).finally(() => { this._spawning = false; });
       const [g0, g1] = this.progress.gap;
       this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
     }
@@ -587,6 +683,11 @@ export class Game {
     this.interior.group.visible = inside;
     this.interior.lights(inside, this.beat);
     if (this._inspect && this._inspect.a.model.group.parent) this._inspectCam();
+    else if (this.landing.active || this.mode === 'landing' || this.mode === 'takeoff') {
+      // a key (not the menu's) hurries the scene along
+      if (!overlay && [...input.pressed].some((k) => k !== 'Escape' && k !== 'KeyP' && k !== 'Pad9')) this.landing.hurry();
+      this.landing.update(dt);
+    } else if (this.mode === 'ground') this.afoot.update(dt, overlay);
     else if (this.mode === 'coffee') this.coffee.update(dt);
     else if (this.mode === 'walk') this._walk(dt, overlay);
     else if (this.mode === 'seat') this._seat(dt, overlay);
@@ -601,6 +702,8 @@ export class Game {
       if (this.mode === 'fly') this.cams.auto = this.mode === 'fly' && performance.now() - input.lastInput > 60000 && !this.field.pending;
       this.cams.exterior(this.ship, dt);
     }
+    // stepping through a door, or out of a scene: a moment of dark
+    if (this._fadeIn > 0) { this._fadeIn = Math.max(0, this._fadeIn - dt); POST.uFade.value = clamp(this._fadeIn / 0.45, 0, 1); }
     if (this.mode === 'coffee' && !overlay && this.coffee.t > 0.6 && input.hit('Escape', 'KeyE', 'Space', 'Enter', 'Pad0', 'Pad1', 'Tap')) this.coffee.skip();
     this.cams.cam.updateMatrixWorld();
     this.companion.update(dt, this.time);
@@ -619,7 +722,7 @@ export class Game {
     m.warm = this.mode === 'coffee' ? 1 : Math.max(0, this.warm / 90);
     const t = this.field.target;
     m.near = t ? clamp(1 - t.dist / 600, 0, 1) : 0;
-    this.audio.artifacts = this.field.active.filter((a) => !a.building && a.model).sort((p, q) => p.dist - q.dist).slice(0, VOICES)
+    if (this.mode !== 'ground') this.audio.artifacts = this.field.active.filter((a) => !a.building && a.model).sort((p, q) => p.dist - q.dist).slice(0, VOICES)
       .map((a) => ({ key: a.d.key, d: a.d, dist: a.dist, bearing: a.bearing || 0, reveal: a.revealed ? a.reveal : 0 }));
 
     POST.uFlash.value = Math.max(0, POST.uFlash.value - dt * 2.5);
@@ -736,6 +839,8 @@ export class Game {
     else if (s.id === 'codex') { this.terminal.show(); this.tips.learn('codex'); }
     else if (s.id === 'companion') this.companion.talk();
     else if (s.id === 'books') this.reader.show(this.ship.design.cabin.books);
+    else if (s.id === 'hatch') this.goOut();
+    else if (s.id === 'seat' && this.landed) this.takeoff();
     else if (s.id === 'seat') { this.mode = 'seat'; this.lookOff.yaw = 0; this.lookOff.pitch = 0; this.audio.play('ui', { h: 16 }); }
   }
 
@@ -765,7 +870,7 @@ export class Game {
   // ---------------------------------------------------------------- the HUD
   _hud(dt, inside, overlay) {
     const h = this.hud;
-    h.root.classList.toggle('away', this.mode === 'title' || this.mode === 'coffee' || overlay);
+    h.root.classList.toggle('away', this.mode === 'title' || this.mode === 'coffee' || this.mode === 'landing' || this.mode === 'takeoff' || overlay);
     h.update(dt, this);
     const st = this.moves.status;
     const away = this.mode === 'walk' || this.mode === 'coffee' || overlay;
@@ -775,15 +880,17 @@ export class Game {
     if (this.input.touchMode) keys = [];     // the buttons on screen say it
     else if (this.mode === 'fly') keys = [['A D', 'steer'], ['W', 'boost'], ['SPACE', 'scan'], ['V', 'go inside'], ['C', 'camera'], ['ESC', 'menu']];
     else if (this.mode === 'walk') keys = [['W A S D', 'walk'], ['E', 'use'], ['V', 'outside'], ['ESC', 'menu']];
+    else if (this.mode === 'ground') keys = [['W A S D', 'walk'], ['SHIFT', 'run'], ['SPACE', 'scan'], ['E', 'use'], ['ESC', 'menu']];
     else if (this.mode === 'seat') keys = [['A D', 'steer'], ['W', 'boost'], ['SPACE', 'scan'], ['E', 'stand up'], ['V', 'outside']];
     h.setKeys(keys);
     // the teaching line and the marks; the keys stay a while after each change of place
     // (the tips reset the clock), and come back when an idle key is pressed
     this.tips.update(dt, overlay);
     h.keys.classList.toggle('dim', this.time - (this._keysShown || 0) > 20 && this.mode !== 'walk');
-    h.cross.classList.toggle('on', this.mode === 'walk' && !overlay);
+    h.cross.classList.toggle('on', (this.mode === 'walk' || this.mode === 'ground') && !overlay);
     // (on a touch screen the button that appears says it)
     if (this.input.touchMode) h.setPrompt(null);
+    else if (this.mode === 'ground' && this.afoot.spot && !overlay) h.setPrompt(this.afoot.spot.label, 'E');
     else if (this.mode === 'walk' && this._spot && this._spot.id !== 'companion' && !overlay) h.setPrompt(this._spot.label, 'E');
     else if (this.mode === 'walk' && this.companion.talking && !overlay) h.setPrompt('Next', 'E');
     else if (this.mode === 'walk' && this._spot && !overlay) h.setPrompt(this._spot.label, 'E');
@@ -858,6 +965,12 @@ export class Game {
         const a = depth > 0 ? await this.field.spawnWild({ depth, form, ahead, lateral: 0, mountain, plus }) : await this.field.spawnWild({ ahead, lateral: 0, mountain: true, family: form || undefined });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, form: a.d.form, notes: a.d.notes, params: a.d.params };
+      },
+      // a clearing to land in, ahead
+      site: async (ahead = 320) => {
+        for (const a of [...this.field.active]) this.field.remove(a);
+        const a = await this.field.spawnWild({ landing: true, ahead, lateral: 0 });
+        return { name: a.d.name, x: a.x, z: a.z };
       },
       // a creature of a species, at a depth, ahead
       creature: async (species = null, depth = 0, ahead = 300) => {

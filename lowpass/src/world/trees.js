@@ -202,17 +202,34 @@ function birch(lod, shape) {
   return G.build();
 }
 
+// A spruce or fir for walking among (where the ship has landed): the same tree, its crown
+// lifted up its trunk, so its lowest boughs hang high overhead and the trunks stand clear
+// (crownBase: where the crown now begins, of the tree's height; the trunk lengthened to
+// meet it). The trunk is told from the crown by its radius.
+function walkify(geo, crownBase, trunkMax) {
+  const g = geo.clone(), p = g.attributes.position;
+  const stretch = (crownBase + 0.2) / trunkMax;
+  for (let i = 0; i < p.count; i++) {
+    const r = Math.hypot(p.getX(i), p.getZ(i)), y = p.getY(i);
+    p.setY(i, r > 0.001 && r <= 0.045 ? y * stretch : crownBase + y * (1 - crownBase));
+  }
+  g.computeBoundingSphere();
+  return g;
+}
+
 let _geos = null;
-// [kind][lod] -> geometry (kinds: spruce, fir, snag, giant spruce, giant fir, and from
-// BIRCH on the birches' shapes)
+// [kind][lod] -> geometry (kinds: spruce, fir, snag, giant spruce, giant fir, from BIRCH
+// on the birches' shapes, and from WALK the spruce and fir to walk among)
 export const BIRCH = 5;
 export const BIRCH_SHAPES = BIRCHES.length;
+export const WALK = BIRCH + BIRCH_SHAPES;
 export function treeGeometries() {
   if (!_geos) {
     const s = [spruce(0), spruce(1), spruce(2)], f = [fir(0), fir(1), fir(2)];
     // the giants stand over everything and are seen from far: always in full
     _geos = [s, f, [snag(0), snag(1), snag(1)], [s[0], s[0], s[0]], [f[0], f[0], f[0]]];
     for (let i = 0; i < BIRCHES.length; i++) _geos.push([birch(0, i), birch(1, i), birch(2, i)]);
+    _geos.push(s.map((g) => walkify(g, 0.32, 0.32)), f.map((g) => walkify(g, 0.3, 0.4)));
   }
   return _geos;
 }

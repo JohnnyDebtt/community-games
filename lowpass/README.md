@@ -415,6 +415,7 @@ src/render/               the pipeline (opaque, fog and sky, glows, grade and di
                           materials, the geometry builder
 src/world/                terrain, trees, chunks with a floating origin, the canopy map
                           for light shafts, day, night and fog
+src/ground/               what happens off the ship
 src/ship/                 the ships (their designs and hulls) and their flight, cameras,
                           the cabins and their books, the Seeker, the coffee scene, the
                           ships' portraits for the SHOP

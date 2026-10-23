@@ -45,27 +45,29 @@ export class TouchControls {
     this.root.classList.toggle('on', input.touchMode);
     if (!input.touchMode) return;
     const overlay = g.terminal.open || g.menu.open || g.reader.open;
-    this.root.classList.toggle('hide', m === 'title' || m === 'coffee' || overlay);
+    this.root.classList.toggle('hide', m === 'title' || m === 'coffee' || m === 'landing' || m === 'takeoff' || overlay);
     const flying = m === 'fly' || m === 'seat';
+    const afoot = m === 'walk' || m === 'ground';
     const show = (b, on) => b.classList.toggle('off', !on);
     const text = (b, s) => { if (b.label.textContent !== s) b.label.textContent = s; };
-    show(this.scan, flying);
+    show(this.scan, flying || m === 'ground');
     show(this.boost, flying);
     if (!flying || overlay) input.touch.boost = false;
     this.boost.classList.toggle('lit', input.touch.boost && !g._spent);
     this.boost.classList.toggle('far', !!g._spent);
     show(this.cam, m === 'fly');
+    show(this.view, m !== 'ground');
     show(this.stand, m === 'seat');
     text(this.view, m === 'fly' ? 'CABIN' : 'OUTSIDE');
     // what one faces comes first; else the seeker aboard's NEXT
     const station = g._spot && g._spot.id !== 'companion';
-    const act = m !== 'walk' ? '' : station ? ACT[g._spot.id] || g._spot.label.toUpperCase() : g.companion.talking ? 'NEXT' : g._spot ? ACT[g._spot.id] : '';
+    const act = m === 'ground' ? (g.afoot.spot ? 'GO ABOARD' : '') : m !== 'walk' ? '' : station ? ACT[g._spot.id] || g._spot.label.toUpperCase() : g.companion.talking ? 'NEXT' : g._spot ? ACT[g._spot.id] : '';
     show(this.act, !!act);
     if (act) text(this.act, act);
     // the scan button sleeps until something is in the sights, then fills as it records
-    const f = g.field;
-    this.scan.classList.toggle('ready', flying && f.state === 'lock');
-    this.scan.classList.toggle('far', flying && f.state !== 'lock' && f.state !== 'near');
+    const f = m === 'ground' ? g.afoot : g.field, scanning = flying || m === 'ground';
+    this.scan.classList.toggle('ready', scanning && f.state === 'lock');
+    this.scan.classList.toggle('far', scanning && f.state !== 'lock' && f.state !== 'near');
     this.scanFill.style.width = `${Math.round(f.scan * 100)}%`;
     // what the teaching line is about
     const tip = g.tips.shown;
@@ -79,11 +81,11 @@ export class TouchControls {
     this.right.classList.toggle('hint', teachSteer && t.steer <= 0);
     // walking: the ring where the thumb landed; a resting one while walking is taught
     const R = input.stickR;
-    if (m === 'walk' && t.moveId !== null && !overlay) {
+    if (afoot && t.moveId !== null && !overlay) {
       this._place(t.mx, t.my, R, 'on');
       const dx = t.move.x * R, dy = t.move.y * R;
       this.knob.style.transform = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
-    } else if (m === 'walk' && tip && tip.id === 'walk' && !overlay) {
+    } else if (afoot && tip && tip.id === 'walk' && !overlay) {
       this._place(innerWidth * 0.2, innerHeight * 0.68, R, 'ghost');
       this.knob.style.transform = '';
     } else this._place(0, 0, R, '');

@@ -30,6 +30,9 @@ function baseSection(z) {
 }
 
 const ZI = -0.6;        // where the bays are let in (aft of the galley)
+// the door: on the right (x < 0), between the Codex computer and the cockpit, from the
+// floor up; the same place in every ship (its ramp: ship.js)
+export const DOOR = { z0: 2.3, z1: 3.6, top: 2.2 };
 const NOSE = 5.2;       // forward of this the nose stretches
 const TAIL = -6;        // aft of this (on the Seed) the tail stretches
 
@@ -87,11 +90,19 @@ export class Hull {
     return [x, yc + y, z];
   }
 
+  // the door's panel: on the right, between its edges, from the floor to its top
+  isDoor(z, a, scale = 1) {
+    if (Math.cos(a) > -0.3 || z < DOOR.z0 || z > DOOR.z1) return false;
+    const y = this.hullPoint(z, a, scale)[1];
+    return y > -0.1 && y < DOOR.top;
+  }
+
   // the windshield, and a band down each side at eye height, panes between the ribs
   isWindow(z, a) {
     const s = Math.sin(a), c = Math.cos(a), zb = this.toBase(z);
     if (zb > 5.4 && zb < 10.7 && s > (zb > 7.4 ? -0.46 : 0.0) && s < 0.93 + (zb > 8 ? 0.07 : 0)) return 'front';
     const z0 = this.zOf(-5.2);
+    if (c < 0 && z > DOOR.z0 - 0.2 && z < DOOR.z1 + 0.2) return null;
     if (z > z0 && z < 4.2 && s > this.band[0] && s < this.band[1] && Math.abs(c) > 0.5) {
       const rz = ((z - z0) % 3.0 + 3.0) % 3.0;
       if (rz > 0.4 && rz < 2.85) return 'side';

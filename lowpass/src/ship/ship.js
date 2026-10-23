@@ -5,7 +5,7 @@ import { FOG, LAYER_FX } from '../render/pipeline.js';
 import { damp, clamp, lerp, smoothstep, TAU } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
 import { canopyTop, mountainEnv } from '../world/terrain.js';
-import { Hull } from './hull.js';
+import { Hull, DOOR } from './hull.js';
 import { SHIPS } from './designs.js';
 
 // The ship: Seeker technology as the codex describes it, dark and minimal, fused with the
@@ -16,8 +16,12 @@ import { SHIPS } from './designs.js';
 // colors and a core of their own, and fly as they are built to.
 //
 // Local space: +z forward, +y up, the cabin floor at y = 0.
+//
+// Every ship can land, where a clearing lets it (landing.js): legs come down from its belly
+// and a ramp folds down from its door, on the right.
 
 const CLEARANCE = 17;               // above the canopy
+const LEG = 1.5;                    // landed, its belly stands this high over the ground
 const CLIMB = 0.45;                 // the slope it climbs a mountain at
 
 const v3 = (p) => new THREE.Vector3(p[0], p[1], p[2]);
@@ -45,6 +49,8 @@ function hullGeometry(H, look) {
       if (rim) col = look.rim;
       let em = rim && !w ? look.rimGlow || 0 : 0;
       if (w) { col = w === 'front' ? win : mixHex(win, 0x6c7983, 0.25); em = 0.55; }
+      // the door: a panel, its edges pale
+      if (H.isDoor(zm, am)) col = H.isDoor(zm - 0.4, am) && H.isDoor(zm + 0.4, am) && H.isDoor(zm, am + 0.25) && H.isDoor(zm, am - 0.25) ? mixHex(look.side, look.belly, 0.5) : look.edge;
       b.quad(p00, p01, p11, p10, col, em);
     }
   }
@@ -241,6 +247,49 @@ function navGeometry(nav) {
   return b.build();
 }
 
+// The legs it lands on and the ramp from its door, for a hull whose belly is `low` below
+// its floor: the legs (each its own group, hinged at the belly, drawn down to the ground)
+// and the ramp (hinged at the door's foot, folded up into the hull, down to the ground)
+function landingGeometry(H, look, low) {
+  const rest = low + LEG;
+  const legs = [];
+  const leg = (z, a) => {
+    const top = H.hullPoint(z, a, 0.98), len = top[1] + rest;
+    const b = new Builder();
+    b.cyl(0.13, 0.16, len, 6, mat(0, -len / 2, 0), look.rib);
+    b.cyl(0.24, 0.24, len * 0.35, 6, mat(0, -len * 0.25, 0), look.belly);
+    b.cyl(0.55, 0.65, 0.16, 10, mat(0, -len + 0.08, 0), look.rib);
+    b.torus(0.6, 0.05, 4, 16, mat(0, -len + 0.18, 0, Math.PI / 2, 0, 0), look.core, 1.6);
+    legs.push({ geo: b.build(), at: top });
+  };
+  leg(Math.min(H.zOf(7.2), 7.5), -Math.PI / 2);
+  for (const s of [-1, 1]) leg(H.zOf(-6.8), -Math.PI / 2 + s * 0.75);
+  // the ramp's hinge: where the hull meets the floor, on the right
+  const zm = (DOOR.z0 + DOOR.z1) / 2;
+  let hinge = H.hullPoint(zm, Math.PI);
+  for (let a = Math.PI; a < Math.PI * 1.5; a += 0.01) { const p = H.hullPoint(zm, a); if (p[1] <= 0.05) { hinge = p; break; } }
+  const L = DOOR.top + 0.1, W = DOOR.z1 - DOOR.z0 - 0.1;
+  const b = new Builder();
+  b.box(0.14, L, W, mat(0, L / 2, 0), look.belly);
+  b.box(0.16, L, 0.08, mat(0, L / 2, W / 2 - 0.04), look.edge);
+  b.box(0.16, L, 0.08, mat(0, L / 2, -W / 2 + 0.04), look.edge);
+  // steps, lit at their edges
+  for (let y = 0.3; y < L - 0.1; y += 0.36) {
+    b.box(0.22, 0.08, W - 0.2, mat(0.1, y, 0), look.rib);
+    b.box(0.04, 0.03, W - 0.3, mat(0.2, y + 0.05, 0), look.core, 1.4);
+  }
+  // the door's light, when it is open: the door's panel again, a little proud, lit
+  const lit = new Builder(), warm = mixHex(0xe6c9a0, look.core, 0.2);
+  for (let z = DOOR.z0 + 0.06; z < DOOR.z1 - 0.07; z += 0.2) for (let a = Math.PI * 0.55; a < Math.PI * 1.45; a += 0.05) {
+    const z1 = Math.min(z + 0.2, DOOR.z1 - 0.06), a1 = a + 0.05;
+    if (!H.isDoor(z, a) || !H.isDoor(z1, a1)) continue;
+    lit.quad(H.hullPoint(z, a, 1.01), H.hullPoint(z, a1, 1.01), H.hullPoint(z1, a1, 1.01), H.hullPoint(z1, a, 1.01), warm, 1.4);
+  }
+  // how steep the ramp lies: its foot on the ground
+  const tilt = Math.asin(clamp(rest / L, 0.2, 0.97));
+  return { legs, rest, ramp: b.build(), light: lit.build(), hinge: new THREE.Vector3(hinge[0], 0, zm), tilt, L };
+}
+
 // every part of a design's outside, for the ship and for its portrait in the SHOP
 export function exteriorParts(design) {
   const H = new Hull(design.hull), look = design.look;
@@ -258,6 +307,7 @@ export class Ship {
     this.navMat = worldMaterial({ unique: true });
     this.lensMat = worldMaterial({ unique: true });
     this.hullMat = worldMaterial({ unique: true });
+    this.gearMat = worldMaterial({ side: THREE.DoubleSide });
     this.sideMat = worldMaterial({ side: THREE.DoubleSide });
     this.halo = halo(0x91cbde, 9, 0.9);
     this.halo.layers.set(LAYER_FX);
@@ -288,6 +338,7 @@ export class Ship {
   setDesign(design) {
     this.design = design;
     for (const m of this._parts || []) { m.parent.remove(m); m.geometry.dispose(); }
+    for (const g of this._landing || []) { this.exterior.remove(g); g.traverse((o) => o.geometry && o.geometry.dispose()); }
     const P = exteriorParts(design);
     this.H = P.H;
     this.span = P.fins.boundingBox.max.x;      // half the wingspan
@@ -295,6 +346,20 @@ export class Ship {
     this._parts = [mesh(P.hull, this.hullMat), mesh(P.ribs, this.sideMat), mesh(P.fins, this.sideMat), mesh(P.nav, this.navMat), mesh(P.lens, this.lensMat), mesh(P.core, this.coreMat, this.root)];
     this.halo.material.uniforms.uColor.value.setHex(design.look.core);
     this.halo.position.set(0, 1.55, this.H.coreZ - 0.3);
+    // its legs and its ramp, folded away until it lands
+    const Lg = landingGeometry(this.H, design.look, -P.hull.boundingBox.min.y);
+    this.rest = Lg.rest;
+    this.legs = Lg.legs.map(({ geo, at }) => { const g = new THREE.Group(); g.position.set(at[0], at[1], at[2]); g.add(new THREE.Mesh(geo, this.gearMat)); return g; });
+    this.ramp = new THREE.Group();
+    this.ramp.position.copy(Lg.hinge);
+    this.ramp.add(new THREE.Mesh(Lg.ramp, this.gearMat));
+    this.doorLight = new THREE.Mesh(Lg.light, this.gearMat);
+    this._landing = [...this.legs, this.ramp, this.doorLight];
+    for (const g of this._landing) this.exterior.add(g);
+    this.rampTilt = Lg.tilt;
+    this.rampLen = Lg.L;
+    this.setGear(this.gear || 0);
+    this.setRamp(this.rampOpen || 0);
     this._coreAt = new THREE.Vector3(0, 1.55, this.H.coreZ);
     // the light under it and in the fog takes the core's color
     const h = design.look.core, r = ((h >> 16) & 255) / 255, g = ((h >> 8) & 255) / 255, bl = (h & 255) / 255;
@@ -305,6 +370,25 @@ export class Ship {
     this.boostK = f.boost;
     this.maxYaw = f.turn;
     if (this.speed === undefined) this.speed = f.speed;
+  }
+
+  // the legs: 0 folded away, 1 down to the ground
+  setGear(k) {
+    this.gear = k;
+    for (const g of this.legs) { g.visible = k > 0.01; g.scale.set(1, Math.max(0.01, k), 1); }
+  }
+
+  // the ramp: 0 shut, 1 down on the ground (its foot, ship space, for walking off it)
+  setRamp(k) {
+    this.rampOpen = k;
+    const e = k * k * (3 - 2 * k);
+    this.ramp.visible = k > 0.01;
+    this.ramp.rotation.z = e * (Math.PI / 2 + this.rampTilt);
+    this.doorLight.visible = k > 0.05;
+  }
+  rampFoot() {
+    const a = Math.PI / 2 + this.rampTilt;
+    return new THREE.Vector3(this.ramp.position.x - Math.sin(a) * this.rampLen, this.ramp.position.y + Math.cos(a) * this.rampLen, this.ramp.position.z);
   }
 
   place(x, z, heading) {
@@ -353,6 +437,8 @@ export class Ship {
   // boosting: true while the boost is asked for (outside, or at the controls)
   update(dt, steer, boosting = false) {
     this._t += dt;
+    // landing, landed, or lifting off: the scene moves it (landing.js)
+    if (this.held) { this.steer = 0; this.yawRate = 0; return; }
     this.steer = steer;
     // the core takes a moment to come up to a burn, and longer to settle back
     this.boost = damp(this.boost, boosting ? 1 : 0, boosting ? 1.4 : 0.9, dt);

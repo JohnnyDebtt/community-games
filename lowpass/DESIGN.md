@@ -113,6 +113,23 @@ nothing of creatures at all, not in the HUD, the shop or this game's README: one
 flies off one day, and the rest is for players to find out (a rush of air when it bolts,
 two falling notes when its scan is lost, are all the help there is).
 
+Landing is the other secret, and the larger one. Once the scanner reaches the third depth
+(nothing says so), very rarely a wild signal is a clearing instead: lanterns in a ring,
+a column of light. Held in the scanner, it is landed in: a short scene in still shots,
+each ship coming in its own way (the Seed on a wide curve, the Heron on a long glide, the
+Moth spiraling down, the Kestrel fast with a hard flare, the Ark slowly from high up),
+its legs coming down, a breath of dust, its ramp folding down from the door on the right
+(the same place in every ship, between the Codex computer and the cockpit), and the one
+aboard walking out. Then first person on foot. The forest the ship flies over is too
+dense to walk in, its spruces' boughs to the ground; so while the camera cuts away,
+the forest about the clearing (320 meters) is rebuilt with fewer trees, their crowns
+lifted up their trunks: a tall, clear wood in the fog, and rebuilt back as the ship
+leaves. Between its trunks stand things found nowhere else: old instruments the forest
+has grown over and things the scanner cannot account for, twenty kinds, more of them the
+deeper the scanner reaches, marked (+) now and then, none of them moving off. They are
+scanned by looking at them from close by. Aboard again (the ramp), the cabin is the
+same, its controls say take off, and the ship lifts out of the clearing and flies on.
+
 Ships are what DATA buys once the upgrades are done, and they are sideways, not up:
 each trades one thing for another (the Kestrel's speed for its tank, the Ark's room and
 scanner for its speed), so none is simply the best, and boarding another is free once

@@ -906,6 +906,28 @@ export class Audio {
         this.hiss({ type: 'bandpass', freq: 700, q: 1.2, to: 2600, attack: 0.05, release: 0.6, gain: 0.04, pink: true, verb: 0.5 });
         [17, 19].forEach((d, i) => this.note(pitch(d), { wave: 'soft', when: t + 0.1 + i * 0.08, attack: 0.006, release: 0.4, gain: 0.016, cutoff: 2600, dest: S, verb: 0.7 }));
         break;
+      case 'descend':
+        // coming down: the engine's note sinking, slowly, the air with it
+        this.glide(pitch(8), pitch(1), { wave: 'soft', dur: 5, gain: 0.022, release: 2.5, verb: 0.8 });
+        this.hiss({ type: 'bandpass', freq: 900, q: 1, to: 320, attack: 1.5, hold: 2.5, release: 3, gain: 0.04, pink: true, verb: 0.6 });
+        break;
+      case 'touchdown':
+        // the legs take its weight: a soft thud, a creak, a breath of dust
+        this.note(R, { wave: 'sub', attack: 0.01, release: 0.8, gain: 0.07, cutoff: 160 });
+        this.hiss({ type: 'lowpass', freq: 600, attack: 0.02, release: 1.6, gain: 0.07, pink: true, verb: 0.5 });
+        this.note(pitch(3), { wave: 'reed', when: t + 0.25, attack: 0.05, release: 0.5, gain: 0.012, cutoff: 500 });
+        break;
+      case 'ramp':
+        // the ramp folding down: a slow motor, a seal letting go, a soft landing on moss
+        this.glide(pitch(5), pitch(8), { wave: 'hum', dur: 1.3, gain: 0.02, release: 0.4 });
+        this.hiss({ type: 'highpass', freq: 2000, attack: 0.01, release: 0.4, gain: 0.04, pink: true });
+        this.note(R * 2, { wave: 'sub', when: t + 1.3, attack: 0.01, release: 0.4, gain: 0.05, cutoff: 200 });
+        break;
+      case 'ascend':
+        // going up: the engine's note climbing, the air rushing
+        this.glide(pitch(1), pitch(10), { wave: 'soft', dur: 4, gain: 0.024, release: 2, verb: 0.8 });
+        this.hiss({ type: 'bandpass', freq: 300, q: 1, to: 1400, attack: 1, hold: 2, release: 2.5, gain: 0.05, pink: true, verb: 0.6 });
+        break;
       case 'lost':
         // the scan let go: two soft notes falling
         [10, 6].forEach((d, i) => this.note(pitch(d), { wave: 'soft', when: t + i * 0.12, attack: 0.01, release: 0.5, gain: 0.02, cutoff: 900, dest: S }));

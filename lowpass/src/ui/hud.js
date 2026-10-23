@@ -227,8 +227,9 @@ export class Hud {
       if (this._toastT <= 0 || this.alarmOn || ((g.mode === 'fly' || g.mode === 'seat') && !g.terminal.open && !g.menu.open && !g.reader.open)) this.hideToast();
     }
 
-    const f = g.field, t = f.target;
-    const flying = g.mode === 'fly' || g.mode === 'seat';
+    const ground = g.mode === 'ground';
+    const f = ground ? g.afoot : g.field, t = f.target;
+    const flying = g.mode === 'fly' || g.mode === 'seat' || ground;
     // a witnessed artifact's marks are gold
     const sp = !!(t && t.special);
     this.signal.classList.toggle('special', sp);
@@ -243,14 +244,23 @@ export class Hud {
     // other one still out there (a sweep's)
     const open = flying ? f.open : [];
     const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, b / 1.2)) * 0.5)) * 100}%`;
-    if (t && flying && (f.state === 'far' || open.length > 1)) {
+    if (ground) {
+      // on foot: the ship's way, once it is a little way off
+      const sh = g.afoot.ship();
+      if (sh.dist > 30) {
+        this.signal.classList.add('on');
+        this.sigMark.style.left = at(sh.bearing);
+        this.sigMark.classList.toggle('edge', Math.abs(sh.bearing) > 1.2);
+        this.sigLabel.textContent = `SHIP · ${Math.round(sh.dist / 10) * 10} m`;
+      } else this.signal.classList.remove('on');
+    } else if (t && flying && (f.state === 'far' || open.length > 1)) {
       this.signal.classList.add('on');
       this.sigMark.style.left = at(t.bearing);
       this.sigMark.classList.toggle('edge', Math.abs(t.bearing) > 1.2);
       const m = `${Math.round(t.dist / 10) * 10} m`;
       this.sigLabel.textContent = open.length > 1 ? `${open.length} ${open.some((a) => a.special) ? 'WITNESSED' : 'SIGNALS'} · ${m}` : m;
     } else this.signal.classList.remove('on');
-    const others = this.signal.classList.contains('on') ? open.filter((a) => a !== t) : [];
+    const others = this.signal.classList.contains('on') && !ground ? open.filter((a) => a !== t) : [];
     while (this.sigOthers.length < others.length) this.sigOthers.push(el('div', 'mark other', this.signal));
     this.sigOthers.forEach((mk, i) => {
       const a = others[i];
@@ -276,7 +286,10 @@ export class Hud {
         this.bracket.classList.toggle('lock', f.state === 'lock');
         // low in the view (a short screen held sideways), the words go above it
         this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
-        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral}${t.d.plus ? '+' : ''} · ` : '') + (f.state === 'lock' ? (f.scan > 0 ? 'SCANNING' : g.input.touchMode ? 'HOLD SCAN' : 'HOLD SPACE · SCAN') : 'STEER TO IT');
+        const land = t.d.family === 'landing';
+        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral}${t.d.plus ? '+' : ''} · ` : '') + (f.state === 'lock'
+          ? (f.scan > 0 ? (land ? 'LANDING' : 'SCANNING') : g.input.touchMode ? (land ? 'HOLD SCAN · LAND' : 'HOLD SCAN') : (land ? 'HOLD SPACE · LAND' : 'HOLD SPACE · SCAN'))
+          : ground ? 'CLOSER' : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;
       }
     }
