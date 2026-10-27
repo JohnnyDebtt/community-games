@@ -9,6 +9,7 @@ at <https://theseekergame.github.io/community-games/>.
 | [Low Pass](lowpass/) | A slow survey flight over an endless fog forest on The Seeker's planet: scan the artifacts that rise out of the fog, keep a Codex, stay awake with coffee, and witness the moment a SEEKER NET seeker moves on chain. | [play](https://theseekergame.github.io/community-games/lowpass/) |
 | [Soundings](soundings/) | A quiet ice-fishing game on the frozen sea of The Seeker's planet, with SEEKER NET seekers at your side. | [play](https://theseekergame.github.io/community-games/soundings/) |
 | [Dweller](dweller/) | A dark side-scroller: stay in the shadow, avoid the light, reach the rainbow crystal. | [play](https://theseekergame.github.io/community-games/dweller/) |
+| [Resonance Vault](seeker-resonance-vault/) | A tactical match-three descent through six icy chambers. Thaw frost, borrow creature powers, and uncover Theorem relics. By [@QuillshiftGame](https://x.com/QuillshiftGame). | [play](https://theseekergame.github.io/community-games/seeker-resonance-vault/) |
 
 ## Adding a game
 

@@ -1,0 +1,15 @@
+{
+  "name": "seeker-resonance-vault",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Static community match-three expedition in The Seeker universe.",
+  "license": "(MIT OR Apache-2.0)",
+  "scripts": {
+    "test": "node --test tools/game.test.cjs",
+    "start": "node tools/serve.cjs",
+    "balance": "node tools/balance.cjs 40"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
