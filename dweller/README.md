@@ -5,7 +5,7 @@ light burns, shadow heals. Six levels descend from ice-cold caves to a strange b
 each one ends with a sliver of a broken crystal. Gather all six and the crystal becomes whole, and
 the door to the final depth opens.
 
-- **Play:** open `dist/dweller.html` in any browser. It is one self-contained file: code, art and
+- **Play:** open `index.html` in any browser. It is one self-contained file: code, art and
   procedurally generated music are all inside.
 - **Controls:** A/D or arrows move · Space jump · S roll/crawl · E send the SEEKER (once found) ·
   Esc pause (a menu: resume, return to tether, new descent, settings, back to town; or press R, N, O, Q) · O settings · M mute · F fullscreen. Touch and gamepads work too.
@@ -48,7 +48,7 @@ and it follows you; press E and it flies to the nearest light and covers it for 
 eclipse), then needs a moment to recharge. Every level can be beaten without it.
 
 **The Codex and The Deep.** Once the Guardian is gone, the great door opens on what is left of its arena: the Codex,
-an archive of every seeker you have found (tools/archive.py builds it from level VII, which is never changed). You come
+an archive of every seeker you have found (built from level VII, which is never changed). You come
 in through a carved hall; your seekers stand in niches on two towers of balconies, 35 of them, ranked by how much they
 help in The Deep (tiers S to D, the best highest). Where the Guardian hung, a Planetary Prime turns in its two shells;
 stand in front of a seeker and the Prime opens to show it, its tier, what it does, and how it compares with the seeker
@@ -79,29 +79,12 @@ burn you.
 
 ## Source
 
-- `src/` — the game: `sim.js` (deterministic 96 Hz simulation, also runs in Node), `render.js`,
-  `audio.js` (Web Audio, Seeker 48 Hz tuning), `main.js` (menus, input, flow), `town.js` (the town above the descent), `deep.js` (the rules of The Deep), `relic.js` (the relics and the Relic Room).
-- `tools/` — `level1.py` … `level6.py` build the levels with `levelkit.py`; `bot.js` is a search bot
-  that proves every level can be beaten; `build.py` bundles everything into `dist/dweller.html`;
-  `seekernet.py` draws all 2,222 SEEKER NET seekers from the collection's layers into `assets/seeker/net.png`
-  (with their traits in `net.json`, and in `net_lids.png` the pixels that change when each one shuts its eyes);
-  `deep.py` builds The Deep's rooms, `deepcheck.js` proves every one of them with the bot at the gentlest and the
-  harshest tier, `relicspots.js` finds and proves the relic hollows, `bake_relicroom.js` bakes the Relic Room's still
-  art, and `vischeck.js` looks for things that would look wrong (lamps in rock, liquid with no banks,
-  emitters hanging from nothing).
-- `test/` — browser checks with Playwright (replays of the bot's solutions, the town, the companion, The Deep, the
-  Codex's stat cards at five screen sizes). Each takes an optional folder for its screenshots; by default they go
-  to `shots/`, which git ignores.
-
-Build: `python3 tools/levelN.py` for each level (writes `build/levelN.json`), then
-`python3 tools/build.py`. The build first runs `node tools/bake_levels.cjs`, which bakes every level's terrain
-tiles with The Seeker's ice-biome tiling (`tools/bake_terrain.cjs`, from the community-games port) into
-`build/terrainN.png`. The tiling rules live in `tools/ice_tiling.json`; regenerate them from a checkout of
-The Seeker with `python3 tools/extract_ice_tiling.py path/to/the-seeker tools/ice_tiling.json`. Verify a level: `node tools/bot.js build/level3.json build/solution3.json`.
+This folder contains only the built game (`index.html`). The source (simulation, renderer, level
+and Deep builders, bot-based level checks and browser tests) is not included here.
 
 ## Credits and licence
 
-Code is MIT. Includes or adapts assets from The Seeker by The Seeker contributors, licensed CC BY 4.0
+Code is MIT OR Apache-2.0. Includes or adapts assets from The Seeker by The Seeker contributors, licensed CC BY 4.0
 (https://github.com/TheSeekerGame/the-seeker). The companion is any SEEKER NET seeker, drawn from the collection's layers
 (https://github.com/TheSeekerGame/collections). The town's residents are The Seeker's collector, exile and monk, and a weaver. The Prime in the Codex is drawn after
 the Planetary Primes collection (https://ord.net/collection/planetaryprimes). Changes were made where applicable.
